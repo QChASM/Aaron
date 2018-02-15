@@ -1,0 +1,42 @@
+#!/usr/bin/perl -w
+
+use strict;
+use lib $ENV{'AARON'};
+
+use AaronInit qw(init_main %arg_in %arg_parser grab_cata_coords $system write_status);
+use AaronDriver qw(make_directories get_sub get_status 
+                   run_stepX print_status analyze_result count_time);
+use AaronOutput qw(print_message print_params
+                   $parent clean_up close_logfile clean_up &init_log);
+
+#initiate AARON, reading needed information from command line and input files
+init_main();
+
+init_log();
+
+my $Aaron_running = 1;
+
+clean_up($parent);
+
+while ($Aaron_running) {
+    for my $ligand (keys %{ $ligs_subs }) {
+        make_directories($ligand);
+        get_status($ligand);
+        run_stepX($ligand);
+    }
+    $Aaron_running = print_status();
+
+    write_status();
+
+    analyze_result();
+
+    my $start_time = count_time($arg_parser{sleeptime});
+    print "Aaron will check for next cycle after $arg_parser{sleeptime} mins at $start_time.\n" .
+          " Sleeping...\n";
+    my $sleep_second = $arg_parser{sleeptime} * 60;
+    sleep($sleep_second);
+}
+
+print_message("Aaron finished, exiting AARON...\n");
+clean_up($parent);
+close_logfile;
