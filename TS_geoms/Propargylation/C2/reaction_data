@@ -1,0 +1,6 @@
+Name=Propargylation (C2-symmetric catalyst)
+Description=Denmark/Nakajima-style Propargylation of benzaldehyde using 2,2'-bipyridine N,N'-dioxide as a model catalyst
+bond_constraint=3,16;1,20;
+first_cat_atom=24
+key_atoms=24,25,26,27
+key_atom_description=the two atoms bound to Si

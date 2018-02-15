@@ -1,0 +1,5 @@
+Name=Propargylation (C2-symmetric catalyst)
+Description=Rh-catalyzed asymmetric hydrogenation of enamides by BIBOP type of ligands
+first_cat_atom=29
+key_atoms=29,30,34
+key_atom_description=one Rh atom and two P atoms bound to Rh

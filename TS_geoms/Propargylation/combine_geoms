@@ -1,0 +1,13 @@
+#!/bin/tcsh
+
+rm -f combined_geoms.xyz
+touch combined_geoms.xyz
+
+foreach stereo (R S)
+	foreach geom (bp1 bp2 bp3 bp4 bp5 bp6 bp7 bp8 bp9 bp10)
+		echo 46 >> combined_geoms.xyz
+		echo $stereo.$geom >> combined_geoms.xyz
+		tail -n+3 N_oxide/$stereo/$geom.xyz >> combined_geoms.xyz
+		tail -n+3 NN_dioxide/$stereo/$geom.xyz >> combined_geoms.xyz
+	end
+end
