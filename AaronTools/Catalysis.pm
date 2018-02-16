@@ -522,8 +522,6 @@ sub screen_subs {
         }
     }
 
-    print Dumper(\@subs_final);
-
     my @cata = ($self->copy()) x @subs_final;
     map {$cata[$_]->substitute($component, %{ $subs_final[$_] })} (0..$#subs_final);
 
@@ -1623,6 +1621,7 @@ sub new {
         if (-f "$AARON/Ligands/$self->{name}.xyz") {
             $self->read_geometry("$AARON/Ligands/$self->{name}.xyz");
         }
+
     }
 
     if ($self->{active_centers}) {
@@ -1656,10 +1655,13 @@ sub detect_backbone_subs {
             for my $path (@path) {
                 for my $atom_next (@{$self->{connection}->[$path->{head}]}) {
                     my $new_path = { %$path };
-                    if ( $atom_next == $activei || ($atom_next == $activej)) {
+                    $new_path->{$atom_next} = 1;
+
+                    if (($atom_next == $activei || ($atom_next == $activej)) &&
+                        (keys %{ $new_path } > 3)) {
                         @backbone{keys %{ $new_path }} = ();
                     }elsif (! exists $path->{$atom_next}) { 
-                        $new_path->{$atom_next} = 1;
+
                         $new_path->{head} = $atom_next;
                         push (@newpath, $new_path);
                     }
