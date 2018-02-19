@@ -8,16 +8,16 @@ use base qw(Exporter);
 use Math::Trig;
 
 our @EXPORT = ();
-our @EXPORT_OK = ('TMETAL', 'RADII', 'VDW_RADII', 'MASS',
+our @EXPORT_OK = ('TMETAL', 'RADII', 'VDW_RADII', 'MASS', 'UNROTATABLE_BOND',
                   'ELEMENTS', 'LJC12', 'LJC6', 'CONNECTIVITY', 'RIJ', 'EIJ');
 our %EXPORT_TAGS = (
                     BASIC => [ 'TMETAL', 'RADII', 'VDW_RADII', 'MASS',
-                               'ELEMENTS', 'CONNECTIVITY'],
+                               'ELEMENTS', 'CONNECTIVITY', 'UNROTATABLE_BOND'],
                     LJ => [ 'LJC12', 'LJC6', 'RIJ', 'EIJ' ],
                    );
 use constant ELEMENTS => ['Bq','H','He','Li','Be','B','C','N','O','F','Ne','Na','Mg','Al','Si','P','S','Cl','Ar','K','Ca','Sc','Ti','V','Cr','Mn','Fe','Co','Ni','Cu','Zn','Ga','Ge','As','Se','Br','Kr','Rb','Sr','Y','Zr','Nb','Mo','Tc','Ru','Rh','Pd','Ag','Cd','In','Sn','Sb','Te','I','Xe','Cs','Ba','La','Ce','Pr','Nd','Pm','Sm','Eu','Gd','Tb','Dy','Ho','Er','Tm','Yb','Lu','Hf','Ta','W','Re','Os','Ir','Pt','Au','Hg','Tl','Pb','Bi','Po','At','Rn','X'];
 
-use constant TMETAL => {  Sc=>1.44, Ti=>1.32, V=>1.22, Cr=>1.18, Mn=>1.17, Fe=>1.17, Co=>1.16, Y=>1.62, Zr=>1.45, Nb=>1.34, Mo=>1.30, Tc=>1.27, Ru=>1.25, Rh=>1.25, Pd=>1.28, Ag=>1.34, Hf=>1.44, Ta=>1.34, W=>1.30, Re=>1.28, Os=>1.26, Ir=>1.27, Pt=>1.30, Au=>1.34, };
+use constant TMETAL => {  Sc=>1.44, Ti=>1.32, V=>1.22, Cr=>1.18, Mn=>1.17, Fe=>1.17, Co=>1.16, Y=>1.62, Zr=>1.45, Nb=>1.34, Mo=>1.30, Tc=>1.27, Ru=>1.25, Rh=>1.25, Pd=>1.28, Ag=>1.34, Hf=>1.44, Ta=>1.34, W=>1.30, Re=>1.28, Os=>1.26, Ir=>1.27, Pt=>1.30, Au=>1.34, Cu=>1.17,};
 
 use constant RADII => { H=>0.32, He=>0.93, Li=>1.23, Be=>0.90, B=>0.82, C=>0.77, N=>0.75, O=>0.73, F=>0.72, Ne=>0.71, Na=>1.54, Mg=>1.36, Al=>1.18, Si=>1.11, P=>1.06, S=>1.02, Cl=>0.99, Ar=>0.98, K=>2.03, Ca=>1.74, Sc=>1.44, Ti=>1.32, V=>1.22, Cr=>1.18, Mn=>1.17, Fe=>1.17, Co=>1.16, Ni=>1.15, Cu=>1.17, Zn=>1.25, Ga=>1.26, Ge=>1.22, As=>1.20, Se=>1.16, Br=>1.14, Kr=>1.12, Rb=>2.16, Sr=>1.91, Y=>1.62, Zr=>1.45, Nb=>1.34, Mo=>1.30, Tc=>1.27, Ru=>1.25, Rh=>1.25, Pd=>1.28, Ag=>1.34, Cd=>1.48, In =>1.44, Sn=>1.41, Sb=>1.40, Te=>1.36, I=>1.33, Xe=>1.31, Cs=>2.35, Ba=>1.98, La=>1.69, Lu=>1.60, Hf=>1.44, Ta=>1.34, W=>1.30, Re=>1.28, Os=>1.26, Ir=>1.27, Pt=>1.30, Au=>1.34, Hg=>1.49, Tl=>1.48, Pb=>1.47, Bi=>1.46, X=>0,};
 
@@ -130,3 +130,5 @@ use constant RIJ => {CC => 4.00, CN => 3.75, NC => 3.75, CO => 3.60, OC => 3.60,
 
 use constant CONNECTIVITY => { H => 1, B => 4, C => 4, N => 4, O => 2, F => 1, Si => 6,
                                P => 4, S => 4, Cl => 1, I => 1, Br => 1, X => 1000 };
+
+use constant UNROTATABLE_BOND => { CC => 1.40, SiSi => 2.10, CSi => 1.75 };

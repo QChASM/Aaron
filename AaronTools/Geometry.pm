@@ -10,6 +10,7 @@ use AaronTools::FileReader;
 
 our $boltzman = BOLTZMANN;
 our $CONNECTIVITY = CONNECTIVITY;
+our $UNROTATABLE_BOND = UNROTATABLE_BOND;
 our $CUTOFF = CUTOFF;
 our $mass = MASS;
 our $radii = RADII;
@@ -228,6 +229,8 @@ sub clean_structure {
 #mirror_coords($ref_to_coords);
 sub mirror_coords {
     my ($self, $axis) = @_;
+
+    $axis //= '';
 
     SWITCH: {
         if ($axis =~ /[yY]/) {
@@ -997,7 +1000,6 @@ sub RMSD {
     $atoms1_ref //= [0..$#{ $self->{elements} }];
     $atoms2_ref //= [0..$#{ $geo2->{elements} }];
 
-
     my $cen1 = $self->get_center($atoms1_ref);
     my $cen2 = $geo2->get_center($atoms2_ref);
 
@@ -1020,14 +1022,18 @@ sub _RMSD {
     my $matrix = new Math::MatrixReal(4,4);
 
     for my $atom (0..$#{$atoms1_ref}) {
-        if ($heavy_only) {
+        if ($atoms1_ref->[$atom] =~ /^\d+$/ &&
+            ($atoms2_ref->[$atom] =~ /^\d+$/) &&
+            $heavy_only) {
             if ( ($self->{elements}->[$atoms1_ref->[$atom]] eq 'H')
                 && ($geo2->{elements}->[$atoms2_ref->[$atom]] eq 'H') ) {
                 next;
             }
         }
-        my $pt1 = $self->get_point($atoms1_ref->[$atom]);
-        my $pt2 = $geo2->get_point($atoms2_ref->[$atom]);
+        my $pt1 = $atoms1_ref->[$atom] =~ /^\d+$/ ?
+                  $self->get_point($atoms1_ref->[$atom]) : $atoms1_ref->[$atom];
+        my $pt2 = $atoms2_ref->[$atom] =~ /^\d+$/ ?
+                  $geo2->get_point($atoms2_ref->[$atom]) : $atoms2_ref->[$atom];
 
         $matrix += quat_matrix($pt1, $pt2);
     }
@@ -1186,8 +1192,13 @@ sub get_center {
 
     $groups //= [0.. $#{ $self->{elements} }];
 
+    my @xyz_groups = grep { $_ !~ /^\d+$/} @$groups;
+    my @groups = grep{ $_ =~ /^\d+$/ } @$groups;
+
     my $COM = V(0, 0, 0);
-    for my $atom (@$groups) {$COM += $self->{coords}->[$atom];}
+    for my $atom (@groups) {$COM += $self->{coords}->[$atom];}
+
+    for my $point (@xyz_groups) {$COM += $point;}
 
     $COM /= $#{ $groups } + 1;
 
@@ -1218,6 +1229,115 @@ sub shortest_path {
   }
   return -1;	#return -1 if no path found in BFS
 } #end shortest_path
+
+
+sub rotatable_bonds {
+    my $self = shift;
+
+    my ($ref1, $ref2) = @_;
+
+    my %bonds;
+    my $empty = 1;
+
+    for my $activei (@$ref1) {
+        for my $activej (@$ref2) {
+            my @path = ({$activei => -1});
+            while (@path) {
+                my @newpath = ();
+                for my $path (@path) {
+                    my ($head) = grep {$path->{$_} < 0} keys %{ $path };
+                    for my $atom_next (@{$self->{connection}->[$head]}) {
+                        my $new_path = { %$path };
+                        $new_path->{$head} = $atom_next;
+
+                        if ($atom_next == $activej) {
+                            if ($empty) {
+                                my @keys = keys %{ $new_path };
+                                @bonds{@keys} = map {$new_path->{$_}} @keys;
+                                $empty = 0;
+                            }else {
+                                for my $key (keys %bonds) {
+                                    if (exists $new_path->{$key} &&
+                                        ($new_path->{$key} == $bonds{$key})) {
+                                            next;
+                                    }else {
+                                        delete $bonds{$key};
+                                    }
+                                }
+                            }
+                        }elsif (! exists $new_path->{$atom_next}) { 
+                            $new_path->{$atom_next} = -1;
+                            push (@newpath, $new_path);
+                        }
+                    }
+                }
+                @path = @newpath;
+            }
+        }
+    }
+
+    for my $key (keys %bonds) {
+        my $ele1 = $self->{elements}->[$key];
+        my $ele2 = $self->{elements}->[$bonds{$key}];
+        unless (@{$self->{connection}->[$key]} >= $CONNECTIVITY->{$ele1} ||
+                @{$self->{connection}->[$bonds{$key}]} >= $CONNECTIVITY->{$ele2}) {
+            my $d = $self->distance(atom1 => $key, atom2 => $bonds{$key});
+            my $d_ref = $UNROTATABLE_BOND->{$ele1.$ele2} ?
+                        $UNROTATABLE_BOND->{$ele1.$ele2} : $UNROTATABLE_BOND->{$ele2.$ele1} ?
+                                                           $UNROTATABLE_BOND->{$ele2.$ele1} : 0;
+            if ($d_ref) {
+                if ($d < $d_ref) {
+                    delete $bonds{$key};
+                }
+            }else {
+                my $msg = "Unrotatable bond criterion $ele1-$ele2 is not implemented, " .
+                          "This bond will be viewed as rotatable bond\n";
+                warn($msg);
+            }
+        }
+    }
+    return \%bonds;
+}
+
+
+sub bare_backbone {
+    my $self = shift;
+
+    my ($active_centers) = @_;
+
+    my %backbone;
+    my @active_centers = @$active_centers;
+
+    while (@active_centers) {
+        my $activei = shift @active_centers;
+        my $activej = $active_centers[0] || $activei;
+
+        my @path = ({$activei => 1, head => $activei});
+        while (@path) {
+            my @newpath = ();
+            for my $path (@path) {
+                for my $atom_next (@{$self->{connection}->[$path->{head}]}) {
+                    my $new_path = { %$path };
+                    $new_path->{$atom_next} = 1;
+
+                    if (($atom_next == $activei || ($atom_next == $activej)) &&
+                        (keys %{ $new_path } > 3)) {
+                        @backbone{keys %{ $new_path }} = ();
+                    }elsif (! exists $path->{$atom_next}) { 
+
+                        $new_path->{head} = $atom_next;
+                        push (@newpath, $new_path);
+                    }
+                }
+            }
+            @path = @newpath;
+        }
+    }
+
+    delete $backbone{head};
+
+    return \%backbone;
+}
 
 
 sub printXYZ {

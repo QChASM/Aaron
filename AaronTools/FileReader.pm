@@ -101,14 +101,14 @@ sub grab_coords {
         }
 
       }
-      my $correct_input = &examine_structure($key_atoms, $bonds);
+      #my $correct_input = &examine_structure($key_atoms, $bonds);
 
-      unless ($correct_input) {
-          print "Incorrect input information in the $filename" .
-                "Aaron will quit at this time. Please modify the " .
-                "Input information.\n";
-          exit(1);
-      }
+      #unless ($correct_input) {
+      #    print "Incorrect input information in the $filename" .
+      #          "Aaron will quit at this time. Please modify the " .
+      #          "Input information.\n";
+      #    exit(1);
+      #}
 
     } elsif ($filename =~ /(\S+)\.pdb/) {		#PDB file
       while(<INFILE>) {

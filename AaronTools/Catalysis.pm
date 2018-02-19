@@ -435,33 +435,6 @@ sub freeze_all_atoms {
 }
 
 
-#this function map a catalyst to a ts from TS library. The old catalyst
-#will be replaced by the new one. Here, $self is the geometry instance for 
-#the new catalyst and geo_ref is the TS geometry instance. To replace old
-#catalyst, the first atom of the catalyst in the ts should be provided.
-#FIXME this is a very priliminary function, and only can be used for some very specific 
-#purpose. 
-sub map_catalyst {
-    my $self = shift;
-    my %params = @_;
-    my ($catalyst, $bonds_LJ) = ( $params{catalyst}, $params{bonds_LJ} );
-    
-    my $mapped_cata = $catalyst->map($self->ligand()); 
-
-    $self->replace_ligand($mapped_cata);
-
-    #rotate substituent to minimize RMSD;
-    my ($ligand, $geo_rest) = $self->_get_parts('ligand');
-
-    for my $target (@{ $ligand->get_all_sub_targets() }) {
-        my $atom2 = $ligand->get_sub_back($target);
-        $self->minimize_torsion( object => 'ligand',
-                                 start_atom => $target,
-                                 end_atom => $atom2 );
-    }
-}
-
-
 #this is to replace the ligand of the catalysis with a new ligand
 #The new ligand will be map to the old one by the key atoms.
 #If there are two key atoms, after mapping, the ligand will be rotated 
@@ -473,25 +446,197 @@ sub map_ligand {
     
     my ($ligand) = @_;
 
-    my $mapped_ligand = $ligand->map($self->ligand());
-
-    $self->replace_ligand($mapped_ligand);
-
-    #two active centers rotate the ligand along the axis
-    if ( $#{ $self->ligand()->{active_centers}->[0] } == 1 ) {
-        my $point = $self->ligand()->get_point($self->ligand()->{active_centers}->[0]->[0]);
-        my $axis = $self->ligand()->get_bond($self->ligand()->{active_centers}->[0]->[0],
-                                             $self->ligand()->{active_centers}->[0]->[1]);
-
-        $self->minimize_rotation( object => $LIGAND,
-                                  point => $point,
-                                  axis => $axis );
-    }
+    $self->_map_ligand($ligand);
 
     $self->remove_clash();
 
     $self->rebuild()
     #FIXME more atoms case implemented in the furture
+}
+
+
+#FIXME this is only a priliminary version. You should only use this function
+#in the case you know what you are doing.
+sub _map_ligand {
+    my $self = shift;
+
+    my ($ligand_ref) = $self->ligand()->copy();
+    my ($ligand) = @_;
+    
+    my @key_atoms1 = map { [@$_] } @{ $ligand->{active_centers} };
+    my @key_atoms2 = map { [@$_] } @{ $ligand_ref->{active_centers} };
+
+    my @key_total1 = map { @$_ } @key_atoms1;
+    my @key_total2 = map { @$_ } @key_atoms2;
+
+    my $minRMSD = 9999;
+    my $increment = 5;
+    my $mingeo;
+    my $i=0;
+
+    #my $rmsd_align;
+    #$rmsd_align = sub {
+    #    my ($ref_atoms1, $ref_atoms2, $bonds) = @_;
+    #    my @bond = @{ shift @$bonds };
+    #    my $fragments = $ligand->get_all_connected(@bond);
+    #    
+    #    for my $n(0..360/$increment) {
+    #        if (@$bonds) {
+    #            my $bonds_temp = [ map { [@$_] } @$bonds ];
+    #            &$rmsd_align($ref_atoms1, $ref_atoms2, $bonds_temp);
+    #        }
+    #        my $axis = $ligand->get_bond(reverse @bond);
+    #        $ligand->center_genrotate($bond[0], $axis, deg2rad($increment), $fragments);
+
+    #        my $geo_temp = $ligand->copy();
+
+    #        my $rmsd = $geo_temp->RMSD( ref_geo => $ligand_ref, 
+    #                                    ref_atoms1 => $ref_atoms1, 
+    #                                    ref_atoms2 => $ref_atoms2);
+    #        if ($rmsd < $minRMSD) {
+    #            $minRMSD = $rmsd;
+    #            $mingeo = $geo_temp;
+    #        }
+    #    }
+    #};
+
+    unless (@key_atoms1 == @key_atoms2) {
+        my $msg = "number of active center blocks for ligand mapping " .
+                  "doesn't match." . 
+                  "The active center will be chunked.\n";
+        if (@key_atoms1 < @key_atoms2) {
+            @key_atoms2 = @key_atoms2[0..$#key_atoms1];
+        }else {
+            @key_atoms1 = @key_atoms1[0..$#key_atoms2];
+        }
+    }
+
+    my $ref1_center = shift @key_atoms1;
+    my $ref2_center = shift @key_atoms2;
+    if (@$ref1_center != @$ref2_center) {
+        warn("reference atom numer not equal for ligand map!\n");
+        next;
+    }
+
+    $ref1_center = $self->_map_center($ligand, $ref1_center, $ref2_center);
+
+    if (@key_atoms1) {
+        $ligand = $self->ligand();
+
+        if (@$ref1_center == 2) {
+            my $key_atoms1 = shift @key_atoms1;
+            my $key_atoms2 = shift @key_atoms2;
+
+            $ligand->_map_remote($ligand_ref, $key_atoms1, $key_atoms2, $ref1_center);
+        }
+        while (@key_atoms1) {
+            my $key_atoms1 = shift @key_atoms1;
+            my $key_atoms2 = shift @key_atoms2;
+
+            $ligand->_map_remote($ligand_ref, $key_atoms1, $key_atoms2)
+        }
+
+        $ligand->RMSD( ref_geo => $ligand_ref,
+                       ref_atoms1 => [@key_total1],
+                       ref_atoms2 => [@key_total2] );
+        $self->replace_ligand($ligand);
+    }
+}
+
+
+sub _map_center {
+    my $self = shift;
+
+    my ($ligand, $ref1, $ref2) = @_;
+    my $ligand_ref = $self->ligand();
+
+    #first block, this is a little more complex
+    my $single_center;
+    if (@$ref1 == 1) {
+        $single_center = 1;
+
+        ($ref1, $ref2) = $ligand->_explore_ref_atoms($ligand_ref,
+                                                     $ref1,
+                                                     $ref2,
+                                                     1);
+    }
+
+    if (@$ref1 > 3 && $single_center) {
+        my ($noC1) = grep{ $ref1->[$_] ne 'C' } (0..$#{$ref1});
+        my ($noC2) = grep{ $ref2->[$_] ne 'C' } (0..$#{$ref2});
+
+        $noC1 //= 0;
+        $noC2 //= 0;
+
+        my @ref1_temp = @$ref1[$noC1..$#{$ref1}]; 
+        my @ref2_temp = @$ref2[$noC2..$#{$ref2}];
+
+        push (@ref1_temp, @$ref1[1..$noC1-1]);
+        push (@ref2_temp, @$ref2[1..$noC2-1]);
+
+        unshift(@ref1_temp, $ref1->[0]);
+        unshift(@ref2_temp, $ref2->[0]);
+
+
+        unless ($noC1 && $noC2) {
+            #try mapping multiple times
+            my $E_min = 1E20;
+            my $ligand_min;
+            my $active_center = shift @$ref1;
+            for my $i (0..$#{$ref1}) {
+                my @ref1_temp = @$ref1[$i..$#{$ref1}];
+                push(@ref1_temp, @$ref1[0..$i-1]);
+                unshift(@ref1_temp, $active_center);
+                my $ligand_copy = $ligand->copy();
+                $ligand_copy->RMSD(ref_geo => $ligand_ref,
+                                   ref_atoms1 => [@ref1_temp],
+                                   ref_atoms2 => [@ref2_temp]);
+
+                $self->replace_ligand($ligand_copy);
+
+                my $LJ = $self->LJ_energy($self->ligand());
+                if ($LJ < $E_min) {
+                    $E_min = $LJ;
+                    $ligand_min = $ligand_copy;
+                }
+            }
+
+            $self->replace_ligand($ligand_min);
+        }else {
+            $ligand->RMSD( ref_geo => $ligand_ref,
+                           ref_atoms1 => [@ref1_temp],
+                           ref_atoms2 => [@ref2_temp] );
+            $self->replace_ligand($ligand);
+        }
+
+        return [@ref1_temp];
+    }elsif (@$ref1 > 2) {
+        $ligand->RMSD( ref_geo => $ligand_ref,
+                       ref_atoms1 => $ref1,
+                       ref_atoms2 => $ref2 );
+        $self->replace_ligand($ligand);
+        
+        return $ref1;
+    }elsif (@$ref1 == 2 &&
+            (@$ref2 == 2)) {
+        $ligand->RMSD( ref_geo => $ligand_ref,
+                       ref_atoms1 => $ref1,
+                       ref_atoms2 => $ref2 );
+        $self->replace_ligand($ligand);
+
+        my $point = $self->ligand()->get_point($ref1->[0]);
+        my $axis;
+        if ($ref1 =~ /^\d+$/) {
+            $axis = $self->ligand()->get_bond($ref1->[1], $ref1->[0]);
+        }else {
+            $axis = $ref1->[1] - $self->ligand()->get_point($ref1->[0]);
+        }
+
+        $self->minimize_rotation( object => $LIGAND,
+                                  point => $point,
+                                  axis => $axis );
+        return $ref1;
+    }
 }
 
 
@@ -527,10 +672,6 @@ sub screen_subs {
 
     return @cata;
 }
-
-
-
-
 
 
 #This is a substitute method for the catalysis class,
@@ -1643,35 +1784,7 @@ sub detect_backbone_subs {
 
     my @active_centers = map {@$_} @{ $self->{active_centers} };
 
-    my %backbone;
-
-    while (@active_centers) {
-        my $activei = shift @active_centers;
-        my $activej = $active_centers[0] || $activei;
-
-        my @path = ({$activei => 1, head => $activei});
-        while (@path) {
-            my @newpath = ();
-            for my $path (@path) {
-                for my $atom_next (@{$self->{connection}->[$path->{head}]}) {
-                    my $new_path = { %$path };
-                    $new_path->{$atom_next} = 1;
-
-                    if (($atom_next == $activei || ($atom_next == $activej)) &&
-                        (keys %{ $new_path } > 3)) {
-                        @backbone{keys %{ $new_path }} = ();
-                    }elsif (! exists $path->{$atom_next}) { 
-
-                        $new_path->{head} = $atom_next;
-                        push (@newpath, $new_path);
-                    }
-                }
-            }
-            @path = @newpath;
-        }
-    }
-
-    delete $backbone{head};
+    my %backbone = %{ $self->bare_backbone([@active_centers]) };
 
     for my $atom (keys %backbone) {
         for my $atom_connected (@{ $self->{connection}->[$atom] }) {
@@ -1773,64 +1886,127 @@ sub copy {
 }
 
 
-#FIXME this is only a priliminary version. You should only use this function
-#in the case you know what you are doing.
-sub map {
-    my $self = shift;
-    my ($ligand_ref) = @_;
-    
-    my @key_atoms1 = map { [@$_] } @{ $self->{active_centers} };
-    my @key_atoms2 = map { [@$_] } @{ $ligand_ref->{active_centers} };
-    my $RMSD_bonds = $self->{RMSD_bonds};
+sub _explore_ref_atoms {
+    my ($self, $ligand_ref, $ref_atoms1, $ref_atoms2, $first_block) = @_;
 
-    my $minRMSD = 9999;
-    my $increment = 5;
-    my $mingeo;
-    my $i=0;
+    my $atom1 = $ref_atoms1->[0];
+    my $atom2 = $ref_atoms2->[0];
 
-    my $rmsd_align;
-    $rmsd_align = sub {
-        my ($ref_atoms1, $ref_atoms2, $bonds) = @_;
-        my @bond = @{ shift @$bonds };
-        my $fragments = $self->get_all_connected(@bond);
-        
-        for my $n(0..360/$increment) {
-            if (@$bonds) {
-                my $bonds_temp = [ map { [@$_] } @$bonds ];
-                &$rmsd_align($ref_atoms1, $ref_atoms2, $bonds_temp);
-            }
-            my $axis = $self->get_bond(reverse @bond);
-            $self->center_genrotate($bond[0], $axis, deg2rad($increment), $fragments);
+    my @connections1 = @{$self->{connection}->[$atom1]};
+    my @connections2 = @{$ligand_ref->{connection}->[$atom2]};
 
-            my $geo_temp = $self->copy();
+    my $ref1 = [$atom1];
+    my $ref2 = [$atom2];
 
-            my $rmsd = $geo_temp->RMSD( ref_geo => $ligand_ref, 
-                                        ref_atoms1 => $ref_atoms1, 
-                                        ref_atoms2 => $ref_atoms2);
-            if ($rmsd < $minRMSD) {
-                $minRMSD = $rmsd;
-                $mingeo = $geo_temp;
-            }
+    if (@connections1 != @connections2) {
+        my $center1 = $self->get_center([@connections1]);
+        my $center2 = $ligand_ref->get_center([@connections2]);
+
+        $ref1->[1] = $center1;
+        $ref2->[1] = $center2;
+        return ($ref1, $ref2);
+    }
+
+    my @con1_back = grep {$_ <= @{$self->{backbone}->{elements}}} @connections1;
+    my @con2_back = grep {$_ <= @{$ligand_ref->{backbone}->{elements}}} @connections2;
+
+    if (@con2_back == @connections2 &&
+        (@connections2 > 1)) {
+        my $bare_back = $ligand_ref->bare_backbone($ref2);
+        @con2_back = ();
+        for my $atom (@connections2) {
+            push (@con2_back, $atom) if (exists $bare_back->{$atom});
         }
-    };
+    }else {@con2_back = @connections2}
 
-    my $ref_atoms1 = [];
-    my $ref_atoms2 = [];
-    while (@key_atoms1) {
-        my $bonds = shift @$RMSD_bonds;
-        push (@$ref_atoms1, @{ shift @key_atoms1 });
-        push (@$ref_atoms2, @{ shift @key_atoms2 });
-        if ($bonds) {;
-            &$rmsd_align($ref_atoms1, $ref_atoms2, $bonds);
+    if (@con1_back == @connections1 &&
+        (@connections1 > 1)) {
+        my $bare_back = $self->bare_backbone($ref1);
+        @con1_back = ();
+        for my $atom (@connections1) {
+            push (@con1_back, $atom) if (exists $bare_back->{$atom});
+        }
+    }else {@con2_back = @connections2}
+
+    if (@con1_back != @con2_back || 
+        ! $first_block) {
+        my $center1 = $self->get_center([@con1_back]);
+        my $center2 = $ligand_ref->get_center([@con2_back]);
+        $ref1->[1] = $center1;
+        $ref2->[1] = $center2;
+    }else {
+        if (@con1_back == 2 &&
+            (@con1_back ~~ @connections1)) {
+            my $msg = "One active center in the backbone may cause incorrect mapping\n";
+            warn($msg);
+
+            push (@$ref1, @con1_back);
+            push (@$ref2, @con2_back);
         }else {
-            $mingeo = $self->copy();
-            my $rmsd = $mingeo->RMSD(ref_geo => $ligand_ref, 
-                                     ref_atoms1 => $ref_atoms1, 
-                                     ref_atoms2 => $ref_atoms2);
+            my $center1 = $self->get_center([@connections1]);
+            my $center2 = $ligand_ref->get_center([@connections2]);
+            my $axis1 = $center1 - $self->get_point($atom1);
+            my $axis2 = $center2 - $ligand_ref->get_point($atom2);
+
+            my $keep_sorting;
+
+            do {
+                $keep_sorting = 0;
+                for my $i (0..$#con1_back-1) {
+                    my $j = $i + 1;
+                    my $vi = $self->get_point($con1_back[$i]) - $self->get_point($atom1);
+                    my $vj = $self->get_point($con1_back[$j]) - $self->get_point($atom1);
+                    if ($vi x $vj * $axis1 < 0) {
+                        my $temp = $con1_back[$i];
+                        $con1_back[$i] = $con1_back[$j];
+                        $con1_back[$j] = $temp;
+                        $keep_sorting = 1;
+                    }
+                }
+            }while ($keep_sorting);
+
+            do {
+                $keep_sorting = 0;
+                for my $i (0..$#con2_back-1) {
+                    my $j = $i + 1;
+                    my $vi = $ligand_ref->get_point($con2_back[$i]) - 
+                                $ligand_ref->get_point($atom2);
+                    my $vj = $ligand_ref->get_point($con2_back[$j]) - 
+                                $ligand_ref->get_point($atom2);
+                    if ($vi x $vj * $axis2 < 0) {
+                        my $temp = $con1_back[$i];
+                        $con2_back[$i] = $con1_back[$j];
+                        $con2_back[$j] = $temp;
+                        $keep_sorting = 1;
+                    }
+                }
+            }while ($keep_sorting);
+            
+            push (@$ref1, @con1_back);
+            push (@$ref2, @con2_back);
         }
     }
-    return $mingeo;
+
+    return ($ref1, $ref2);
 }
+
+
+#sub _map_remote {
+#    my $self = shift;
+#
+#    my ($ref_ligand, $ref1, $ref2, $key_center) = @_;
+#
+#    my $rmsd_bonds = $self->{backbone}->rotatable_bonds($ref1, $ref2);
+
+
+
+                            
+
+
+
+
+
+
 
 
 sub read_geometry {
@@ -1849,6 +2025,9 @@ sub read_geometry {
 
     $self->refresh_connected();
 }
+
+
+
 
 
 package AaronTools::Substrate;
@@ -1945,5 +2124,6 @@ sub copy {
 
     return $new;
 }
+
 
 
