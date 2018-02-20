@@ -469,36 +469,7 @@ sub _map_ligand {
     my @key_total1 = map { @$_ } @key_atoms1;
     my @key_total2 = map { @$_ } @key_atoms2;
 
-    my $minRMSD = 9999;
-    my $increment = 5;
-    my $mingeo;
     my $i=0;
-
-    #my $rmsd_align;
-    #$rmsd_align = sub {
-    #    my ($ref_atoms1, $ref_atoms2, $bonds) = @_;
-    #    my @bond = @{ shift @$bonds };
-    #    my $fragments = $ligand->get_all_connected(@bond);
-    #    
-    #    for my $n(0..360/$increment) {
-    #        if (@$bonds) {
-    #            my $bonds_temp = [ map { [@$_] } @$bonds ];
-    #            &$rmsd_align($ref_atoms1, $ref_atoms2, $bonds_temp);
-    #        }
-    #        my $axis = $ligand->get_bond(reverse @bond);
-    #        $ligand->center_genrotate($bond[0], $axis, deg2rad($increment), $fragments);
-
-    #        my $geo_temp = $ligand->copy();
-
-    #        my $rmsd = $geo_temp->RMSD( ref_geo => $ligand_ref, 
-    #                                    ref_atoms1 => $ref_atoms1, 
-    #                                    ref_atoms2 => $ref_atoms2);
-    #        if ($rmsd < $minRMSD) {
-    #            $minRMSD = $rmsd;
-    #            $mingeo = $geo_temp;
-    #        }
-    #    }
-    #};
 
     unless (@key_atoms1 == @key_atoms2) {
         my $msg = "number of active center blocks for ligand mapping " .
@@ -523,24 +494,31 @@ sub _map_ligand {
     if (@key_atoms1) {
         $ligand = $self->ligand();
 
+        my $key_atoms1 = shift @key_atoms1;
+        my $key_atoms2 = shift @key_atoms2;
+
         if (@$ref1_center == 2) {
-            my $key_atoms1 = shift @key_atoms1;
-            my $key_atoms2 = shift @key_atoms2;
-
-            $ligand->_map_remote($ligand_ref, $key_atoms1, $key_atoms2, $ref1_center);
+            my ($subs, $ligand_mapped) = 
+                $ligand->_map_remote($ligand_ref, $key_atoms1, $key_atoms2, $ref1_center);
+            $self->replace_ligand($ligand_mapped);
+            $self->minimize_sub_torsions(object => $self->ligand(), subs => $subs);
         }
+
         while (@key_atoms1) {
+            my $ligand = $self->ligand();
             my $key_atoms1 = shift @key_atoms1;
             my $key_atoms2 = shift @key_atoms2;
 
-            $ligand->_map_remote($ligand_ref, $key_atoms1, $key_atoms2)
+            my ($subs, $ligand_mapped) = 
+                $ligand->_map_remote($ligand_ref, $key_atoms1, $key_atoms2, $ref1_center);
+            $self->minimize_sub_torsions(object => $self->ligand(), subs => $subs);
         }
 
-        $ligand->RMSD( ref_geo => $ligand_ref,
-                       ref_atoms1 => [@key_total1],
-                       ref_atoms2 => [@key_total2] );
-        $self->replace_ligand($ligand);
+        $self->ligand()->RMSD( ref_geo => $ligand_ref,
+                               ref_atoms1 => [@key_total1],
+                               ref_atoms2 => [@key_total2] );
     }
+    $self->rebuild();
 }
 
 
@@ -626,7 +604,7 @@ sub _map_center {
 
         my $point = $self->ligand()->get_point($ref1->[0]);
         my $axis;
-        if ($ref1 =~ /^\d+$/) {
+        if ($ref1->[1] =~ /^\d+$/) {
             $axis = $self->ligand()->get_bond($ref1->[1], $ref1->[0]);
         }else {
             $axis = $ref1->[1] - $self->ligand()->get_point($ref1->[0]);
@@ -708,7 +686,6 @@ sub substitute {
     }
 
     map { $subs_final{$_} = $substituents{$_} } @explicit_subs;
-    print Dumper(\%subs_final);
 
     $object->_substitute(%subs_final);
 
@@ -800,6 +777,18 @@ sub minimize_rotation {
     $self->rebuild_coords();
 }
 
+
+sub minimize_sub_torsions {
+    my $self = shift;
+    my %params = @_;
+    my ($object, $subs) = ($params{object}, $params{subs});
+
+    $subs //= [ keys %{ $object->{substituents} } ];
+
+    for my $target ( @$subs ) {
+        $self->minimize_sub_torsion(object => $object, target => $target);
+    }
+}
 
 
 #rotate one part of the catalysis to minimize the RMSD of the whole system
@@ -1898,42 +1887,42 @@ sub _explore_ref_atoms {
     my $ref1 = [$atom1];
     my $ref2 = [$atom2];
 
-    if (@connections1 != @connections2) {
-        my $center1 = $self->get_center([@connections1]);
-        my $center2 = $ligand_ref->get_center([@connections2]);
-
-        $ref1->[1] = $center1;
-        $ref2->[1] = $center2;
-        return ($ref1, $ref2);
-    }
-
-    my @con1_back = grep {$_ <= @{$self->{backbone}->{elements}}} @connections1;
-    my @con2_back = grep {$_ <= @{$ligand_ref->{backbone}->{elements}}} @connections2;
-
-    if (@con2_back == @connections2 &&
-        (@connections2 > 1)) {
+    my @con1_back;
+    my @con2_back;
+    if (@connections2 > 1) {
         my $bare_back = $ligand_ref->bare_backbone($ref2);
         @con2_back = ();
         for my $atom (@connections2) {
             push (@con2_back, $atom) if (exists $bare_back->{$atom});
         }
-    }else {@con2_back = @connections2}
+    }
 
-    if (@con1_back == @connections1 &&
-        (@connections1 > 1)) {
+    if (@connections1 > 1) {
         my $bare_back = $self->bare_backbone($ref1);
         @con1_back = ();
         for my $atom (@connections1) {
             push (@con1_back, $atom) if (exists $bare_back->{$atom});
         }
-    }else {@con2_back = @connections2}
+    }
+
+    @con1_back = @connections1 unless (@con1_back && (@connections1 == @connections2));
+    @con2_back = @connections2 unless (@con2_back && (@connections1 == @connections2));
 
     if (@con1_back != @con2_back || 
-        ! $first_block) {
+        (@connections1 != @connections2) ||
+        !$first_block) {
         my $center1 = $self->get_center([@con1_back]);
         my $center2 = $ligand_ref->get_center([@con2_back]);
-        $ref1->[1] = $center1;
-        $ref2->[1] = $center2;
+        #Normalize the centers
+        my $v1 = $center1 - $self->get_point($ref1->[0]);
+        my $v2 = $center2 - $ligand_ref->get_point($ref2->[0]);
+
+        $v1 *= 1/abs($v1);
+        $v2 *= 1/abs($v2);
+
+        $ref1->[1] = $center1 + $v1;
+        $ref2->[1] = $center2 + $v2;
+
     }else {
         if (@con1_back == 2 &&
             (@con1_back ~~ @connections1)) {
@@ -1991,22 +1980,119 @@ sub _explore_ref_atoms {
 }
 
 
-#sub _map_remote {
-#    my $self = shift;
-#
-#    my ($ref_ligand, $ref1, $ref2, $key_center) = @_;
-#
-#    my $rmsd_bonds = $self->{backbone}->rotatable_bonds($ref1, $ref2);
+sub _map_remote {
+    my $self = shift;
 
+    my ($ref_ligand, $ref1, $ref2, $key_center) = @_;
 
+    my $rotatable_bonds = $self->{backbone}->rotatable_bonds($ref1, $key_center);
 
-                            
+    my @rotatable_bonds = map { [$_, $rotatable_bonds->{$_}] } 
+                            keys %{ $rotatable_bonds };
+    my @subs;
 
+    my $active = [@$key_center, @$ref1];
 
+    my $backbone = $self->bare_backbone($active);
 
+    if (@$ref1 == 1) {
+        ($ref1, $ref2) = $self->_explore_ref_atoms($ref_ligand,
+                                                   $ref1,
+                                                   $ref2);
+    }
 
+    for my $sub (keys %{$self->{substituents}}) {
+        if (grep {$_ == $self->{substituents}->{$sub}->{end}}
+               keys %{$backbone}) {
+            push (@subs, $sub);
+        }
+    }
 
+    my @fragments;
+    for my $bond (@rotatable_bonds) {
+        push (@fragments, $self->get_all_connected(@$bond));
+    }
 
+    my $minRMSD = 9999;
+    my $increment = 5;
+    my $mingeo;
+
+    my $rmsd_align;
+
+    my $last_rmsd = $minRMSD;
+    my $keepgoing = 1;
+    my $wrong_direction = 0;
+    my $direction_changed = 0;
+    my $angle = 0;
+
+    $rmsd_align = sub {
+        my ($ref_atoms1, $bonds, $fragments) = @_;
+        my @bond = @{ shift @$bonds };
+        my $fragment = shift @$fragments;
+        my $point = $self->get_point($bond[1]);
+        my $axis = $self->get_bond(reverse @bond);
+        
+        for my $n(0..360/$increment) {
+            if (@$bonds) {
+                my $bonds_temp = [ map { [@$_] } @$bonds ];
+                &$rmsd_align($ref_atoms1, $bonds_temp, $fragments);
+
+                $point = $self->get_point($bond[1]);
+                $axis = $self->get_bond(reverse @bond);
+            }
+            $self->center_genrotate($point, $axis, deg2rad($increment), $fragment);
+            &__center_genrotate($ref_atoms1, $point, $axis, deg2rad($increment));
+
+            my $rmsd = $self->MSD( ref_geo => $ref_ligand, 
+                                   ref_atoms1 => $ref_atoms1, 
+                                   ref_atoms2 => $ref2,
+                                   no_rot => 1);
+            if ($rmsd < $minRMSD) {
+                $minRMSD = $rmsd;
+                $mingeo = $self->copy();
+            }
+        }
+    };
+
+    while ($keepgoing) {
+        if (@$key_center == 2) {
+            my $point = $self->get_point($key_center->[0]);
+            my $axis;
+            if ($key_center->[1] =~ /^\d+$/) {
+                $axis = $self->get_bond($key_center->[1], $key_center->[0]);
+            }else {
+                $axis = $key_center->[1] - $self->get_point($key_center->[0]);
+            }
+
+            $self->center_genrotate($point, $axis, deg2rad($angle));
+            &__center_genrotate($ref1, $point, $axis, deg2rad($angle));
+            &$rmsd_align($ref1, [@rotatable_bonds], [@fragments]);
+            if ($minRMSD < $last_rmsd ||
+                ($wrong_direction < 1)) {
+                $keepgoing ++;
+                $wrong_direction ++ if ($minRMSD >= $last_rmsd);
+                $angle = $direction_changed ? -15 : 15;
+                $last_rmsd = $minRMSD;
+
+            }elsif (!$direction_changed) {
+                $direction_changed = 1;
+                $angle = -1 * $angle * $keepgoing;
+                $wrong_direction = 0;
+                $keepgoing = 1;
+            }else {
+                $keepgoing = 0;
+                if ($minRMSD > 0.4) {
+                    print "Mapping may failed";
+                }
+            }
+        }else {
+            &$rmsd_align($ref1, [@rotatable_bonds], [@fragments]);
+            $keepgoing = 0;
+        }
+    }
+
+    return ([@subs], $mingeo);
+}
 
 
 sub read_geometry {
@@ -2027,6 +2113,29 @@ sub read_geometry {
 }
 
 
+#########################################
+#some internal function you should never#
+#call outside                           #
+#########################################
+
+sub __center_genrotate {
+    my ($ref, $point, $axis, $degree) = @_;
+
+    my $a = cos($degree/2);
+    $axis /= $axis->norm();
+    $axis *= sin($degree/2);
+
+    for my $vec (@$ref) {
+        if ($vec !~ /^\d+$/) {
+            $vec -= $point;
+
+            my $wx = $axis x $vec;
+            my $new_vec = $vec + 2*$a*$wx + 2*($axis x $wx);
+            map {$vec->[$_] = $new_vec->[$_]} (0..2);
+            $vec += $point;
+        }
+    }
+}
 
 
 

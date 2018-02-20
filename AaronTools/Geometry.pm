@@ -1003,21 +1003,50 @@ sub RMSD {
     my $cen1 = $self->get_center($atoms1_ref);
     my $cen2 = $geo2->get_center($atoms2_ref);
 
+    $geo2 = $geo2->copy();
+
     $self->coord_shift(-1*$cen1);
     $geo2->coord_shift(-1*$cen2);
+
+    for my $i (0..2) {
+        map {$atoms1_ref->[$_]->[$i] -= $cen1->[$i]} 
+            grep {$atoms1_ref->[$_] !~ /^\d+$/} (0..$#{$atoms1_ref});
+        map {$atoms2_ref->[$_]->[$i] -= $cen2->[$i]} 
+            grep {$atoms2_ref->[$_] !~ /^\d+$/} (0..$#{$atoms2_ref});
+    }
 
     my $rmsd = $self->_RMSD($geo2, $heavy_only, $atoms1_ref, $atoms2_ref);
 
     $self->coord_shift($cen2);
 
+    for my $i (0..2) {
+        map {$atoms1_ref->[$_]->[$i] += $cen2->[$i]} 
+            grep {$atoms1_ref->[$_] !~ /^\d+$/} (0..$#{$atoms1_ref});
+    }
+
     return $rmsd;
+}
+
+
+sub MSD {
+    my $self = shift;
+
+    my %params = @_;
+
+    my ($geo2, $heavy_only, 
+        $atoms1_ref, $atoms2_ref) = ( $params{ref_geo}, $params{heavy_atoms},
+                                      $params{ref_atoms1}, $params{ref_atoms2} );
+
+    my $msd = $self->_RMSD($geo2, $heavy_only, $atoms1_ref, $atoms2_ref, 1);
+
+    return $msd;
 }
 
 
 sub _RMSD {
     my $self = shift;
 
-    my ($geo2, $heavy_only, $atoms1_ref, $atoms2_ref) = @_;
+    my ($geo2, $heavy_only, $atoms1_ref, $atoms2_ref, $no_rot) = @_;
 
     my $matrix = new Math::MatrixReal(4,4);
 
@@ -1057,9 +1086,17 @@ sub _RMSD {
     }
 
     my $a = $Q->element(1,1);
+
     my $w = V($Q->element(2,1), $Q->element(3,1), $Q->element(4,1));
 
-    $self->quat_rot($a, $w);
+    unless ($no_rot){
+        $self->quat_rot($a, $w);
+        for my $vec (@$atoms1_ref) {
+            if ($vec !~ /^\d+$/) {
+                &__point_quat_rot($vec, $a, $w);
+            }
+        }
+    }
 
     return $rmsd;
 }
@@ -1448,6 +1485,21 @@ sub quat_matrix {
 
     return $temp_matrix;
 }
+
+
+#########################################
+#some internal function you should never#
+#call outside                           #
+#########################################
+
+sub __point_quat_rot {
+    my ($vec, $a, $w) = @_;
+
+    my $wx = $w x $vec;
+    my $new_vec = $vec + 2*$a*$wx + 2*($w x $wx);
+    #This is to maintain the array ref
+    map {$vec->[$_] = $new_vec->[$_]} (0..2);
+}    
 
 
 package AaronTools::NanoTube;
