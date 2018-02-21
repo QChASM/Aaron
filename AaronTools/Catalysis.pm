@@ -1991,6 +1991,12 @@ sub _map_remote {
 
     my @rotatable_bonds = map { [$_, $rotatable_bonds->{$_}] } 
                             keys %{ $rotatable_bonds };
+    
+    my @fragments;
+    for my $bond (@rotatable_bonds) {
+        push (@fragments, $self->get_all_connected(@$bond));
+    }
+
     my @subs;
 
     my $active = [@$key_center, @$ref1];
@@ -2010,14 +2016,9 @@ sub _map_remote {
         }
     }
 
-    my @fragments;
-    for my $bond (@rotatable_bonds) {
-        push (@fragments, $self->get_all_connected(@$bond));
-    }
-
     my $minRMSD = 9999;
-    my $increment = 5;
-    my $mingeo;
+    my $increment = 10;
+    my $ligand;
 
     my $rmsd_align;
 
@@ -2027,35 +2028,41 @@ sub _map_remote {
     my $direction_changed = 0;
     my $angle = 0;
 
+    my $rotate_angle = [(0) x @rotatable_bonds];
+    my $min_rotate_angle;
+    my $rotate_ith = -1;
+
+    my $atoms_ref = [grep {$_ =~ /^\d+$/} @$ref1];
+
     $rmsd_align = sub {
-        my ($ref_atoms1, $bonds, $fragments) = @_;
+        my ($bonds) = @_;
+        $rotate_ith ++;
         my @bond = @{ shift @$bonds };
-        my $fragment = shift @$fragments;
-        my $point = $self->get_point($bond[1]);
-        my $axis = $self->get_bond(reverse @bond);
+        my $point = $ligand->get_point($bond[1]);
+        my $axis = $ligand->get_bond(reverse @bond);
         
-        for my $n(0..360/$increment) {
+        for my $n(1..360/$increment) {
             if (@$bonds) {
                 my $bonds_temp = [ map { [@$_] } @$bonds ];
-                &$rmsd_align($ref_atoms1, $bonds_temp, $fragments);
-
-                $point = $self->get_point($bond[1]);
-                $axis = $self->get_bond(reverse @bond);
+                &$rmsd_align($bonds_temp);
+                $rotate_ith --;
             }
-            $self->center_genrotate($point, $axis, deg2rad($increment), $fragment);
-            &__center_genrotate($ref_atoms1, $point, $axis, deg2rad($increment));
+            $ligand->center_genrotate($point, $axis, deg2rad($increment), $atoms_ref);
+            &__center_genrotate($ref1, $point, $axis, deg2rad($increment));
+            $rotate_angle->[$rotate_ith] = $n*$increment;
 
-            my $rmsd = $self->MSD( ref_geo => $ref_ligand, 
-                                   ref_atoms1 => $ref_atoms1, 
+            my $rmsd = $ligand->MSD( ref_geo => $ref_ligand, 
+                                   ref_atoms1 => $ref1, 
                                    ref_atoms2 => $ref2,
                                    no_rot => 1);
             if ($rmsd < $minRMSD) {
                 $minRMSD = $rmsd;
-                $mingeo = $self->copy();
+                $min_rotate_angle = [@$rotate_angle];
             }
         }
     };
 
+    my $mingeo;
     while ($keepgoing) {
         if (@$key_center == 2) {
             my $point = $self->get_point($key_center->[0]);
@@ -2068,14 +2075,26 @@ sub _map_remote {
 
             $self->center_genrotate($point, $axis, deg2rad($angle));
             &__center_genrotate($ref1, $point, $axis, deg2rad($angle));
-            &$rmsd_align($ref1, [@rotatable_bonds], [@fragments]);
+            $ligand = $self->copy();
+            &$rmsd_align([@rotatable_bonds]);
+
             if ($minRMSD < $last_rmsd ||
                 ($wrong_direction < 1)) {
                 $keepgoing ++;
-                $wrong_direction ++ if ($minRMSD >= $last_rmsd);
                 $angle = $direction_changed ? -15 : 15;
-                $last_rmsd = $minRMSD;
 
+                if ($minRMSD < $last_rmsd) {
+                    $mingeo = $self->copy();
+                    for my $i (0..$#fragments) {
+                        my $point = $rotatable_bonds[$i][1];
+                        my $axis = $mingeo->get_bond(reverse @{ $rotatable_bonds[$i] });
+                        $mingeo->center_genrotate($rotatable_bonds[$i][1], $axis, 
+                                                  deg2rad($min_rotate_angle->[$i]), $fragments[$i]);
+                    }
+                    $last_rmsd = $minRMSD;
+                }else {
+                    $wrong_direction ++;
+                }
             }elsif (!$direction_changed) {
                 $direction_changed = 1;
                 $angle = -1 * $angle * $keepgoing;
@@ -2087,6 +2106,10 @@ sub _map_remote {
                     print "Mapping may failed";
                 }
             }
+
+            $min_rotate_angle = [(0) x @rotatable_bonds];
+            $rotate_ith = -1;
+
         }else {
             &$rmsd_align($ref1, [@rotatable_bonds], [@fragments]);
             $keepgoing = 0;

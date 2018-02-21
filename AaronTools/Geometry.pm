@@ -599,9 +599,9 @@ sub center_genrotate {
     my $shift_v = $point =~ /^\d+$/ ?
                   $self->get_point($point) : $point;
 
-    $self->coord_shift($shift_v*-1);
+    $self->coord_shift($shift_v*-1, $targets);
     $self->genrotate($v, $angle, $targets);
-    $self->coord_shift($shift_v);
+    $self->coord_shift($shift_v, $targets);
 }
 
 
