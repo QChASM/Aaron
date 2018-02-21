@@ -517,6 +517,8 @@ sub _map_ligand {
         $self->ligand()->RMSD( ref_geo => $ligand_ref,
                                ref_atoms1 => [@key_total1],
                                ref_atoms2 => [@key_total2] );
+    }else {
+        $self->minimize_sub_torsions(object => $self->ligand());
     }
     $self->rebuild();
 }
@@ -2233,6 +2235,7 @@ sub copy {
 
     return $new;
 }
+
 
 
 
