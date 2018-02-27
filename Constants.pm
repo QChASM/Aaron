@@ -64,7 +64,7 @@ use constant {
 #RMSD constants
 use constant CUTOFF => {
     E_CUTOFF => 0.2,
-    RMSD_CUTOFF => 0.3,
+    RMSD_CUTOFF => 0.2,
     D_CUTOFF => 0.35,
     CRASH_CUTOFF => 0.8,
 };

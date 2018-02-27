@@ -219,7 +219,6 @@ sub dir_tree {
                     }
 
                     $catalysis->substitute();
-                    $catalysis->remove_clash();
                     for my $sub (keys %{ $inexp_sub }) {
                         $catalysis->substitute( component => $LIGAND,
                                                 target => $sub,

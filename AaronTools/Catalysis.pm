@@ -673,6 +673,8 @@ sub substitute {
 
     if (! $object) {
         $self->_replace_all();
+        $self->remove_clash;
+        $self->rebuild();
         return;
     }
 
@@ -694,7 +696,6 @@ sub substitute {
     $self->_replace_all();
 
     $self->remove_clash;
-
     $self->rebuild();
 }
 
@@ -931,17 +932,17 @@ sub conf_array {
 
     my $conf_max_array = $self->_conf_max_array();
 
+    my @reverse_max = reverse @$conf_max_array;
+
     my @conf_array;
 
-    for my $max (@$conf_max_array) {
+    for my $max (@reverse_max) {
         my $temp = (($number - 1) % $max) + 1;
         push (@conf_array, $temp);
         $number = int(($number - 1)/$max) + 1;
     }
 
-    @conf_array = reverse @conf_array;
-
-    return ([@conf_array]);
+    return ([reverse @conf_array]);
 }
 
 
@@ -951,7 +952,7 @@ sub conf_num {
 
     my ($array) = @_;
 
-    my @array = reverse @$array;
+    my @array = @$array;
 
     my $conf_max_array = $self->_conf_max_array();
 
@@ -970,14 +971,14 @@ sub _conf_max_array {
 
     my @conf_max_array;
 
-    for my $target (sort { $b <=> $a } keys %{ $self->substrate()->{substituents} }) {
-        #NOTE reverse order here
-        push(@conf_max_array, $self->substrate()->{substituents}->{$target}->{conformer_num});
-    }
-
-    for my $target (sort { $b <=> $a } keys %{ $self->ligand()->{substituents} }) {
+    for my $target (sort { $a <=> $b } keys %{ $self->ligand()->{substituents} }) {
         #NOTE reverse order here
         push(@conf_max_array, $self->ligand()->{substituents}->{$target}->{conformer_num});
+    }
+
+    for my $target (sort { $a <=> $b } keys %{ $self->substrate()->{substituents} }) {
+        #NOTE reverse order here
+        push(@conf_max_array, $self->substrate()->{substituents}->{$target}->{conformer_num});
     }
 
     return [@conf_max_array];
@@ -1125,25 +1126,59 @@ sub conformer_rmsd {
     for my $reorder (0,1) {
         if ($reorder) {
             for my $sub_atoms_nums (@subs_atoms_nums) {
-                for my $i (0..$#{$sub_atoms_nums}) {
-                    my $short_d = 999;
-                    my $atom_i = $sub_atoms_nums->[$i];
-                    my $short_atom = $atom_i;
-                    for my $j ($i..$#{$sub_atoms_nums}) {
-                        my $atom_j = $sub_atoms_nums->[$j];
-                        if($cata1->{elements}->[$atom_i] eq $cata2->{elements}->[$atom_j]) {
-                            my $distance = $cata2->distance( atom1 => $atom_i,
-                                                             atom2 => $atom_j,
-                                                         geometry2 => $cata1 );
-                            if ($distance < $short_d) {
-                                $short_d = $distance;
-                                $short_atom = $atom_j;
+                my %visited;
+                while (@$sub_atoms_nums) {
+                    for (my $i=0; $i<=$#{$sub_atoms_nums}; $i++) {
+                        next if (exists $visited{$sub_atoms_nums->[$i]});
+
+                        my $short_d = 999;
+                        my $atom_i = $sub_atoms_nums->[$i];
+                        my $short_atom = $atom_i;
+                        my $short_num = $i;
+                        for my $j (0..$#{$sub_atoms_nums}) {
+                            #next if (exists $visited{$sub_atoms_nums->[$j]});
+                            my $atom_j = $sub_atoms_nums->[$j];
+                            if($cata1->{elements}->[$atom_i] eq $cata2->{elements}->[$atom_j]) {
+                                my $distance = $cata2->distance( atom1 => $atom_i,
+                                                                 atom2 => $atom_j,
+                                                             geometry2 => $cata1 );
+                                if ($distance < $short_d) {
+                                    $short_d = $distance;
+                                    $short_atom = $atom_j;
+                                    $short_num = $j;
+                                }
                             }
                         }
+                        $visited{$atom_i} = 1;
+
+                        next if ($atom_i == $short_atom);
+                        if ($short_atom < $atom_i) {
+                            my $current_d = $cata2->distance( atom1 => $atom_i,
+                                                              atom2 => $atom_i,
+                                                          geometry2 => $cata1 )
+                                            +
+                                            $cata2->distance( atom1 => $short_atom,
+                                                              atom2 => $short_atom,
+                                                          geometry2 => $cata1 );
+                            
+                            my $swap_d = $cata2->distance( atom1 => $atom_i,
+                                                           atom2 => $short_atom,
+                                                       geometry2 => $cata1 )
+                                         +
+                                         $cata2->distance( atom1 => $short_atom,
+                                                           atom2 => $atom_i,
+                                                       geometry2 => $cata1 );
+
+                            next if ($current_d < $swap_d);
+                        }
+
+                        my $temp = $cata1->{coords}->[$atom_i];
+                        $cata1->{coords}->[$atom_i] = $cata1->{coords}->[$short_atom];
+                        $cata1->{coords}->[$short_atom] = $temp;
+                        $i = $short_num - 1;
                     }
-                    my $temp = $cata1->{coords}->[$atom_i];
-                    $cata1->{coords}->[$atom_i] = $cata1->{coords}->[$short_atom];
-                    $cata1->{coords}->[$short_atom] = $temp;
+
+                    $sub_atoms_nums = [ grep {!exists $visited{$_}} @$sub_atoms_nums ];
                 }
             }
         }
@@ -2178,7 +2213,8 @@ sub detect_backbone_subs {
     for my $target ( sort { $a <=> $b } keys %{ $self->{substituents} } ) {
 
         my $nearst = $self->{substituents}->{$target}->{end};
-        my $groups = $self->get_all_connected($target, $nearst);
+        my $groups = $nearst ? 
+                     $self->get_all_connected($target, $nearst) : '';
 
         unless ($nearst && $groups) {
             my $min = 999;

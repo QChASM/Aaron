@@ -520,7 +520,6 @@ sub update_lib {
     my $directory = $self->{name};
 
     my $filename = "$directory/" . $self->file_name();
-    print "$filename\n";
 
     my ($head, $tail) = $self->_get_head_tail();
 
