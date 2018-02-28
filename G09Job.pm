@@ -919,26 +919,24 @@ sub build_com {
         }
     }
 
-    if ($self->{attempt} > 1) {
-        unless ($route =~ /nonlinear/) {$route =~ s/opt=\(/opt=\(nolinear,/;}
+    if ($self->{attempt} > 2) {
+        my $fc_change = ($route =~ s/readfc/calcfc/);
+        ($route, my $step_change) = &reduce_maxstep($route);
+        if ($step_change) {
+            $self->{msg} .= "using smaller step.\n";
+        }
         if ($self->{attempt} > 3) {
-            ($route, my $step_change) = &reduce_maxstep($route);
-            if ($step_change) {
-                $self->{msg} .= "using smaller step.\n";
+            unless ($route =~ /nonlinear/) {$route =~ s/opt=\(/opt=\(nolinear,/;}
+            if ($fc_change) {
+                $self->{msg} .= "calculate fc instead of read fc from .chk file.\n";
+                system("rm -fr $file_name.chk");
             }
             if ($self->{attempt} > 4) {
-                my $fc_change = ($route =~ s/readfc/calcfc/);
+                my $fc_change = (($route =~ s/readfc/calcfcall/) || ($route =~ s/calcfc/calcfcall/));
                 if ($fc_change) {
-                    $self->{msg} .= "calculate fc instead of read fc from .chk file.\n";
+                    $self->{msg} .= "calculate fc before each optimization step, ".
+                                    "this can take long time.\n";
                     system("rm -fr $file_name.chk");
-                }
-                if ($self->{attempt} > 5) {
-                    my $fc_change = (($route =~ s/readfc/calcfcall/) || ($route =~ s/calcfc/calcfcall/));
-                    if ($fc_change) {
-                        $self->{msg} .= "calculate fc before each optimization step, ".
-                                        "this can take long time.\n";
-                        system("rm -fr $file_name.chk");
-                    }
                 }
             }
         }
