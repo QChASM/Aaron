@@ -272,6 +272,7 @@ sub read_geometry {
     }
 
     $self->refresh_connected();
+    return 1;
 }
 
 
