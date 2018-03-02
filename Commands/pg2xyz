@@ -1,0 +1,23 @@
+#!/usr/bin/perl -w
+
+use strict;
+use lib $ENV{'AARON'};
+use lib $ENV{'PERL_LIB'};
+
+use AaronTools::G09Out;
+
+my $file = $ARGV[0] || '';
+
+unless ($file =~ /\.log$/) {
+    die("A .log file must be provided\n");
+}
+
+my $out = new AaronTools::G09Out( file => $file ) or 
+    die("Cannot read file, file may be damaged\n");
+
+$out->geometry()->printXYZ();
+
+    
+
+
+
