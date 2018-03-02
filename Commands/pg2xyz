@@ -4,19 +4,21 @@ use strict;
 use lib $ENV{'AARON'};
 use lib $ENV{'PERL_LIB'};
 
-use AaronTools::G09Out;
+use AaronTools::Geometry;
 
-my $file = $ARGV[0] || '';
+my $file = $ARGV[0];
 
-unless ($file =~ /\.log$/) {
-    die("A .log file must be provided\n");
+unless($file) {
+    die("A file name must be provided\n");
 }
 
-my $out = new AaronTools::G09Out( file => $file ) or 
-    die("Cannot read file, file may be damaged\n");
+my $geo = new AaronTools::Geometry();
 
-$out->geometry()->printXYZ();
+$geo->{name} = $file;
 
+$geo->read_geometry($file) or die ("File may be damaged, cannot read geometry\n");
+
+$geo->printXYZ();
     
 
 
