@@ -327,7 +327,7 @@ sub print_status {
 
 
 sub print_ee {
-    my $thermo = shift;
+    my ($thermo, $absolute) = @_;
 
     my $data = '';
 
@@ -343,12 +343,21 @@ sub print_ee {
         }
 
         foreach my $thermo (@{$thermo}) {
-            $data .= sprintf "%10.1f", $thermo;
+            if ($absolute) {
+                $data .= sprintf "%13.4f", $thermo;
+            }else {
+                $data .= sprintf "%10.1f", $thermo;
+            }
         }
         $data .= "\n";
     };
 
-    my @data_keys = sort grep {@{$thermo->{$_}->{sum}}} keys %{ $thermo };
+    my @data_keys;
+    if ($absolute) {
+        @data_keys = sort grep {$thermo->{$_}->{found}} keys %{ $thermo };
+    }else {
+        @data_keys = sort grep {@{$thermo->{$_}->{sum}}} keys %{ $thermo };
+    }
 
     unless (@data_keys) {
         $data .= "No data yet...\n";
@@ -388,10 +397,19 @@ sub print_ee {
 
 
     if ($arg_in{high_method}) {
-        $data .= sprintf "%16s%10s%10s%10s%10s%10s%10s%10s\n", 'E', 'H', 'G', 'G_Grimme',
-                                                'E\'', 'H\'', 'G\'', 'G_Grimme\'';
+        if ($absolute) {
+            $data .= sprintf "%19s%13s%13s%13s%13s%13s%13s%13s\n", 'E', 'H', 'G', 'G_Grimme',
+                                                    'E\'', 'H\'', 'G\'', 'G_Grimme\'';
+        }else {
+            $data .= sprintf "%16s%10s%10s%10s%10s%10s%10s%10s\n", 'E', 'H', 'G', 'G_Grimme',
+                                                    'E\'', 'H\'', 'G\'', 'G_Grimme\'';
+        }
     }else {
-        $data .= sprintf "%16s%10s%10s%10s\n", 'E', 'H', 'G', 'G_Grimme',
+        if ($absolute) {
+            $data .= sprintf "%19s%13s%13s%13s\n", 'E', 'H', 'G', 'G_Grimme',
+        }else {
+            $data .= sprintf "%16s%10s%10s%10s\n", 'E', 'H', 'G', 'G_Grimme',
+        }
     }
 
     if (@$ee) {
@@ -418,9 +436,12 @@ sub print_ee {
 
             $geo = (split(/\//, $geo))[-1];
 
-            &$print_thermo( name => $geo, 
-                          thermo => $thermo_geo->{thermo}) if @{ $thermo_geo->{thermo} };
-
+            if ($absolute) {
+                $data .= sprintf "%-6s\n", $geo;
+            }else {
+                &$print_thermo( name => $geo, 
+                              thermo => $thermo_geo->{thermo}) if @{ $thermo_geo->{thermo} };
+            }
 
             if ($thermo_geo->{conformers}) {
                 for my $cf (sort keys %{ $thermo_geo->{conformers} }) {
@@ -429,7 +450,7 @@ sub print_ee {
                                        cf => 1) if @{ $thermo_geo->{conformers}->{$cf} };
                 }
             }
-            $data .= '-' x 86 . "\n" if @{ $thermo_geo->{thermo} };
+            $data .= '-' x 86 . "\n" if (!$absolute && @{ $thermo_geo->{thermo} });
         }
         $data .= "\n";
     }
