@@ -4,7 +4,6 @@ use strict; use warnings;
 use lib $ENV{'AARON'};
 use lib $ENV{'PERL_LIB'};
 
-my $json;
 my $module = {};
 #Check necessary modules are installed
 &check_modules();
@@ -115,23 +114,11 @@ sub check_modules {
     my $msg = '';
     my $quit = 0;
     for my $mod (sort keys %$module) {
-        if ($mod eq 'XS') {
-            if (! $module->{$mod}->{install}) {
-                $msg .= "No $module->{$mod}->{mod} found in the perl library. " .
-                        "Aaron will make new status hash anyway and not use restart modes. " .
-                        "But we suggest you to install this module. " .
-                        "Then Aaron can run in a better way.\n";
-                $json = 0;
-            }else {
-                $json = 1;
-            }
-        }else {
-            if (! $module->{$mod}->{install}) {
-                $msg .= "No $module->{$mod}->{mod} found in the perl library. "  .
-                        "This is fatal to Aaron, Aaron will quit at this time. " .
-                        "Please install that module.\n";
-                $quit = 1;
-            }
+        if (! $module->{$mod}->{install}) {
+            $msg .= "No $module->{$mod}->{mod} found in the perl library. "  .
+                    "This is fatal to Aaron, Aaron will quit at this time. " .
+                    "Please install that module.\n";
+            $quit = 1;
         }
     }
     print $msg;
