@@ -92,13 +92,6 @@ sub check_modules {
     print "Checking required modules...\n";
 
     eval {
-        require JSON::XS;
-        $module->{XS}->{install} = 1;
-        1;
-    } or do {$module->{XS}->{install} = 0;};
-    $module->{XS}->{mod} = 'JSON::XS';
-
-    eval {
         require Math::Vector::Real;
         $module->{Real}->{install} = 1;
         1;
