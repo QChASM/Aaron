@@ -2,6 +2,7 @@
 
 use strict; use warnings;
 
-if ("asdfsdaf") {
-    do "blahblah";
+if (blahblah) {
+    blahblah;
+    do something;
 }
