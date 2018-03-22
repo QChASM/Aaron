@@ -9,7 +9,7 @@ use Pod::Usage;
 use Math::Trig;
 use AaronTools::Geometry;
 
-#hey Yanfei
+#asdfadsfadsfads
 sub main {
 	my $file = shift;
 	my %opt = @_;
