@@ -1,0 +1,76 @@
+#!/usr/bin/perl -w
+
+use strict;
+use lib $ENV{'AARON'};
+use lib $ENV{'PERL_LIB'};
+
+use Getopt::Long;
+use Pod::Usage;
+use AaronTools::G09Out;
+
+my $opt_help   = '';
+my $opt_output = '';
+GetOptions(
+    'help|h'     => \$opt_help,
+    'output|o=s' => \$opt_output
+) or pod2usage(2);
+pod2usage(0) if $opt_help;
+pod2usage("\nAt least one file must be specified\n") if @ARGV < 1;
+
+=pod
+
+=head1 SYNOPSIS
+
+grab_thermo [options] file1 [file2 file3]
+
+=head1 OPTIONS
+
+=over
+
+=item B<-h>, B<--help>
+
+Print this help message and exit
+
+=item B<-o FILENAME>, B<--output FILENAME>
+
+Write output to FILENAME (in csv format)
+
+=back
+
+=cut
+
+if ($opt_output) {
+    open( OFILE, ">", $opt_output )
+      || die "$0: can't open $opt_output for writing: $!";
+
+    my $header = sprintf( "%s,%s,%s,%s,%s\n", qw(E H G Grimme_G FileName) );
+    print( OFILE $header );
+
+    close(OFILE) || die "couldn't close $opt_output: $!";
+
+}
+
+for my $file (@ARGV) {
+    my $out         = new AaronTools::G09Out( 'file' => $file );
+    my $energy      = $out->energy();
+    my $enthalpy    = $out->enthalpy();
+    my $free_energy = $out->free_energy();
+    my $grimmeG     = $out->Grimme_G();
+
+    if ($opt_output) {
+        open( OFILE, ">>", $opt_output )
+          || die "$0: can't open $opt_output for appending: $!";
+
+        print( OFILE "$energy,$enthalpy,$free_energy,$grimmeG,$file\n" );
+
+        close(OFILE) || die "couldn't close $opt_output: $!";
+
+    }
+    else {
+        print("*** $file ***\n") if $#ARGV > 0;
+        printf( "E        = %.6f\n",   $energy );
+        printf( "H        = %.6f\n",   $enthalpy );
+        printf( "G        = %.6f\n",   $free_energy );
+        printf( "Grimme_G = %.6f\n\n", $grimmeG );
+    }
+}
