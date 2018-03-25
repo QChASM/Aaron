@@ -35,7 +35,7 @@ use Data::Dumper;
 
 #default values for some argument
 
-our @EXPORT = qw(%arg_in %arg_parser $ligs_subs $parent $jobname $MAXSTEP
+our @EXPORT = qw(%arg_in %arg_parser $ligs_subs $parent $jobname
                  $template_job $system init_main grab_cata_coords write_status);
 
 my $TS_lib = NAMES->{TS_LIB};
@@ -44,7 +44,6 @@ my $LIG_NONE = NAMES->{LIG_NONE};
 our $jobname;
 my $masses = MASS;
 our $parent = getcwd();
-our $MAXSTEP = MAXSTEP;
 my $input_file;
 
 #arguments for AARON taking from command line
@@ -332,9 +331,7 @@ sub read_params {
         $level->check_gen($arg_in{gen});
     }
 
-    unless ($arg_in{high_method}) {
-        $MAXSTEP--;
-    }else {
+    if ($arg_in{high_method}){
         unless ($arg_in{high_basis}->initiated()) {
             $arg_in{high_basis} = $arg_in{basis};
         }

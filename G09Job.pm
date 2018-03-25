@@ -8,21 +8,22 @@ use Constants qw(:OTHER_USEFUL :PHYSICAL);
 my $AARON = $ENV{'AARON'};
 my $HART_TO_KCAL = HART_TO_KCAL;
 my $MAXCYCLE = MAX_CYCLE;
+my $launch_failed = 0;
+my $CUTOFF = CUTOFF;
+
 
 package G09Job;
 use strict; use warnings;
 
 use Cwd qw(cwd);
 use File::Path qw(make_path);
-use AaronInit qw(%arg_in %arg_parser $parent $system $template_job $MAXSTEP);
+use AaronInit qw(%arg_in %arg_parser $parent $system $template_job);
 use AaronOutput qw(print_message close_logfile);
 use AaronTools::G09Out;
 use AaronTools::JobControl;
 use Constants qw(:OTHER_USEFUL :COMPARE);
 use Data::Dumper;
 
-my $launch_failed = 0;
-my $CUTOFF = CUTOFF;
 
 sub new {
     my $class = shift;
@@ -185,7 +186,7 @@ sub _skip_geometry {
 }
 
 
-sub check_step {
+sub _check_step {
     my $self = shift;
 
     if ($self->{status} eq 'finished' && $self->{gout}) {return};
@@ -236,54 +237,6 @@ sub check_step {
             last;
         }
         $step--;
-    }
-    $self->check_reaction() if ($check_reaction && $step > 2);
-}
-
-
-sub check_reaction {
-
-    my $self = shift;
-
-    my $geometry = $self->{name};
-
-    my $filename = "$geometry/" . $self->file_name();
-
-    my $catalysis = $self->{catalysis};
-
-    my ($failed, $con) = $catalysis->examine_constraints();
-
-    if ($failed) {
-        $self->kill_running();
-
-        $self->{cycle} ++;
-
-        if ($self->{cycle} > $MAXCYCLE) {
-            $self->{status} = 'killed';
-            $self->{msg} = "killed because of too many cycles. ";
-            return;
-        }
-
-        $self->{catalysis}->update_geometry("$filename.2.log");
-
-        $self->remove_later_than2(); 
-
-        $self->{step} = 2;
-        $self->{attempt} = 1;
-
-        my $distance = $failed * 0.1;
-
-        $self->{catalysis}->change_distance( atom1 => $con->[0],
-                                             atom2 => $con->[1],
-                                       by_distance => $distance );
-        $self->{catalysis}->_update_geometry();
-
-        print_message("Changing the distance by $distance A\n");
-
-        $self->build_com();
-
-        $self->{status} = '2submit';
-        $self->{msg} = "reverted to step 2, now waiting in the queue ";
     }
 }
 
@@ -464,29 +417,16 @@ sub run_stepX {
     }elsif ($self->{status} eq 'done') {
         $self->{catalysis}->conformer_geometry($self->{gout}->{geometry});
 
-        my $finished;
-
-        if ($self->{step} == 3) {
-            $self->update_lib();
-        }
-        if ($self->{step} >= 4) {
-            $self->get_thermo();
-            if ($self->{step} == $MAXSTEP) {
-                $self->higher_level_thermo() if $arg_in{high_method};
-                $self->{status} = 'finished';
-                $finished = 1;
-            }
-        }
+        my $finished = $self->move_forward();
 
         unless ($finished) {
             $self->{step} ++;
             $self->{attempt} = 1;
-            
+
             $self->build_com();
 
             $self->submit();
         }
-
     }elsif ($self->{status} eq 'failed') {
         if ($self->{gout}->{geometry}) {
             $self->{catalysis}->conformer_geometry($self->{gout}->{geometry});
@@ -495,7 +435,7 @@ sub run_stepX {
 
             $self->{catalysis}->update_geometry($com);
         }
-
+    
         $self->{attempt} ++;
         if ($self->{attempt} > 5) {
             $self->{status} = 'killed';
@@ -559,25 +499,6 @@ sub update_lib {
 
     if (! -e $lib_file && (! $repeated)) {
         $self->{catalysis}->printXYZ($lib_file);
-    }
-}
-
-
-sub get_thermo {
-    my $self = shift;
-
-    my $directory = $self->{name};
-
-    my $filename = "$directory/" . $self->file_name();
-
-    my $out = $self->{gout};
-
-    if (! @{ $self->{thermo} }) {
-        if (! $out->{enthalpy}) {
-            $out = new AaronTools::G09Out( file => "$filename.4.log" );
-        }
-        $self->{thermo} = [ $out->energy(), $out->enthalpy(),
-                            $out->free_energy(), $out->Grimme_G() ];
     }
 }
 
@@ -674,42 +595,6 @@ sub submit {
 }
 
 
-sub remove_later_than2 {
-
-    my $self = shift;
-
-    my $geometry = $self->{name};
-
-    my $filename = "$geometry/" . $self->file_name();
-
-    #remove evering thing more than step 2
-    foreach my $later_step (2..MAXSTEP) {
-        if (-e "$filename.$later_step.com") {
-            print_message("Removing $filename.$later_step.com...\n");
-            if ($arg_parser{record}) {
-                system("mv $filename.$later_step.com $filename.com.$later_step");
-            }else {
-                system("rm -fr $filename.$later_step.com");
-            }
-        }
-
-        if (-e "$filename.$later_step.log") {
-            print_message("Removing $filename.$later_step.log...\n");
-            if ($arg_parser{record}) {
-                system("mv $filename.$later_step.log $filename.$later_step.log.$later_step");
-            }else {
-                system("rm -fr $filename.$later_step.log");
-            }
-        }
-
-        if (-e "$filename.$later_step.job") {
-            print_message("Removing .job files for $later_step step...\n");
-            system("rm -fr $filename.$later_step.job*");
-        }
-    }
-}
-
-
 sub file_name {
     my $self = shift;
 
@@ -733,9 +618,6 @@ sub build_com {
     $filename //= $self->file_name();
 
     my $file_name = "$dir/$filename";
-
-    my $route;
-    my $footer;
 
     my $low_method = $arg_in{low_level}->method();
     my $method = $arg_in{level}->method();
@@ -761,47 +643,7 @@ sub build_com {
     my $error = $self->{error};
     my $catalysis = $self->{catalysis};
 
-    SWITCH: {
-        if ($step == 1) { $route .= "#$low_method opt nosym";
-                          #add constrats to substrate and old part of catalyst
-                          $print_flag = 1;
-                          $footer = $arg_in{low_level}->footer($catalysis);
-                          last SWITCH; }
-
-        if ($step == 2) { $route .= "#$method opt=(modredundant,maxcyc=1000)";
-                            
-                          for my $constraint (@{ $catalysis->{constraints} }) {
-                              my @bond = map { $_ + 1 } @{$constraint->[0]};
-                              $footer .= "B $bond[0] $bond[1] F\n";
-                          }
-                          $footer .= "\n";
-                          $footer .= $arg_in{level}->footer($catalysis);
-
-                          last SWITCH; }
-
-        if ($step == 3) { $route = "\%chk=$filename.chk\n";
-                          if (-f "$file_name.chk") {
-                            $route .= "#$method opt=(readfc,ts,maxcyc=1000)";
-                          }else {
-                            $route .= "#$method opt=(calcfc,ts,maxcyc=1000)";
-                          }
-                          $footer .= $arg_in{level}->footer($catalysis);
-                          last SWITCH; }
-
-        if ($step == 4) { $route = "\%chk=$filename.chk\n";
-                          $route .= "#$method freq=(hpmodes,noraman,temperature=$arg_in{temperature})";
-                          $footer .= $arg_in{level}->footer($catalysis);
-                          last SWITCH; }
-
-        if ($step == 5) { $route = "\%chk=$filename.chk\n";
-                          $route .= "#$high_method";
-                          $footer .= $arg_in{high_level}->footer($catalysis);
-                          last SWITCH; }
-    }
-
-    if ($arg_in{solvent} ne "gas" && $step > 1) {
-        $route .= " scrf=($arg_in{pcm},solvent=$arg_in{solvent})";
-    }
+    my ($route, $footer) = $self->com_route_footer();
 
     ERROR: {    
         if ($error eq 'CONV') {my $scf_change = $route =~ /scf=xqc/ ?
@@ -973,3 +815,336 @@ sub reduce_maxstep {
 
     return ($route_temp, $step_change);
 }
+
+
+package G09Job_TS;
+use strict; use warnings;
+
+use Cwd qw(cwd);
+use AaronTools::G09Out;
+use AaronTools::JobControl;
+use Constants qw(:OTHER_USEFUL);
+
+our @ISA = qw(G09Job);
+
+my $MAXSTEP = MAXSTEP->{TS};
+
+$MAXSTEP-- unless $arg_in{high_method};
+
+sub new {
+    my $class = shift;
+     
+    my $self = new AaronTools::G09Job(@_);
+
+    bless $self, $class;
+
+    return $self;
+}
+
+
+sub check_step {
+    my $self = shift;
+
+    $self->_check_step();
+
+    if ($self->{status} eq 'running' ||
+        ($self->{status} eq 'done')) {
+        $self->check_reaction() if ($self->{step} > 2);
+    }
+}
+
+
+sub check_reaction {
+
+    my $self = shift;
+
+    my $geometry = $self->{name};
+
+    my $filename = "$geometry/" . $self->file_name();
+
+    my $catalysis = $self->{catalysis};
+
+    my ($failed, $con) = $catalysis->examine_constraints();
+
+    if ($failed) {
+        $self->kill_running();
+
+        $self->{cycle} ++;
+
+        if ($self->{cycle} > $MAXCYCLE) {
+            $self->{status} = 'killed';
+            $self->{msg} = "killed because of too many cycles. ";
+            return;
+        }
+
+        $self->{catalysis}->update_geometry("$filename.2.log");
+
+        $self->remove_later_than2(); 
+
+        $self->{step} = 2;
+        $self->{attempt} = 1;
+
+        my $distance = $failed * 0.1;
+
+        $self->{catalysis}->change_distance( atom1 => $con->[0],
+                                             atom2 => $con->[1],
+                                       by_distance => $distance );
+        $self->{catalysis}->_update_geometry();
+
+        print_message("Changing the distance by $distance A\n");
+
+        $self->build_com();
+
+        $self->{status} = '2submit';
+        $self->{msg} = "reverted to step 2, now waiting in the queue ";
+    }
+}
+
+
+sub move_forward {
+    my $self = shift;
+
+    my $finished = 0;
+
+    if ($self->{step} == 3) {
+        $self->update_lib();
+    }
+
+    if ($self->{step} >= 4) {
+        $self->get_thermo();
+        if ($self->{step} == $MAXSTEP) {
+            $self->higher_level_thermo() if $arg_in{high_method};
+            $self->{status} = 'finished';
+            $finished = 1;
+        }
+    }
+
+    return $finished;
+}
+
+
+sub get_thermo {
+    my $self = shift;
+
+    my $directory = $self->{name};
+
+    my $filename = "$directory/" . $self->file_name();
+
+    my $out = $self->{gout};
+
+    if (! @{ $self->{thermo} }) {
+        if (! $out->{enthalpy}) {
+            $out = new AaronTools::G09Out( file => "$filename.4.log" );
+        }
+        $self->{thermo} = [ $out->energy(), $out->enthalpy(),
+                            $out->free_energy(), $out->Grimme_G() ];
+    }
+}
+
+
+sub remove_later_than2 {
+
+    my $self = shift;
+
+    my $geometry = $self->{name};
+
+    my $filename = "$geometry/" . $self->file_name();
+
+    #remove evering thing more than step 2
+    foreach my $later_step (2..MAXSTEP) {
+        if (-e "$filename.$later_step.com") {
+            print_message("Removing $filename.$later_step.com...\n");
+            if ($arg_parser{record}) {
+                system("mv $filename.$later_step.com $filename.com.$later_step");
+            }else {
+                system("rm -fr $filename.$later_step.com");
+            }
+        }
+
+        if (-e "$filename.$later_step.log") {
+            print_message("Removing $filename.$later_step.log...\n");
+            if ($arg_parser{record}) {
+                system("mv $filename.$later_step.log $filename.$later_step.log.$later_step");
+            }else {
+                system("rm -fr $filename.$later_step.log");
+            }
+        }
+
+        if (-e "$filename.$later_step.job") {
+            print_message("Removing .job files for $later_step step...\n");
+            system("rm -fr $filename.$later_step.job*");
+        }
+    }
+}
+
+
+sub com_route_footer {
+
+    my $self = shift;
+
+    SWITCH: {
+        if ($step == 1) { $route .= "#$low_method opt nosym";
+                          #add constrats to substrate and old part of catalyst
+                          $print_flag = 1;
+                          $footer = $arg_in{low_level}->footer($catalysis);
+                          last SWITCH; }
+
+        if ($step == 2) { $route .= "#$method opt=(modredundant,maxcyc=1000)";
+                            
+                          for my $constraint (@{ $catalysis->{constraints} }) {
+                              my @bond = map { $_ + 1 } @{$constraint->[0]};
+                              $footer .= "B $bond[0] $bond[1] F\n";
+                          }
+                          $footer .= "\n";
+                          $footer .= $arg_in{level}->footer($catalysis);
+
+                          last SWITCH; }
+
+        if ($step == 3) { $route = "\%chk=$filename.chk\n";
+                          if (-f "$file_name.chk") {
+                            $route .= "#$method opt=(readfc,ts,maxcyc=1000)";
+                          }else {
+                            $route .= "#$method opt=(calcfc,ts,maxcyc=1000)";
+                          }
+                          $footer .= $arg_in{level}->footer($catalysis);
+                          last SWITCH; }
+
+        if ($step == 4) { $route = "\%chk=$filename.chk\n";
+                          $route .= "#$method freq=(hpmodes,noraman,temperature=$arg_in{temperature})";
+                          $footer .= $arg_in{level}->footer($catalysis);
+                          last SWITCH; }
+
+        if ($step == 5) { $route = "\%chk=$filename.chk\n";
+                          $route .= "#$high_method";
+                          $footer .= $arg_in{high_level}->footer($catalysis);
+                          last SWITCH; }
+    }
+
+    if ($arg_in{solvent} ne "gas" && $step > 1) {
+        $route .= " scrf=($arg_in{pcm},solvent=$arg_in{solvent})";
+    }
+
+    return ($route, $footer);
+}
+
+
+package G09Job_Int;
+use strict; use warnings;
+
+use Cwd qw(cwd);
+use AaronTools::G09Out;
+use AaronTools::JobControl;
+use Constants qw(:OTHER_USEFUL);
+
+our @ISA = qw(G09Job);
+
+my $MAXSTEP = MAXSTEP->{INT};
+
+$MAXSTEP-- unless $arg_in{high_method};
+
+sub new {
+    my $class = shift;
+
+    my $self = new AaronTools::G09Job(@_);
+
+    bless $self, $class;
+
+    return $self;
+}
+
+
+sub check_step {
+    my $self = shift;
+
+    $self->_check_step();
+}
+
+
+sub move_forward {
+    my $self = shift;
+
+    my $finished = 0;
+
+    if ($self->{step} == 2) {
+        $self->update_lib();
+    }
+
+    if ($self->{step} >= 3) {
+        $self->get_thermo();
+        if ($self->{step} == $MAXSTEP) {
+            $self->higher_level_thermo() if $arg_in{high_method};
+            $self->{status} = 'finished';
+            $finished = 1;
+        }
+    }
+
+    return $finished;
+}
+
+
+sub get_thermo {
+    my $self = shift;
+
+    my $directory = $self->{name};
+
+    my $filename = "$directory/" . $self->file_name();
+
+    my $out = $self->{gout};
+
+    if (! @{ $self->{thermo} }) {
+        if (! $out->{enthalpy}) {
+            $out = new AaronTools::G09Out( file => "$filename.3.log" );
+        }
+        $self->{thermo} = [ $out->energy(), $out->enthalpy(),
+                            $out->free_energy(), $out->Grimme_G() ];
+    }
+}
+
+
+sub com_route_footer {
+
+    my $self = shift;
+
+    SWITCH: {
+        if ($step == 1) { $route .= "#$low_method opt nosym";
+                          #add constrats to substrate and old part of catalyst
+                          $print_flag = 1;
+                          $footer = $arg_in{low_level}->footer($catalysis);
+                          last SWITCH; }
+
+        if ($step == 2) { $route = "\%chk=$filename.chk\n";
+                          if (-f "$file_name.chk") {
+                            $route .= "#$method opt=(readfc,maxcyc=1000)";
+                          }else {
+                            $route .= "#$method opt=(calcfc,maxcyc=1000)";
+                          }
+                          $footer .= $arg_in{level}->footer($catalysis);
+                          last SWITCH; }
+
+        if ($step == 3) { $route = "\%chk=$filename.chk\n";
+                          $route .= "#$method freq=(hpmodes,noraman,temperature=$arg_in{temperature})";
+                          $footer .= $arg_in{level}->footer($catalysis);
+                          last SWITCH; }
+
+        if ($step == 4) { $route = "\%chk=$filename.chk\n";
+                          $route .= "#$high_method";
+                          $footer .= $arg_in{high_level}->footer($catalysis);
+                          last SWITCH; }
+    }
+
+    if ($arg_in{solvent} ne "gas" && $step > 1) {
+        $route .= " scrf=($arg_in{pcm},solvent=$arg_in{solvent})";
+    }
+
+    return ($route, $footer);
+}
+
+
+
+
+
+
+
+
+
+
