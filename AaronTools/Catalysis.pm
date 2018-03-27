@@ -61,6 +61,7 @@ sub new {
     return $self;
 }
 
+
 #This is to update the catalysis from a file like .xyz or .log
 #This works better with .xyz file with comment specifing the information 
 #of the system. For .log file or .com file, if the atom order is with ligand
@@ -169,37 +170,39 @@ sub detect_component {
         for my $bond_d (@{ $self->{constraints} }) {
             #all substrate and ligand exist;
             my $bond = $bond_d->[0];
+            my $d = $bond_d->[1];
+
             if (grep (/^$bond->[0]$/, @{ $self->{substrate_atoms} }) && 
                 grep (/^$bond->[1]$/, @{ $self->{substrate_atoms} })) {
-                push (@substrate_con, $bond);
+                push (@substrate_con, [$bond, $d]);
             }elsif (grep (/^$bond->[0]$/, @{ $self->{ligand_atoms} }) &&
                     grep (/^$bond->[1]$/, @{ $self->{ligand_atoms} })) {
                     push (@ligand_con,
-                          [ map { $_ - $self->{ligand_atoms}->[0] } @$bond ]);
+                          [[ map { $_ - $self->{ligand_atoms}->[0] } @$bond ], $d]);
             }elsif (grep (/^$bond->[0]$/, @{ $self->{ligand_atoms} }) &&
                     grep (/^$bond->[1]$/, @{ $self->{substrate_atoms} })) {
                     push (@ligand_con, 
-                          [$bond->[0] - $self->{ligand_atoms}->[0], 'S']);
-                    push (@substrate_con, [$bond->[1], 'L']);
+                          [[$bond->[0] - $self->{ligand_atoms}->[0], 'S'], $d]);
+                    push (@substrate_con, [[$bond->[1], 'L'], $d]);
             }elsif (grep (/^$bond->[0]$/, @{ $self->{substrate_atoms} }) &&
                     grep (/^$bond->[1]$/, @{ $self->{ligand_atoms} })) {
                     push (@ligand_con, 
-                          [$bond->[1] - $self->{ligand_atoms}->[0], 'S']);
-                    push (@substrate_con, [$bond->[0], 'L']);
+                          [[$bond->[1] - $self->{ligand_atoms}->[0], 'S'], $d]);
+                    push (@substrate_con, [[$bond->[0], 'L'], $d]);
             }elsif (grep (/^$bond->[0]$/, @{ $self->{substrate_atoms} }) &&
                     grep (/^$bond->[1]$/, ($self->{center_atom}))) {
-                    push (@substrate_con, [$bond->[0], 'C']);
+                    push (@substrate_con, [[$bond->[0], 'C'], $d]);
             }elsif (grep (/^$bond->[1]$/, @{ $self->{substrate_atoms} }) &&
                     grep (/^$bond->[0]$/, ($self->{center_atom}))) {
-                    push (@substrate_con, [$bond->[1], 'C']);
+                    push (@substrate_con, [[$bond->[1], 'C'], $d]);
             }elsif (grep (/^$bond->[0]$/, @{ $self->{ligand_atoms} }) &&
                     grep (/^$bond->[1]$/, ($self->{center_atom}))) {
                     push (@ligand_con, 
-                          [$bond->[0] - $self->{ligand_atoms}->[0], 'C']);
+                          [[$bond->[0] - $self->{ligand_atoms}->[0], 'C'], $d]);
             }elsif (grep (/^$bond->[1]$/, @{ $self->{ligand_atoms} }) &&
                     grep (/^$bond->[0]$/, ($self->{center_atom}))) {
                     push (@ligand_con, 
-                          [$bond->[1] - $self->{ligand_atoms}->[0], 'C']);
+                          [[$bond->[1] - $self->{ligand_atoms}->[0], 'C'], $d]);
             }
         }
 
@@ -242,38 +245,37 @@ sub rebuild {
     my @substrate_con = @{ $self->substrate()->{constraints} }
                             if $self->substrate()->{constraints};
 
-    my @ligand_con_sub = grep { $_->[1] eq 'S' } @ligand_con;
-    my @substrate_con_li = grep { $_->[1] eq 'L' } @substrate_con;
-    my @ligand_con_center = grep { $_->[1] eq 'C' } @ligand_con;
-    my @substrate_con_center = grep { $_->[1] eq 'C' } @substrate_con;
+    my @ligand_con_sub = grep { $_->[0]->[1] eq 'S' } @ligand_con;
+    my @substrate_con_li = grep { $_->[0]->[1] eq 'L' } @substrate_con;
+    my @ligand_con_center = grep { $_->[0]->[1] eq 'C' } @ligand_con;
+    my @substrate_con_center = grep { $_->[0]->[1] eq 'C' } @substrate_con;
 
     my @constraint;
 
     if ($#ligand_con_sub == $#substrate_con_li) {
-        my @temp = map { [$ligand_con_sub[$_][0] + $self->{ligand_atoms}->[0], 
-                          $substrate_con_li[$_][0]] } 
+        my @temp = map { [[$ligand_con_sub[$_][0][0] + $self->{ligand_atoms}->[0], 
+                          $substrate_con_li[$_][0][0]], $ligand_con_sub[$_][1]] } 
                         (0..$#ligand_con_sub);
         push (@constraint, @temp);
     }
 
     push (@constraint, 
-          map {[$_->[0] + $self->{ligand_atoms}->[0], $self->{center_atom}]} 
+          map {[[$_->[0]->[0] + $self->{ligand_atoms}->[0], $self->{center_atom}], $_->[1]]} 
             @ligand_con_center);
 
     push (@constraint, 
-          map {[$_->[0], $self->{center_atom}]} @substrate_con_center);
+          map {[[$_->[0]->[0], $self->{center_atom}], $_->[1]]} @substrate_con_center);
 
-    my @li_li_con = grep { $_->[1] =~ /^\d+$/ } @ligand_con;
-    my @sub_sub_con = grep { $_->[1] =~ /^\d+$/ } @substrate_con;
+    my @li_li_con = grep { $_->[0]->[1] =~ /^\d+$/ } @ligand_con;
+    my @sub_sub_con = grep { $_->[0]->[1] =~ /^\d+$/ } @substrate_con;
 
-    push (@constraint, map { [$_->[0] + $self->{ligand_atoms}->[0],
-                              $_->[1] + $self->{ligand_atoms}->[0]] } 
+    push (@constraint, map { [[$_->[0]->[0] + $self->{ligand_atoms}->[0],
+                              $_->[0]->[1] + $self->{ligand_atoms}->[0]], $_->[1]] } 
                            @li_li_con);
                        
     push (@constraint, @sub_sub_con);
 
-    $self->{constraints} = [ map { [ $constraint[$_], $self->{constraints}->[$_]->[1] ] } 
-                                (0..$#constraint) ];
+    $self->{constraints} = [@constraint];
 }
 
 
