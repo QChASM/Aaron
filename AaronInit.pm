@@ -137,6 +137,8 @@ sub read_args{
         'restart' => \$arg_parser{restart},
         'record' => \$arg_parser{record},
         'short' => \$arg_parser{short},
+        'multistep' => \$arg_parser{multistep},
+        'absthermo' => \$arg_parser{absthermo},
         'sleep=s' => \$arg_parser{sleeptime},
     ) or pod2usage (
         -input => "$AARON/pod_ref",

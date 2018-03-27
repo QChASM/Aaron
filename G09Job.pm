@@ -18,7 +18,7 @@ use strict; use warnings;
 use Cwd qw(cwd);
 use File::Path qw(make_path);
 use AaronInit qw(%arg_in %arg_parser $parent $system $template_job);
-use AaronOutput qw(print_message close_logfile);
+use AaronOutput qw(print_message close_log);
 use AaronTools::G09Out;
 use AaronTools::JobControl;
 use Constants qw(:OTHER_USEFUL :COMPARE);
@@ -419,7 +419,7 @@ sub run_stepX {
         my $quit = $self->build_com();
         if ($quit) {
             chdir($parent);
-            close_logfile();
+            close_log();
             exit 0;
         }
         $self->submit();
@@ -798,7 +798,7 @@ use strict; use warnings;
 
 use Cwd qw(cwd);
 use AaronInit qw(%arg_in %arg_parser $parent $system $template_job);
-use AaronOutput qw(print_message close_logfile);
+use AaronOutput qw(print_message);
 use AaronTools::G09Out;
 use AaronTools::JobControl;
 use Constants qw(:OTHER_USEFUL);
@@ -1069,7 +1069,7 @@ use strict; use warnings;
 
 use Cwd qw(cwd);
 use AaronInit qw(%arg_in %arg_parser $parent $system $template_job);
-use AaronOutput qw(print_message close_logfile);
+use AaronOutput qw(print_message);
 use AaronTools::G09Out;
 use AaronTools::JobControl;
 use Constants qw(:OTHER_USEFUL);
