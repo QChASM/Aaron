@@ -24,7 +24,10 @@ my $helpMsg = "\nAARON: An Automated Reaction Optimizer for new catalyst\n".
               "AARON replaces the model catalyst with a user-supplied catalyst and then performs a prescribed series of \n".
               "constrained and uncontrained optimizations to arrive at final predicted structures and energies for all transition states.\n";
 
+#arguments for AARON taking from command line
+our %arg_parser = ( sleeptime => SLEEP_TIME );
 &read_args();
+
 &check_modules();
 
 use Cwd qw(getcwd);
@@ -35,7 +38,7 @@ use Data::Dumper;
 
 #default values for some argument
 
-our @EXPORT = qw(%arg_in %arg_parser $ligs_subs $parent $jobname $MAXSTEP
+our @EXPORT = qw(%arg_in %arg_parser $ligs_subs $parent $jobname
                  $template_job $system init_main grab_cata_coords write_status);
 
 my $TS_lib = NAMES->{TS_LIB};
@@ -44,11 +47,7 @@ my $LIG_NONE = NAMES->{LIG_NONE};
 our $jobname;
 my $masses = MASS;
 our $parent = getcwd();
-our $MAXSTEP = MAXSTEP;
 my $input_file;
-
-#arguments for AARON taking from command line
-our %arg_parser = ( sleeptime => SLEEP_TIME );
 
 #content of template job file
 our $template_job = {};
@@ -138,6 +137,8 @@ sub read_args{
         'restart' => \$arg_parser{restart},
         'record' => \$arg_parser{record},
         'short' => \$arg_parser{short},
+        'multistep' => \$arg_parser{multistep},
+        'absthermo' => \$arg_parser{absthermo},
         'sleep=s' => \$arg_parser{sleeptime},
     ) or pod2usage (
         -input => "$AARON/pod_ref",
@@ -332,9 +333,7 @@ sub read_params {
         $level->check_gen($arg_in{gen});
     }
 
-    unless ($arg_in{high_method}) {
-        $MAXSTEP--;
-    }else {
+    if ($arg_in{high_method}){
         unless ($arg_in{high_basis}->initiated()) {
             $arg_in{high_basis} = $arg_in{basis};
         }
