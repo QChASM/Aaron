@@ -61,6 +61,7 @@ sub new {
     return $self;
 }
 
+
 #This is to update the catalysis from a file like .xyz or .log
 #This works better with .xyz file with comment specifing the information 
 #of the system. For .log file or .com file, if the atom order is with ligand

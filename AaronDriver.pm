@@ -92,7 +92,7 @@ sub _make_directories {
                 mkdir "$sub";
             }
 
-            &dir_tree( target => $arg_in{TS_path} . "$arg_in{template}/", 
+            &dir_tree( target => $arg_in{TS_path} . "$arg_in{template}", 
                        substrate => $sub,
                        ligand => $lig_ali,
                   no_new_subs => $arg_in{input_conformers_only} );
@@ -113,7 +113,7 @@ sub _make_directories {
                     print_message($msg);
                 }
 
-                &dir_tree( target => $arg_in{TS_path} . "$arg_in{template}/",
+                &dir_tree( target => $arg_in{TS_path} . "$arg_in{template}",
                            ligand => $lig_ali );
             }
         }
@@ -121,7 +121,7 @@ sub _make_directories {
         if (!-d $lig_ali) {
             mkdir "$lig_ali";
         }
-        &dir_tree( target => $arg_in{TS_path} . "$arg_in{template}/", 
+        &dir_tree( target => $arg_in{TS_path} . "$arg_in{template}", 
                    ligand => $lig_ali,
               no_new_subs => $arg_in{input_conformers_only} );
 
@@ -130,7 +130,7 @@ sub _make_directories {
                 mkdir "$sub";
             }
 
-            my $top_dir_tar = "$parent/$lig_ali/$lig_ali" . "_XYZ/";
+            my $top_dir_tar = "$parent/$lig_ali/$lig_ali" . "_XYZ";
             &dir_tree( target => $top_dir_tar, 
                        substrate => $sub,
                        ligand => $lig_ali,
@@ -169,14 +169,14 @@ sub dir_tree {
         if (! -d $substrate) {
             mkdir $substrate;
         }
-        $top_dir_make = "$substrate/";
+        $top_dir_make = "$substrate";
         $substituents->{substrate} = 
             $ligs_subs->{$ligand}->{substrate}->{$substrate};
     }else {
         if (! -d $ligand) {
             mkdir $ligand;
         }
-        $top_dir_make = "$ligand/";
+        $top_dir_make = "$ligand";
         if ($ligs_subs->{$ligand}->{ligand} ne $LIG_OLD &&
             ($ligs_subs->{$ligand}->{ligand} ne $LIG_NONE)) {
             $new_ligand = $ligs_subs->{$ligand}->{ligand};
@@ -198,13 +198,13 @@ sub dir_tree {
         if ($name =~ /(\S+).xyz/) {
             my $extend = $1;
             my $tempdir = cwd;
-            if ($tempdir =~ /$top_dir_tar(\S+)/) {
+            if ($tempdir =~ /$top_dir_tar(\S+)?/) {
                 
-                my $newdir = $top_dir_make . $1 . "/$extend";
+                my $newdir = $1 ? $top_dir_make . $1 . "/$extend" : $top_dir_make . "/$extend";
                 my $head = $newdir; $head =~ s/\/Cf\d+$//;
 
                 unless ($cata_read->{$newdir}) {
-                    print "Preparing guessed TS for $newdir...\n";
+                    print "Preparing guessed initial structure for $newdir...\n";
                     #make distance hashes for each geometry
                     my $catalysis = new AaronTools::Catalysis( name => $extend,
                                                        substituents => $substituents,
@@ -246,7 +246,7 @@ sub dir_tree {
         my $extend = $new_dir->{$newdir}->{extend};
         my @extends_new;
 
-        if ($cat_temp > 1) {
+        if ($cat_temp->number_of_conformers() > 1) {
             my ($extend_first) = $extend =~ /[Cc]f(\d+)/;
             $extend_first //= 1;
             $extend_first = ($extend_first - 1) * $cf_num + 1;
@@ -271,9 +271,22 @@ sub dir_tree {
 
             my $head = $new; $head =~ s/\/Cf\d+//;
             if ( ! exists $status->{$head}) {
-                $status->{$head} = new G09Job( name => $head,
-                                          catalysis => $new_dir->{$newdir}->{catalysis} );
+                my @pattern = split('/', $head);
+                my $state = $pattern[-1];
+
+                if ($state =~ /^ts/i) {
+                    $status->{$head} = new G09Job_TS( 
+                        name => $head,
+                        catalysis => $new_dir->{$newdir}->{catalysis} 
+                    );
+                }elsif ($state =~ /^min/i) {
+                    $status->{$head} = new G09Job_MIN(
+                        name => $head,
+                        catalysis => $new_dir->{$newdir}->{catalysis}
+                    );
+                }
             }elsif (%{$status->{$head}->{catalysis}}) {
+
                 $status->{$head}->{catalysis}->conformer_geometry($new_dir->{$newdir}->{catalysis});
             }else {
                 $status->{$head}->{catalysis} = $new_dir->{$newdir}->{catalysis};

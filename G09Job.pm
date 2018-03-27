@@ -60,38 +60,10 @@ sub new {
 }
 
 
-sub new_conformer {
-    my $self = shift;
-    my %params = @_;
-
-    my $cf = $params{conf};
-
-    $self->{conformers} = {} unless $self->{conformers};
-
-    $self->{conformers}->{$cf} = new G09Job( name => $self->{name} . "/$cf",
-                                             step => $params{step},
-                                            cycle => $params{cycle},
-                                          attempt => $params{attempt},
-                                          catalysis => $self->{catalysis});
-
-    $self->{conformers}->{$cf}->set_status('sleeping');
-}
-
-
-#This is used to write status in the .status file in the AaronInit module
-#NOTE this copy method will not copy the catlysis attribute
-sub _copy {
+sub maxstep {
     my $self = shift;
 
-    my $new = new G09Job( name => $self->{name},
-                          step => $self->{step},
-                          cycle => $self->{cycle},
-                          attemp => $self->{attempt},
-                          status => $self->{status},
-                          msg => $self->{msg},
-                          thermo => [@{ $self->{thermo} }],
-                          error => $self->{error} );
-    return $new;
+    return $self->{maxstep};
 }
 
 
@@ -160,11 +132,10 @@ sub check_status_run {
             $self->{conformers}->{$cf}->run_stepX();
         }
     }else {
-        if ($self->_skip_geometry(1)) {
-            next;
+        unless ($self->_skip_geometry(1)) {
+            $self->check_step();
+            $self->run_stepX();
         }
-        $self->check_step();
-        $self->run_stepX();
     }
 }
 
@@ -189,6 +160,8 @@ sub _skip_geometry {
 sub _check_step {
     my $self = shift;
 
+    my $maxstep = $self->maxstep();
+
     if ($self->{status} eq 'finished' && $self->{gout}) {return};
 
     my $geometry = $self->{name};
@@ -200,7 +173,7 @@ sub _check_step {
     $path .= "/$geometry";
 
     my $jobrunning = AaronTools::JobControl::findJob($path);
-    my $step = $MAXSTEP;
+    my $step = $maxstep;
     
     my $check_reaction;
     my $output;
@@ -606,7 +579,6 @@ sub file_name {
 }
 
 
-
 sub build_com {
     my $self = shift;
     my %params = @_;
@@ -622,7 +594,6 @@ sub build_com {
     my $low_method = $arg_in{low_level}->method();
     my $method = $arg_in{level}->method();
     my $high_method = $arg_in{high_level}->method();
-    my $print_flag;
 
     if ($arg_parser{debug}) {
         $method = $low_method;
@@ -643,7 +614,12 @@ sub build_com {
     my $error = $self->{error};
     my $catalysis = $self->{catalysis};
 
-    my ($route, $footer) = $self->com_route_footer();
+    my ($route, $footer, $print_flag) = $self->com_route_footer( 
+        filename => $filename,
+        low_method => $low_method,
+        method => $method,
+        high_method => $high_method,
+    );
 
     ERROR: {    
         if ($error eq 'CONV') {my $scf_change = $route =~ /scf=xqc/ ?
@@ -821,24 +797,62 @@ package G09Job_TS;
 use strict; use warnings;
 
 use Cwd qw(cwd);
+use AaronInit qw(%arg_in %arg_parser $parent $system $template_job);
+use AaronOutput qw(print_message close_logfile);
 use AaronTools::G09Out;
 use AaronTools::JobControl;
 use Constants qw(:OTHER_USEFUL);
 
 our @ISA = qw(G09Job);
 
-my $MAXSTEP = MAXSTEP->{TS};
-
-$MAXSTEP-- unless $arg_in{high_method};
-
 sub new {
     my $class = shift;
      
-    my $self = new AaronTools::G09Job(@_);
+    my $self = new G09Job(@_);
 
     bless $self, $class;
 
+    $self->{maxstep} = MAXSTEP->{TS};
+    $self->{maxstep}-- unless $arg_in{high_method};
+
     return $self;
+}
+
+
+sub new_conformer {
+    my $self = shift;
+    my %params = @_;
+
+    my $cf = $params{conf};
+
+    $self->{conformers} = {} unless $self->{conformers};
+
+    $self->{conformers}->{$cf} = new G09Job_TS( 
+              name => $self->{name} . "/$cf",
+              step => $params{step},
+             cycle => $params{cycle},
+           attempt => $params{attempt},
+         catalysis => $self->{catalysis}
+    );
+
+    $self->{conformers}->{$cf}->set_status('sleeping');
+}
+
+
+#This is used to write status in the .status file in the AaronInit module
+#NOTE this copy method will not copy the catlysis attribute
+sub _copy {
+    my $self = shift;
+
+    my $new = new G09Job_TS( name => $self->{name},
+                             step => $self->{step},
+                            cycle => $self->{cycle},
+                           attemp => $self->{attempt},
+                           status => $self->{status},
+                              msg => $self->{msg},
+                           thermo => [@{ $self->{thermo} }],
+                            error => $self->{error} );
+    return $new;
 }
 
 
@@ -912,7 +926,7 @@ sub move_forward {
 
     if ($self->{step} >= 4) {
         $self->get_thermo();
-        if ($self->{step} == $MAXSTEP) {
+        if ($self->{step} == $self->maxstep()) {
             $self->higher_level_thermo() if $arg_in{high_method};
             $self->{status} = 'finished';
             $finished = 1;
@@ -951,7 +965,7 @@ sub remove_later_than2 {
     my $filename = "$geometry/" . $self->file_name();
 
     #remove evering thing more than step 2
-    foreach my $later_step (2..MAXSTEP) {
+    foreach my $later_step (2..$self->maxstep()) {
         if (-e "$filename.$later_step.com") {
             print_message("Removing $filename.$later_step.com...\n");
             if ($arg_parser{record}) {
@@ -981,6 +995,28 @@ sub remove_later_than2 {
 sub com_route_footer {
 
     my $self = shift;
+
+    my %params = @_;
+
+    my ($low_method, $method, 
+        $high_method, $filename) = ( $params{low_method},
+                                     $params{method}, 
+                                     $params{high_method}, 
+                                     $params{filename} );
+
+    my $dir //= $self->{name};
+
+    $filename //= $self->file_name();
+
+    my $file_name = "$dir/$filename";
+
+    my $step = $self->{step};
+
+    my $route;
+    my $footer;
+    my $catalysis = $self->{catalysis};
+
+    my $print_flag;
 
     SWITCH: {
         if ($step == 1) { $route .= "#$low_method opt nosym";
@@ -1024,32 +1060,70 @@ sub com_route_footer {
         $route .= " scrf=($arg_in{pcm},solvent=$arg_in{solvent})";
     }
 
-    return ($route, $footer);
+    return ($route, $footer, $print_flag);
 }
 
 
-package G09Job_Int;
+package G09Job_MIN;
 use strict; use warnings;
 
 use Cwd qw(cwd);
+use AaronInit qw(%arg_in %arg_parser $parent $system $template_job);
+use AaronOutput qw(print_message close_logfile);
 use AaronTools::G09Out;
 use AaronTools::JobControl;
 use Constants qw(:OTHER_USEFUL);
 
 our @ISA = qw(G09Job);
 
-my $MAXSTEP = MAXSTEP->{INT};
-
-$MAXSTEP-- unless $arg_in{high_method};
-
 sub new {
     my $class = shift;
 
-    my $self = new AaronTools::G09Job(@_);
+    my $self = new G09Job(@_);
 
     bless $self, $class;
 
+    $self->{maxstep} = MAXSTEP->{INT};
+    $self->{maxstep}-- unless $arg_in{high_method};
+
     return $self;
+}
+
+
+sub new_conformer {
+    my $self = shift;
+    my %params = @_;
+
+    my $cf = $params{conf};
+
+    $self->{conformers} = {} unless $self->{conformers};
+
+    $self->{conformers}->{$cf} = new G09Job_MIN( 
+              name => $self->{name} . "/$cf",
+              step => $params{step},
+             cycle => $params{cycle},
+           attempt => $params{attempt},
+         catalysis => $self->{catalysis}
+    );
+
+    $self->{conformers}->{$cf}->set_status('sleeping');
+}
+
+
+#This is used to write status in the .status file in the AaronInit module
+#NOTE this copy method will not copy the catlysis attribute
+sub _copy {
+    my $self = shift;
+
+    my $new = new G09Job_TS( name => $self->{name},
+                             step => $self->{step},
+                            cycle => $self->{cycle},
+                           attemp => $self->{attempt},
+                           status => $self->{status},
+                              msg => $self->{msg},
+                           thermo => [@{ $self->{thermo} }],
+                            error => $self->{error} );
+    return $new;
 }
 
 
@@ -1071,7 +1145,7 @@ sub move_forward {
 
     if ($self->{step} >= 3) {
         $self->get_thermo();
-        if ($self->{step} == $MAXSTEP) {
+        if ($self->{step} == $self->maxstep()) {
             $self->higher_level_thermo() if $arg_in{high_method};
             $self->{status} = 'finished';
             $finished = 1;
@@ -1105,6 +1179,29 @@ sub com_route_footer {
 
     my $self = shift;
 
+    my %params = @_;
+
+    my ($low_method, $method, 
+        $high_method, $filename) = ( $params{low_method},
+                                     $params{method}, 
+                                     $params{high_method}, 
+                                     $params{filename} );
+
+    my $dir //= $self->{name};
+
+    $filename //= $self->file_name();
+
+    my $file_name = "$dir/$filename";
+
+    my $step = $self->{step};
+
+    my $footer;
+    my $route;
+
+    my $catalysis = $self->{catalysis};
+
+    my $print_flag;
+
     SWITCH: {
         if ($step == 1) { $route .= "#$low_method opt nosym";
                           #add constrats to substrate and old part of catalyst
@@ -1136,7 +1233,7 @@ sub com_route_footer {
         $route .= " scrf=($arg_in{pcm},solvent=$arg_in{solvent})";
     }
 
-    return ($route, $footer);
+    return ($route, $footer, $print_flag);
 }
 
 

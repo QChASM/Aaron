@@ -1374,6 +1374,8 @@ sub bare_backbone {
 
     delete $backbone{head};
 
+    %backbone = map { $_ => 1 } @$active_centers if (keys %backbone == 0);
+
     return \%backbone;
 }
 
