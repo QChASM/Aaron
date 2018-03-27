@@ -1115,14 +1115,14 @@ sub new_conformer {
 sub _copy {
     my $self = shift;
 
-    my $new = new G09Job_TS( name => $self->{name},
-                             step => $self->{step},
-                            cycle => $self->{cycle},
-                           attemp => $self->{attempt},
-                           status => $self->{status},
-                              msg => $self->{msg},
-                           thermo => [@{ $self->{thermo} }],
-                            error => $self->{error} );
+    my $new = new G09Job_MIN( name => $self->{name},
+                              step => $self->{step},
+                             cycle => $self->{cycle},
+                            attemp => $self->{attempt},
+                            status => $self->{status},
+                               msg => $self->{msg},
+                            thermo => [@{ $self->{thermo} }],
+                             error => $self->{error} );
     return $new;
 }
 
