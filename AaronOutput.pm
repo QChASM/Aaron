@@ -436,7 +436,7 @@ sub print_ee {
 
             $geo = (split(/\//, $geo))[-1];
 
-            if ($absolute_only) {
+            if ($absolute_only && $thermo_geo->{conformers}) {
                 $data .= sprintf "%-6s\n", $geo;
             }else {
                 &$print_thermo( name => $geo, 
