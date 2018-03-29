@@ -432,10 +432,6 @@ sub examine_constraints {
 }
 
 
-
-
-
-
 sub distance {
     my $self = shift;
     my %param = @_;

@@ -1237,7 +1237,13 @@ sub com_route_footer {
 }
 
 
+package G09Job_TS_Single;
+use strict; use warnings;
 
+use Cwd qw(cwd);
+use Constants qw(:OTHER_USEFUL);
+
+our @ISA = qw(G09Job);
 
 
 

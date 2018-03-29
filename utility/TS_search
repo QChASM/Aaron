@@ -1,0 +1,87 @@
+#!/usr/bin/perl -w
+
+use strict;
+use lib $ENV{'AARON'};
+use lib $ENV{'PERL_LIB'};
+
+use G09Job;
+use AaronInit;
+use AaronTools::Geometry;
+
+use Constants qw(:OTHER_USEFUL :SYSTEM);
+use Getopt::Long;
+use Pod::Usage;
+use Data::Dumper;
+
+my $system = ADA;
+
+my $helpMsg = "\nThis utility is used to search a TS structure from the .xyz file\n".
+              "The .xyz file is a guessed transition state.\n".
+              "This utility uses the same strategy as AARON.\n".
+              "Citation:xxxxx\n";
+
+my %arg_parser = ( sleeptime => SLEEP_TIME,
+                   wall => $system->{WALL},
+                   process => $system->{N_PROCS},
+                   theory => new AaronInit::Theory_level() );
+
+my @basis;
+my $method;
+my $ecp;
+#read arguments
+GetOptions(
+    'nosub' => \$arg_parser{nosub},
+    'help|h' => \$arg_parser{help},
+    'restart' => \$arg_parser{restart},
+    'record' => \$arg_parser{record},
+    'wall|w' => \$arg_parser{wall},
+    'process|p' => \$arg_parser{process},
+    'method|m=s' => \$method,
+    'basis|b=s' => \@basis,
+    'ecp|e=s' => \$ecp,
+) or pod2usage (
+    -exitval => 1,
+    verbose => 1
+);
+
+pod2usage(
+    -msg => $helpMsg,
+    -exitval => 1,
+    -verbose => 1
+) if $arg_parser{help};
+
+my ($input_xyz) = grep { $_ =~ /\.xyz$/ } @ARGV;
+my ($input_name) = $input_xyz =~ /(\S+)\.xyz/;
+
+$input_xyz or pod2usage(
+    -msg => "A xyz file must be provided\n",
+    -exitval => 1,
+    -verbose => 0 
+);
+
+opendir (DIR, '.') or die "Cannot open current directory:$!\n";
+my @files = readdir(DIR);
+closedir (DIR);
+
+grep {$_ eq $input_xyz} or die "$input_xyz doesn't match any file in the current directory\n";
+
+$geometry = new AaronTools::Geometry( name => $input_name );
+
+$arg_parser{theory}->read_method($method);
+@basis && do{$arg_parser{theory}->read_basis($_) for (@basis)};
+$ecp && do{$arg_parser{theory}->read_ecp($ecp)};
+
+#read gen
+$arg_parser{theory}->check_gen("/scratch/group/wheeler/basis/");
+
+my $method_com = $arg_parser{theory}->method();
+my $footer_com = $arg_parser{theory}->footer($geometry);
+
+
+
+
+
+
+
+
+

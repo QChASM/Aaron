@@ -26,9 +26,6 @@ my $helpMsg = "\nAARON: An Automated Reaction Optimizer for new catalyst\n".
 
 #arguments for AARON taking from command line
 our %arg_parser = ( sleeptime => SLEEP_TIME );
-&read_args();
-
-&check_modules();
 
 use Cwd qw(getcwd);
 use Getopt::Long;
@@ -64,9 +61,9 @@ our %arg_in = (
     temperature => ROOM_TEMPERATURE,
     reaction_type => '',
     gen => '',
-    low_level => new Theory_level( method => 'PM6' ),
-    level => new Theory_level( method => 'B3LYP' ),
-    high_level => new Theory_level(),
+    low_level => new AaronInit::Theory_level( method => 'PM6' ),
+    level => new AaronInit::Theory_level( method => 'B3LYP' ),
+    high_level => new AaronInit::Theory_level(),
     denfit => 1,
     pcm => PCM,
     catalyst => '',
@@ -435,6 +432,8 @@ sub read_status {
 
 #main function to initiate Aaron job
 sub init_main {
+    &read_args();
+    &check_modules();
     print "Preparing to run transition state searches...\n";
     sleep(2);
     &read_params();
@@ -444,7 +443,7 @@ sub init_main {
 }
 
 
-package Theory_level;
+package AaronInit::Theory_level;
 use strict; use warnings;
 use lib $ENV{'AARON'};
 use lib $ENV{'PERL_LIB'};
@@ -458,6 +457,7 @@ sub new {
 
     my $self = { 
         basis => {},
+        gen_basis => [],
         method => $params{method},
     };
 
@@ -488,10 +488,16 @@ sub read_basis {
         if (exists $masses->{$entry}) {
             push (@atoms, $entry);
         }else {
-            if (@atoms) {
+            if ($entry =~ /^gen/) {
+                push (@{$self->{gen_basis}}, $entry);
+            }elsif (@atoms) {
                 @{$self->{basis}}{@atoms} = ($entry) x (scalar @atoms);
             }else {
-                @{$self->{basis}}{keys %{ $masses }} = ($entry) x keys %{ $masses };
+                for my $element (keys %{ $masses }) {
+                    unless (exists $self->{basis}->{$element}) {
+                        $self->{basis}->{$element} = $entry;
+                    }
+                }
             }
         }
     }
@@ -528,16 +534,87 @@ sub check_gen {
 
     my ($gen) = @_;
 
-    my @gen_basis_atom = grep { $self->{basis}->{$_} =~ /gen\// } keys %{ $self->{atoms} };
+    $gen //= '';
 
-    if (@gen_basis_atom && $gen) {
-        for my $atom (@gen_basis_atom) {
-            $self->{basis}->{$atom} =~ s/gen\///;
+    my @gen_basis = @{ $self->{gen_basis} };
+    my @gen_files = grep { $_ ne 'gen' } @gen_basis;
+
+    my @correct_gen_basis;
+    my $typein;
+    if (@gen_files) {
+        if ($gen) {
+            my @basis;
+
+            opendir(GEN, $gen) or do {
+                my $msg = "Cannot open directory $gen to read basis set files\n".
+                          "please stop at this time and fix your gen library\n".
+                          "Or type in your basis following the guide.\n";
+                warn($msg);
+                $typein = 1;
+            };
+            unless ($typein) {
+                $self->{gen} = $gen;
+                $self->{gen} =~ s/\/$//;
+                $self->{gen} .= '/';
+
+                @basis = readdir(GEN);
+                closedir(GEN);
+                for my $file (@gen_files) {
+                    my $basis_file = $file;
+                    $basis_file =~ s/^gen\///;
+
+                    unless (grep { $_ eq $basis_file } @basis) {
+                        my $msg = "Cannot find basis set file $basis_file in $gen\n".
+                                  "please stop at this time and fix your gen library\n".
+                                  "Or type in your basis following the guide.\n";
+                        warn($msg);
+                        $typein = 1;
+                    }else {
+                        push (@correct_gen_basis, $file);
+                    }
+                    
+                    for (keys %{ $self->{basis} }) {
+                        delete $self->{basis}->{$_} if ($self->{basis}->{$_} eq $file);
+                    }
+                }
+            }
+        }else {
+            my $msg = "No path to the basis set files was found.\n".
+                      "Please stop at this time and write your path to the basis library in xxxx\n".
+                      "Or type in your basis following the guide.\n";
+            warn($msg);
+            $typein = 1;
         }
-        $self->{gen} = $gen;
-    }elsif (@gen_basis_atom && (! $gen)) {
-        print "You must provide path to the gen basis set if you want to use gen basis set\n";
-        exit 0;
+    }
+
+    $self->{gen_basis} = [@correct_gen_basis];
+
+    $typein = 1 if grep { $_ eq 'gen' } @gen_basis;
+
+    if ($typein) {
+        print "Type in your basis below. For example:\n".
+              "-H     0\n".
+              "S   3   1.00\n".
+              "     34.0613410              0.60251978E-02\n".
+              "      5.1235746              0.45021094E-01\n".
+              "      1.1646626              0.20189726\n".
+              "S   1   1.00\n".
+              "      0.32723041             1.0000000\n".
+              "S   1   1.00\n".
+              "      0.10307241             1.0000000\n".
+              "P   1   1.00\n".
+              "      0.8000000              1.0000000\n".
+              "****\n".
+              "-C     0\n".
+              "......\n\n".
+              "And then press ctrl-D to finishi entering\n";
+
+        my @basis = <STDIN>;
+        chomp @basis;
+
+        my $basis = join ("\n", @basis);
+
+        $self->{typein_basis} = $basis;
     }
 }
 
@@ -549,9 +626,11 @@ sub method {
 
     if ($self->{ecp}) {
         $method = $self->{method} . "/genecp";
-    }elsif ($self->{gen}) {
+    }elsif (@{$self->{gen_basis}}) {
         $method = $self->{method}. "/gen";
     }elsif (@{$self->unique_basis()} > 1) {
+        $method = $self->{method}. "/gen";
+    }elsif ($self->{typein_basis}) {
         $method = $self->{method}. "/gen";
     }elsif (@{$self->unique_basis()} == 1) {
         $method = $self->{method} . "/$self->unique_basis{}->[0]";
@@ -598,39 +677,43 @@ sub footer {
 
     my $return = '';
 
-    if ($self->{gen}) {
-        if (@{$self->unique_basis()} == 1) {
-            my $basis = $self->unique_basis()->[0];
-            $return = $self->{gen};
-            $return =~ s/\/$//;
-            $return .= "/$basis/N\n";
-        }else {
-            print "gen basis can only use one type of basis file. " .
-                  "If you have multiple basis, please write them in the same gen basis file.";
-            exit 0;
-        }
-    }elsif (@{$self->unique_basis()} > 1) {
-        my @elements = @{ $geometry->{elements} };
+    if (keys %{ $self->{basis} }) {
+        if (@{$self->unique_basis()} > 1 ||
+            $self->{ecp} ||
+            $self->{gen_basis} ||
+            $self->{typein_basis}) {
 
-        my @unique_basis = @{$self->unique_basis()};
+            my @elements = @{ $geometry->{elements} };
 
-        for my $basis (@unique_basis) {
-            my @atoms = grep { $self->{basis}->{$_} eq $basis } keys %{ $self->{basis} };
+            my @unique_basis = @{$self->unique_basis()};
 
-            my @exit_atoms;
+            for my $basis (@unique_basis) {
+                my @atoms = grep { $self->{basis}->{$_} eq $basis } keys %{ $self->{basis} };
 
-            for my $atom (@atoms) {
-                if (grep { $_ eq $atom } @elements) {
-                    push (@exit_atoms, $atom);
+                my @exit_atoms;
+
+                for my $atom (@atoms) {
+                    if (grep { $_ eq $atom } @elements) {
+                        push (@exit_atoms, $atom);
+                    }
                 }
+
+                $return .= sprintf "%s " x @exit_atoms, @exit_atoms;
+                $return .= "0\n";
+                $return .= "$basis\n";
+                $return .= '*' x 4 . "\n";
             }
-
-            $return .= sprintf "%s " x @exit_atoms, @exit_atoms;
-            $return .= "0\n";
-            $return .= "$basis\n";
-            $return .= '*' x 4 . "\n";
         }
+    }
 
+    if (@{ $self->{gen_basis} }) {
+        for my $gen_basis (@{ $self->{gen_basis} }) {
+            $return .= "\@" . $self->{gen} . $gen_basis . "/N\n";
+        }
+    }
+
+    if ($self->{typein_basis}) {
+        $return .= "$self->{typein_basis}\n";
     }
 
     if ($self->{ecp}) {
