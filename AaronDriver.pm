@@ -41,6 +41,10 @@ my $RT = BOLTZMANN * $arg_in{temperature};
 
 my $queue_type = $ENV{'QUEUE_TYPE'};
 
+my $Gkey = $arg_in;
+my $Ckey = $arg_parser;
+$Ckey->{parent} = $parent;
+
 #################
 #ref to some useful function
 ################
@@ -278,12 +282,20 @@ sub dir_tree {
                 if ($state =~ /^ts/i) {
                     $status->{$head} = new G09Job_TS( 
                         name => $head,
-                        catalysis => $new_dir->{$newdir}->{catalysis} 
+                        catalysis => $new_dir->{$newdir}->{catalysis} ,
+                        Gkey => $Gkey,
+                        Ckey => $Ckey,
+                        system => $system,
+                        template_job => $template_job,
                     );
                 }elsif ($state =~ /^min/i) {
                     $status->{$head} = new G09Job_MIN(
                         name => $head,
-                        catalysis => $new_dir->{$newdir}->{catalysis}
+                        catalysis => $new_dir->{$newdir}->{catalysis},
+                        Gkey => $Gkey,
+                        Ckey => $Ckey,
+                        system => $system,
+                        template_job => $template_job,
                     );
                 }
             }elsif (%{$status->{$head}->{catalysis}}) {

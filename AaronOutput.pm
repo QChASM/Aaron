@@ -18,7 +18,10 @@ my $out_file;
 my $old_data;
 
 sub init_log {
-    $out_file = $parent . '/' . $jobname . "_aaron.log";
+    my $job_name = shift;
+    $job_name //= $jobname;
+
+    $out_file = $parent . '/' . $job_name . "_aaron.log";
     if (-e $out_file) {
         open $ol, ">>$out_file" or die "Can't open $out_file\n";
         &restart_header();

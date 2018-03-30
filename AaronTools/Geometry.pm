@@ -139,6 +139,19 @@ sub update_coords {
 }
 
 
+sub conformer_geometry {
+    my $self = shift;
+    my ($geo) = @_;
+
+    unless (@{ $self->{coords} } == @{ $geo->{coords} }) {
+        warn("number of atoms are not equal");
+    }
+
+    $self->update_coords( targets => [0..$#{$self->{coords}}],
+                          coords => $geo->{coords} );
+}
+
+
 sub append {
     my ($self, $geo_2) = @_;
     my $num_self = $#{ $self->{elements} } + 1;

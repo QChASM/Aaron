@@ -47,7 +47,7 @@ our $parent = getcwd();
 my $input_file;
 
 #content of template job file
-our $template_job = {};
+our $template_job = &get_job_template();
 
 #ligand and substituent information
 our $ligs_subs = {};
@@ -344,6 +344,8 @@ sub get_job_template {
     if ( -e "$AARON/template.job") {
         my $job_invalid;
         my $template_pattern = TEMPLATE_JOB;
+        my $template_job = {};
+
         $template_job->{job} = "$AARON/template.job";
         $template_job->{formula} = {};
         open JOB, "<$AARON/template.job";
@@ -369,6 +371,7 @@ sub get_job_template {
         }
 
     }
+    return $template_job;
 }
 
 
@@ -437,7 +440,6 @@ sub init_main {
     print "Preparing to run transition state searches...\n";
     sleep(2);
     &read_params();
-    &get_job_template();
     &read_status();
     sleep(10);
 }

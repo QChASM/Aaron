@@ -102,6 +102,8 @@ sub submit_job {
     chomp(my $jobname=`basename $com_file .com`);
     my $jobfile = $dir ? "$dir/$jobname.job" : "$jobname.job";
 
+    $dir //= getcwd();
+
     #if template_job were provide, use template_job to build job file
     if ($template_job->{job}) {
 

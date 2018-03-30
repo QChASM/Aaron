@@ -93,6 +93,7 @@ use constant LAUNCH_DIR => cwd;
 use constant MAXSTEP => {
     TS => 5,
     INT => 4,
+    TS_SINGLE => 3,
 };
 
 use constant MAX_LAUNCH_FAILED => 5;
