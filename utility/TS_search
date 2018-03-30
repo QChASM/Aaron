@@ -12,7 +12,7 @@ use AaronTools::Geometry;
 use AaronOutput qw(init_log);
 
 use Cwd qw(cwd);
-use Constants qw(:OTHER_USEFUL :SYSTEM :JOB_FILE);
+use Constants qw(:OTHER_USEFUL :SYSTEM :JOB_FILE :PHYSICAL);
 use Getopt::Long;
 use Pod::Usage;
 use Data::Dumper;
@@ -32,7 +32,8 @@ my $Gkey = { charge => 0,
              mult => 1,
              level => new AaronInit::Theory_level(),
              solvent => 'gas',
-             pcm => 'pcm'  };
+             pcm => 'pcm',
+             temperature => ROOM_TEMPERATURE };
 
 my $Ckey = { sleeptime => SLEEP_TIME,
              parent => $parent};

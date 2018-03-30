@@ -1321,6 +1321,7 @@ sub move_forward {
 
     if ($self->{step} == 3) {
         $finished = 1;
+        $self->{status} = 'finished';
     }
 
     return $finished;
