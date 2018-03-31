@@ -1248,6 +1248,7 @@ use strict; use warnings;
 
 use Cwd qw(cwd);
 use Constants qw(:OTHER_USEFUL);
+use AaronOutput qw(print_message close_log);
 
 our @ISA = qw(G09Job);
 
@@ -1356,7 +1357,8 @@ sub com_route_footer {
     my $print_flag;
 
     SWITCH: {
-        if ($step == 1) { $route .= "#$method opt=(modredundant,maxcyc=1000)";
+        if ($step == 1) { $route = "\%chk=$filename.chk\n";
+                          $route .= "#$method opt=(modredundant,maxcyc=1000)";
                             
                           for my $constraint (@{ $catalysis->{constraints} }) {
                               my @bond = map { $_ + 1 } @{$constraint->[0]};
@@ -1403,7 +1405,6 @@ sub check_reaction {
     my ($failed, $con) = $catalysis->examine_constraints();
 
     if ($failed) {
-        $self->kill_running();
 
         $self->{cycle} ++;
 
@@ -1550,7 +1551,6 @@ sub _check_step {
 
     my $path = cwd;
 
-    my $jobrunning = AaronTools::JobControl::findJob($path);
     my $step = $maxstep;
     
     my $check_reaction;
@@ -1568,10 +1568,6 @@ sub _check_step {
                 #update the catalysis geometry
                 $self->{catalysis}->conformer_geometry($geometry);
                 $check_reaction = 1;
-            }elsif ($jobrunning) {
-                $self->{status} = 'running';
-                $self->{catalysis}->conformer_geometry($geometry);
-                $check_reaction = 1;
             }elsif ($output->error()) {
                 $self->{status} = 'failed';
                 $self->{error} = $output->error();
@@ -1580,11 +1576,7 @@ sub _check_step {
             last;
         }elsif (-e "$file_name.$step.com") {
             $self->{step} = $step;
-            if ($jobrunning) {
-                $self->{status} = 'pending';
-            }else {
-                $self->{status} = '2submit';
-            }
+            $self->{status} = '2submit';
             last;
         }
         $step--;
@@ -1618,30 +1610,12 @@ sub submit {
     }
 
     unless($self->{Ckey}->{nosub}) {
-        $launch_failed += AaronTools::JobControl::submit_job( 
-                                  com_file => "$filename.$step.com",
-                                  walltime => $wall,
-                                  numprocs => $nprocs,
-                              template_job => $self->{template_job},
-                                      node => $self->{system}->{NODE_TYPE} );
-    }
-
-    if ($launch_failed > MAX_LAUNCH_FAILED) {
-
-        my $time = AaronTools::JobControl::count_time(60);
-
-        my $msg = "AARON has failed to submit jobs to queue more than " .
-                  MAX_LAUNCH_FAILED .
-                  " times. AARON believe you may run out of hours or " .
-                  "something wrong with the system. " .
-                  "AARON will just sleep for one hour and continue.\n" .
-                  "AARON will restart at $time\n" .
-                  "sleeping...";
-
-        print_message($msg);
-        $launch_failed = 0;
-
-        sleep(3600);
+        AaronTools::JobControl::call_g09( 
+                com_file => "$filename.$step.com",
+                walltime => $wall,
+                numprocs => $nprocs,
+            template_job => $self->{template_job},
+                    node => $self->{system}->{NODE_TYPE} );
     }
 }
 

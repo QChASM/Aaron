@@ -47,7 +47,8 @@ our $parent = getcwd();
 my $input_file;
 
 #content of template job file
-our $template_job = &get_job_template();
+our $template_job = {};
+&get_job_template();
 
 #ligand and substituent information
 our $ligs_subs = {};
@@ -344,34 +345,44 @@ sub get_job_template {
     if ( -e "$AARON/template.job") {
         my $job_invalid;
         my $template_pattern = TEMPLATE_JOB;
-        my $template_job = {};
 
         $template_job->{job} = "$AARON/template.job";
         $template_job->{formula} = {};
+        $template_job->{env} = '';
+        $template_job->{command} = [];
+
         open JOB, "<$AARON/template.job";
         #get formulas
+        JOB:
         while (<JOB>) {
-            /&formula&/ && do { while (<JOB>) {
-                                    /&formula&/ && last;
-                                    /^(\S+)=(\S+)$/ && do {  my $formula = $2;
-                                                             my @pattern = grep {$formula =~ 
-                                                                    /\Q$_\E/} values %$template_pattern;
+            /^\s*\#/ && do {$template_job->{env} .= $_; next;};
 
-                                                             unless (@pattern) {
-                                                                print "template.job in $AARON is invalid. " .
-                                                                      "Formula expression is wrong. " .
-                                                                      "Please see manual.\n";
-                                                                $job_invalid = 1;
-                                                                last;
-                                                            }
-                                                            $template_job->{formula}->{$1} = $2 };
-                                }
-                                last if $job_invalid;
-                              }
+            /&formula&/ && do { 
+                while (<JOB>) {
+                    /&formula&/ && last JOB;
+                    /^(\S+)=(\S+)$/ && do {  
+                        my $formula = $2;
+                        my @pattern = grep {$formula =~ 
+                               /\Q$_\E/} values %$template_pattern;
+
+                        unless (@pattern) {
+                           print "template.job in $AARON is invalid. " .
+                                 "Formula expression is wrong. " .
+                                 "Please see manual.\n";
+                           $job_invalid = 1;
+                           last;
+                        }
+                        $template_job->{formula}->{$1} = $2;
+                    };
+                }
+                last if $job_invalid;
+            };
+            chomp( my $command = $_ );
+            push (@{$template_job->{command}}, $command) unless ($command =~ /^$/);
         }
-
+        chomp($template_job->{env});
+        chomp($template_job->{command});
     }
-    return $template_job;
 }
 
 

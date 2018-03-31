@@ -1,80 +1,67 @@
 #!/usr/bin/perl -w
-
-use strict;
+use strict; use warnings;
 use lib $ENV{'AARON'};
 use lib $ENV{'PERL_LIB'};
 
 my $AARON = $ENV{'AARON'};
 
-use G09Job;
-use AaronInit qw($template_job);
-use AaronTools::Geometry;
-use AaronOutput qw(init_log);
-
-use Cwd qw(cwd);
-use Constants qw(:OTHER_USEFUL :SYSTEM :JOB_FILE :PHYSICAL);
 use Getopt::Long;
 use Pod::Usage;
-use Data::Dumper;
+use Constants qw(:SYSTEM :JOB_FILE);
+use AaronInit qw($template_job);
 
-my $system_ada = ADA;
+use Pod::Usage;
+use Getopt::Long;
+use Data::Dumper;
 
 my $helpMsg = "\nThis utility is used to search a TS structure from the .xyz file\n".
               "The .xyz file is a guessed transition state.\n".
               "This utility uses the same strategy as AARON.\n".
               "Citation:xxxxx\n";
 
-my $parent = cwd;
-my $system = { WALL => $system_ada->{WALL},
-               N_PROCS => $system_ada->{N_PROCS} };
+my $system_ada = ADA;
+my $queue_type = $ENV{'QUEUE_TYPE'} ?
+                 $ENV{'QUEUE_TYPE'} : $system_ada->{QUEUE};
 
-my $Gkey = { charge => 0,
-             mult => 1,
-             level => new AaronInit::Theory_level(),
-             solvent => 'gas',
-             pcm => 'pcm',
-             temperature => ROOM_TEMPERATURE };
+my $cores = $system_ada->{N_PROCS};
+my $walltime = $system_ada->{WALL};
+my $node = '';
+my $help;
+my @redundacy;
+my $redundacy;
 
-my $Ckey = { sleeptime => SLEEP_TIME,
-             parent => $parent};
+my @argv = @ARGV;
 
-my @basis;
-my $method;
-my $ecp;
-my @chargemult;
+for my $i (0..$#argv) {
+    if ($argv[$i] =~ /basis$/ || ($argv[$i] =~ /ecp$/)) {
+        $argv[$i+1] = '"' . $argv[$i+1] . '"';
+    }
+}
 
-#read arguments
 GetOptions(
-    'nosub' => \$Ckey->{nosub},
-    'help|h' => \$Ckey->{help},
-    'restart' => \$Ckey->{restart},
-    'record' => \$Ckey->{record},
-    'wall|w' => \$system->{WALL},
-    'process|p' => \$system->{N_PROCS},
-    'method|m=s' => \$method,
-    'basis|b=s' => \@basis,
-    'ecp|e=s' => \$ecp,
-    'sleep=s' => \$Ckey->{sleeptime},
-    'denfit' => \$Gkey->{denfit},
-    'chargemult|c=i{2}' => \@chargemult,
-    'solvent|s=s' => \$Gkey->{solvent},
-    'pcm=s' => \$Gkey->{pcm},
-) or pod2usage (
+    'wall|w=i' => \$walltime,
+    'process|p=i' => \$cores,
+    'node|n=i' => \$node,
+    'help|h' => \$help,
+    'restart' => \$redundacy,
+    'record' => \$redundacy,
+    'method|m=s' => \$redundacy,
+    'basis|b=s' => \@redundacy,
+    'ecp|e=s' => \@redundacy,
+    'chargemult|c=i{2}' => \@redundacy,
+    'solvent|s=s' => \$redundacy,
+    'pcm=s' => \$redundacy,
+    'denfit' => \$redundacy,
+) or pod2usage(
     -exitval => 1,
-    verbose => 1
+    -verbose => 1,
 );
 
 pod2usage(
     -msg => $helpMsg,
     -exitval => 1,
-    -verbose => 1
-) if $Ckey->{help};
-
-$Gkey->{charge} = shift @chargemult if $chargemult[0];
-$Gkey->{mult} = shift @chargemult if $chargemult[0];
-
-$system->{SHORT_WALL} = $system->{WALL};
-$system->{SHORT_PROCS} = $system->{N_PROCS};
+    -verbose => 1,
+) if $help;
 
 my ($input_xyz) = grep { $_ =~ /\.xyz$/ } @ARGV;
 my ($input_name) = $input_xyz =~ /(\S+)\.xyz/;
@@ -82,7 +69,7 @@ my ($input_name) = $input_xyz =~ /(\S+)\.xyz/;
 $input_xyz or pod2usage(
     -msg => "A xyz file must be provided\n",
     -exitval => 1,
-    -verbose => 0 
+    -verbose => 1,
 );
 
 opendir (DIR, '.') or die "Cannot open current directory:$!\n";
@@ -91,32 +78,37 @@ closedir (DIR);
 
 grep {$_ eq $input_xyz} @files or die "$input_xyz doesn't match any file in the current directory\n";
 
-my $geometry = new AaronTools::Geometry( name => $input_name );
+#make TS_search .job file
+my $jobname = $input_name . "_TS_search";
+#prepare env variable
+my $template_pattern = TEMPLATE_JOB;
+my $env_variable = $template_job->{env};
 
-$Gkey->{level}->read_method($method);
-@basis && do{$Gkey->{level}->read_basis($_) for (@basis)};
-$ecp && do{$Gkey->{level}->read_ecp($ecp)};
-
-#read gen
-$Gkey->{level}->check_gen();
-
-my $G09job = new G09Job_TS_Single(
-    name => $input_name,
-    catalysis => $geometry,
-    Gkey => $Gkey,
-    Ckey => $Ckey,
-    system => $system,
-    template_job => $template_job );
-
-#main 
-init_log($input_name);
-$G09job->build_com( directory => '.');
-$G09job->set_status('2submit');
-
-while ($G09job->job_running()) {
-    $G09job->check_status_run();
-    sleep($Ckey->{sleeptime});
+$env_variable =~ s/\Q$template_pattern->{JOB_NAME}/$jobname/g;
+$env_variable =~ s/\Q$template_pattern->{WALL_TIME}/$walltime/g;
+$env_variable =~ s/\Q$template_pattern->{N_PROCS}/$cores/g;
+$env_variable =~ s/\Q$template_pattern->{NODE_TYPE}/$node/g;
+#remove the formula part
+for my $var (sort keys %{ $template_job->{formula} }) {
+    my $var_value = eval($template_job->{formula}->{$var});
+    $env_variable =~ s/\Q$var/$var_value/g;
 }
 
+open JOB, ">$jobname.job" or die "Cannot open $jobname.job file";
 
+print JOB "$env_variable\n";
+print JOB "$AARON/utility/_TS_search.pl @argv\n";
+print JOB "exit\n";
+
+close JOB;
+
+if($queue_type =~ /LSF/i) {
+    if(system("bsub < $jobname.job >& /dev/null")) {
+        print "Submission denied!\n";
+    }
+} elsif($queue_type =~ /Slurm/i) {
+    if(system("qsub $jobname.job -N $jobname >& /dev/null")) { 
+        print "Submission denied!\n";
+    }
+}
 
