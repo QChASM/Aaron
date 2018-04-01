@@ -64,13 +64,12 @@ pod2usage(
 ) if $help;
 
 my ($input_xyz) = grep { $_ =~ /\.xyz$/ } @ARGV;
-my ($input_name) = $input_xyz =~ /(\S+)\.xyz/;
-
 $input_xyz or pod2usage(
     -msg => "A xyz file must be provided\n",
     -exitval => 1,
     -verbose => 1,
 );
+my ($input_name) = $input_xyz =~ /(\S+)\.xyz/;
 
 opendir (DIR, '.') or die "Cannot open current directory:$!\n";
 my @files = readdir(DIR);

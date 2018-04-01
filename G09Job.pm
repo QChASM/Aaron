@@ -1572,6 +1572,10 @@ sub _check_step {
                 $self->{status} = 'failed';
                 $self->{error} = $output->error();
                 $self->{err_msg} = $output->{error_msg};
+                if ($self->{Ckey}->{record}) {
+                    my $saved_log = $file_name . "_attempt$self->{attempt}.$step.log";
+                    system("mv $file_name.$step.log $saved_log");
+                }
             }
             last;
         }elsif (-e "$file_name.$step.com") {

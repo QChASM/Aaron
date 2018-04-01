@@ -83,8 +83,11 @@ my $G09job = new G09Job_TS_Single(
 
 #main 
 init_log($input_name);
-$G09job->build_com( directory => '.');
-$G09job->set_status('2submit');
+
+unless ($Ckey->{restart}) {
+    $G09job->build_com( directory => '.');
+    $G09job->set_status('2submit');
+}
 
 while ($G09job->job_running()) {
     $G09job->check_status_run();
