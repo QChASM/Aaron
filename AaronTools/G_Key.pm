@@ -106,57 +106,57 @@ sub _read_key_from_input {
 
         /^$/ && do {last if $hit};
         /^[gG]en=(\S+)/ && do {$self->{gen} = $1 unless $self->{gen}; next;};
-        /^[nN]_procs=(\d+)/ && do{
+        /^\s*[nN]_procs=(\d+)/ && do{
             $self->{n_procs} = $1 unless $self->{n_procs}; next;
         };
         
-        /^[wW]all=(\d+)/ && do {$self->{wall} = $1 unless $self->{wall}; next;};
-        /^[sS]hort_procs=(\d+)/ && do {
+        /^\s*[wW]all=(\d+)/ && do {$self->{wall} = $1 unless $self->{wall}; next;};
+        /^\s*[sS]hort_procs=(\d+)/ && do {
             $self->{short_procs} = $1 unless $self->{short_procs}; next;
         };
 
-        /^[sS]hort_wall=(\d+)/ && do {
+        /^\s*[sS]hort_wall=(\d+)/ && do {
             $self->{short_wall} = $1 unless $self->{short_wall}; next;
         };
 
-        /^[nN]ode=(\s)/ && do {
+        /^\s*[nN]ode=(\s)/ && do {
             $self->{node} = $1 unless $self->{node}; next;
         };
 
         if ($hit) {
-            /[sS]olvent=(\S+)/ && do {$self->{solvent} = $1 unless $self->{solvent}; next;};
-            /[pP]cm=(\S+)/ && do {$self->{pcm} = $1 unless $self->{pcm}; next;};
+            /\s*[sS]olvent=(\S+)/ && do {$self->{solvent} = $1 unless $self->{solvent}; next;};
+            /\s*[pP]cm=(\S+)/ && do {$self->{pcm} = $1 unless $self->{pcm}; next;};
 
-            /[tT]emperature=(\S+)/ && do {
+            /\s*[tT]emperature=(\S+)/ && do {
                 $self->{temperature} = $1 unless $self->{temperature}; next;
             };
 
-            /^[eE]mp_dispersion=(\S+)/ && do {
+            /^\s*[eE]mp_dispersion=(\S+)/ && do {
                 $self->{emp_dispersion} = $1 unless $self->{emp_dispersion}; next;
             };
 
             if ($read_low_level) {
-                /[lL]ow_method=(\S+)/ && do {$self->{low_level}->read_method($1); next;};
-                /^[lL]ow_basis=(.+)/ && do {$self->{low_level}->read_basis($1); next;};
-                /^[lL]ow_ecp=(\S+)/ && do {$self->{low_level}->read_ecp($1); next;};
+                /^\s*[lL]ow_method=(\S+)/ && do {$self->{low_level}->read_method($1); next;};
+                /^\s*[lL]ow_basis=(.+)/ && do {$self->{low_level}->read_basis($1); next;};
+                /^\s*[lL]ow_ecp=(\S+)/ && do {$self->{low_level}->read_ecp($1); next;};
             }
 
             if ($read_level) {
-                /^[mM]ethod=(\S+)/ && do {$self->{level}->read_method($1); next;};
-                /^[bB]asis=(.+)/ && do {$self->{level}->read_basis($1); next;};
-                /^[eE]cp=(.+)/ && do {$self->{level}->read_ecp($1); next;};
+                /^\s*[mM]ethod=(\S+)/ && do {$self->{level}->read_method($1); next;};
+                /^\s*[bB]asis=(.+)/ && do {$self->{level}->read_basis($1); next;};
+                /^\s*[eE]cp=(.+)/ && do {$self->{level}->read_ecp($1); next;};
             }
 
             if ($read_high_level &&
                 (!$theory || ($theory ne 'Default'))) {
-                /[hH]igh_method=(\S+)/ && do {$self->{high_level}->read_method($1); next;};
-                /[hH]igh_ecp=(.+)/ && do {$self->{high_level}->read_ecp($1); next;};
-                /^[hH]igh_basis=(.+)/ && do {$self->{high_level}->read_basis($1); next;};
+                /^\s*[hH]igh_method=(\S+)/ && do {$self->{high_level}->read_method($1); next;};
+                /^\s*[hH]igh_ecp=(.+)/ && do {$self->{high_level}->read_ecp($1); next;};
+                /^\s*[hH]igh_basis=(.+)/ && do {$self->{high_level}->read_basis($1); next;};
             }
 
-            /[dD]enfit=(\S+)/ && do {$self->{denfit} = $1 unless $self->{denfit}; next;};
-            /[cC]harge=(\S+)/ && do {$self->{charge} = $1 unless $self->{charge}; next;};
-            /[mM]ult=(\S+)/ && do {$self->{mult} = $1 unless $self->{mult}; next;}; 
+            /\s*[dD]enfit=(\S+)/ && do {$self->{denfit} = $1 unless $self->{denfit}; next;};
+            /\s*[cC]harge=(\S+)/ && do {$self->{charge} = $1 unless $self->{charge}; next;};
+            /\s*[mM]ult=(\S+)/ && do {$self->{mult} = $1 unless $self->{mult}; next;}; 
         }
     }
 
@@ -167,13 +167,13 @@ sub _read_key_from_input {
 
 sub read_key_from_input {
     my $self = shift;
+    my %params = @_;
 
-    my ($input, $theory) = @_;
+    my ($input, $theory) = ($params{input}, $params{custom});
 
     $theory //= 'Default';
  
     $self->_read_key_from_input($input) if $input;
-
 
     my $hit;
     if (-e "$HOME/.aaronrc") {
@@ -193,6 +193,7 @@ sub read_key_from_input {
 
 package AaronTools::Workflow_Key;
 use strict; use warnings;
+use Data::Dumper;
 
 sub new {
     my $class =shift;
@@ -206,6 +207,11 @@ sub new {
         full_conformers => $params{full_conformers},
         selectivity => $params{selectivity},
         no_ee => $params{selectivity},
+        debug => $params{debug},
+        nosub => $params{nosub},
+        record => $params{record},
+        short => $params{short},
+        no_quota => $params{no_quota},
    };
 
    bless $self, $class;
@@ -218,6 +224,11 @@ sub new {
    $self->{full_conformers} //= 0;
    $self->{selectivity} //= ['R', 'S'];
    $self->{no_ee} //= 0;
+   $self->{debug} //= 0;
+   $self->{nosub} //= 0;
+   $self->{record} //= 0;
+   $self->{short} //= 0;
+   $self->{no_quota} //= 0;
    
    return $self;
 }
@@ -247,7 +258,7 @@ sub examine {
 
     #chomp each value
     for my $key (keys %{ $self }) {
-        chomp $self->{$key};
+        chomp($self->{$key});
     }
     
     #examine arguments;
@@ -329,7 +340,7 @@ sub read_basis {
         }elsif ($entry =~ /^tm$/i) {
             for my $element (keys %{ $tmetal }) {
                 unless (exists $self->{basis}->{$element}) {
-                    push (@atoms, $entry);
+                    push (@atoms, $element);
                 }
             }
         }else {
@@ -364,8 +375,8 @@ sub read_ecp {
             push (@atoms, $entry);
         }elsif ($entry =~ /^tm$/i) {
             for my $element (keys %{ $tmetal }) {
-                unless (exists $self->{basis}->{$element}) {
-                    push (@atoms, $entry);
+                unless (exists $self->{ecp}->{$element}) {
+                    push (@atoms, $element);
                 }
             }
         }else {
@@ -601,6 +612,24 @@ sub footer {
 
     return $return;
 }
+
+sub footer_log {
+    my $self = shift;
+
+    my $return = '';
+    my @unique_basis = $self->unique_basis();
+
+    for my $basis (@unique_basis) {
+        $return .= "$basis\n";
+    }
+
+    $return .= "$self->{gen_basis}\n" if @{$self->{gen_basis}};
+    $return .= "$self->{typein_basis}\n" if $self->{typein_basis};
+
+    return $return;
+}
+
+
 
 
 

@@ -43,8 +43,9 @@ my $LIG_OLD = NAMES->{LIG_OLD};
 my $LIG_NONE = NAMES->{LIG_NONE};
 our $jobname;
 our $parent = getcwd();
-our $G_Key;
-our $W_Key;
+our $G_Key = new AaronTools::G_Key();
+our $W_Key = new AaronTools::Workflow_Key();
+
 my $input_file;
 
 #content of template job file
@@ -101,16 +102,16 @@ sub check_modules {
 
 sub read_args{
     GetOptions(
-        'debug' => \$arg_parser{debug},
-        'nosub' => \$arg_parser{nosub},
+        'debug' => \$W_Key->{debug},
+        'nosub' => \$W_Key->{nosub},
         'help|h' => \$arg_parser{help},
         'restart' => \$arg_parser{restart},
-        'record' => \$arg_parser{record},
-        'short' => \$arg_parser{short},
+        'record' => \$W_Key->{record},
+        'short' => \$W_Key->{short},
         'multistep' => \$arg_parser{multistep},
         'absthermo' => \$arg_parser{absthermo},
         'sleep=s' => \$arg_parser{sleeptime},
-        'no_quota' => \$arg_parser{noquota},
+        'no_quota' => \$W_Key->{no_quota},
     ) or pod2usage (
         -input => "$AARON/pod_ref",
         -exitval => 1,
@@ -137,9 +138,6 @@ sub read_args{
 #read arguments from input file
 sub read_params {
     
-    $G_Key = new AaronTools::G_Key();
-    $W_Key = new AaronTools::Workflow_Key();
-
     open my $in_h, "< $input_file" or die "Can't open $input_file:$!\n";
 
     ($jobname) = $input_file =~ /(\S+)\.in/; 
@@ -196,7 +194,7 @@ sub read_params {
     }
     close $in_h;
 
-    $G_Key->read_key_from_input($input_file, $custom);
+    $G_Key->read_key_from_input(input => $input_file, custom => $custom);
     $W_Key->read_input($input_file);
 
     #combine ligand and sub information;
@@ -327,6 +325,17 @@ sub read_status {
             ($head) = split(/\-/, $head);
 
             $ligs_subs->{$head}->{jobs}->{$key} = $STATUS->{$key};
+            $ligs_subs->{$head}->{jobs}->{$key}->{Gkey} = $G_Key;
+            $ligs_subs->{$head}->{jobs}->{$key}->{Wkey} = $W_Key;
+            $ligs_subs->{$head}->{jobs}->{$key}->{template_job} = $template_job;
+            
+            if ($ligs_subs->{$head}->{jobs}->{$key}->{conformers}) {
+                for my $cf (%{ $ligs_subs->{$head}->{jobs}->{$key}->{conformers} }) {
+                    $ligs_subs->{$head}->{jobs}->{$key}->{conformers}->{$cf}->{Gkey} = $G_Key;
+                    $ligs_subs->{$head}->{jobs}->{$key}->{conformers}->{$cf}->{Wkey} = $W_Key;
+                    $ligs_subs->{$head}->{jobs}->{$key}->{conformers}->{$cf}->{template_job} = $template_job;
+                }
+            }
         }
     }
 }

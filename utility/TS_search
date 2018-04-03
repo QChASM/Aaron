@@ -40,7 +40,7 @@ for my $i (0..$#argv) {
 
 GetOptions(
     'wall|w=i' => \$walltime,
-    'process|p=i' => \$cores,
+    'n_procs|p=i' => \$cores,
     'node|n=i' => \$node,
     'help|h' => \$help,
     'restart' => \$redundacy,

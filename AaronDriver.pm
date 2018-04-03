@@ -40,10 +40,8 @@ my $hart_to_kcal = HART_TO_KCAL;
 
 my $queue_type = $ENV{'QUEUE_TYPE'};
 
-$W_Key->{parent} = $parent;
-for my $item ('debug', 'nosub', 'restart', 'record', 'short', 'noquota') {
-   $W_Key->{$item} = $arg_parser{$item};
-} 
+my $ts_found;
+my $min_found;
 
 #################
 #ref to some useful function
@@ -202,6 +200,10 @@ sub dir_tree {
         if ($name =~ /(\S+).xyz/) {
             my $extend = $1;
             my $tempdir = cwd;
+
+            $ts_found = 1 if ($extend =~ /^ts/i);
+            $min_found = 1 if ($extend =~ /^min/i);
+
             if ($tempdir =~ /$top_dir_tar(\S+)?/) {
                 
                 my $newdir = $1 ? $top_dir_make . $1 . "/$extend" : $top_dir_make . "/$extend";
@@ -238,6 +240,9 @@ sub dir_tree {
     };
 
     &$imitate($top_dir_tar, $f_file);
+
+    $arg_parser{multistep} = 1 if ($ts_found && $min_found);
+
     chdir($current_dir);
 
     #make paths and initialize eevery geometry to be on step0 1st attempt

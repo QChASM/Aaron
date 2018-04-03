@@ -12,6 +12,7 @@ my $MAXCYCLE = MAX_CYCLE;
 my $launch_failed = 0;
 my $CUTOFF = CUTOFF;
 my $parent = cwd;
+my $short_wall = SHORT_WALL;
 
 
 
@@ -1540,7 +1541,7 @@ sub run_stepX {
         }
         $self->submit();
     }elsif ($self->{status} eq 'start') {
-        $self->build_com();
+        $self->build_com(directory => '.');
         $self->submit();
         $self->{status} = 'pending';
     }
@@ -1610,16 +1611,11 @@ sub submit {
 
     my ($wall, $nprocs);
 
-    if ($step == 1) {
-        $wall = $self->{Gkey}->{short_wall};
-        $nprocs = $self->{Gkey}->{short_procs};
-    }else {
-        $wall = $self->{Gkey}->{wall};
-        $nprocs = $self->{Gkey}->{n_procs};
-    }
+    $wall = $self->{Gkey}->{wall};
+    $nprocs = $self->{Gkey}->{n_procs};
 
     if ($self->{Wkey}->{debug} || $self->{Wkey}->{short}) {
-        $wall = $self->{Gkey}->{short_wall};
+        $wall = $short_wall;
     }
 
     unless($self->{Wkey}->{nosub}) {

@@ -19,17 +19,20 @@ my $old_data;
 my $queue = $ENV{'QUEUE_TYPE'};
 
 sub init_log {
-    my $job_name = shift;
+    my %params = @_;
+    my ($job_name, $print_params) = ($params{job_name}, $params{print_params});
+    $print_params //= 0;
+
     $job_name //= $jobname;
 
     $out_file = $parent . '/' . $job_name . "_aaron.log";
     if (-e $out_file) {
         open $ol, ">>$out_file" or die "Can't open $out_file\n";
-        &restart_header();
+        &restart_header($print_params);
     }else {
         open $ol, ">>$out_file" or die "Can't open $out_file\n";
         &header();
-        &print_params();
+        &print_params() if $print_params;;
     }
 }
 
@@ -95,13 +98,14 @@ St  ereoselectivity in Bipyridine N,N\'-Dioxide Catalyzed Allylation and Proparg
 
 
 sub restart_header {
+    my $print_params = shift;
     my $date=localtime;
     if (-e $out_file) {
         print $ol "\n---------------------------------------------------------\nAaron job restarted on $date\n\n";
     } else {
         print $ol "Aaron job restarted on $date\n\n";
         &header();
-        &print_params();
+        &print_params() if $print_params;
     }
 }
 
@@ -126,25 +130,25 @@ sub print_params {
     print $ol " AARON_HOME          = $AARON_HOME\n";
     print $ol "  version            = $version\n";
     print $ol "\n Reaction parameters:\n";
-    print $ol "  reaction_type      = $W_Key->{reaction_type}\n";
+    print $ol "  reaction_type      = $W_Key->{reaction_type}\n" if $W_Key->{reaction_type};
     print $ol "  solvent            = $G_Key->{solvent}\n";
     print $ol "  temperature        = $G_Key->{temperature} K\n";
-    print $ol "  MaxRTS             = $W_Key->{MaxRTS}\n";
-    print $ol "  MaxSTS             = $W_Key->{MaxSTS}\n";
-    print $ol "  TS_path            = $W_Key->{TS_path}\n";
+    print $ol "  MaxRTS             = $W_Key->{MaxRTS}\n" if $W_Key->{MaxRTS};
+    print $ol "  MaxSTS             = $W_Key->{MaxSTS}\n" if $W_Key->{MaxSTS};
+    print $ol "  TS_path            = $W_Key->{TS_path}\n" if $W_Key->{TS_path};
     print $ol "\n Methods:\n";
     print $ol "  method = $method\n";
     print $ol "  high level method  = $high_method\n" if $high_method;
-    if(my $basis = $G_Key->footer()) {
+    if(my $basis = $G_Key->{level}->footer_log()) {
         print $ol "  basis set file     = $basis\n";
     }
-    print $ol "  solvent model      = $G_Key->{pcm}\n";
+    print $ol "  solvent model      = $G_Key->{pcm}\n" if $G_Key->{pcm};
     print $ol "  low-level method   = $low_method\n";
     print $ol "\n Queue parameters:\n";
-    print $ol "  wall               = $W_Key->{wall} hours\n";
-    print $ol "  nprocs             = $W_Key->{n_procs}\n";
-    print $ol "  shortwall          = $W_Key->{short_wall} hours\n" if $W_Key->{short_wall};
-    print $ol "  shortprocs         = $W_Key->{short_procs}\n" if $W_Key->{short_procs};
+    print $ol "  wall               = $G_Key->{wall} hours\n";
+    print $ol "  nprocs             = $G_Key->{n_procs}\n";
+    print $ol "  shortwall          = $G_Key->{short_wall} hours\n" if $G_Key->{short_wall};
+    print $ol "  shortprocs         = $G_Key->{short_procs}\n" if $G_Key->{short_procs};
     print $ol "  queue_name         = $queue\n" if $queue;
 
     if(@ARGV) {
