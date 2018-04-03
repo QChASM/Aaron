@@ -136,6 +136,7 @@ sub submit_job {
             close (JOB);
         }
     }
+
     
     unless (-e $jobfile) {
 
@@ -155,7 +156,6 @@ sub submit_job {
                       "#BSUB -W $walltime:00\n" .
                       "#BSUB -M $mb\n" .
                       "#BSUB -R 'rusage[mem=$mb]'\n" .
-                      "#BSUB -n $numprocs\n" .
                       "#BSUB -R 'span[ptile=$numprocs]'\n" .
                       "export g09root=$g09root\n" .
                       ". \$g09root/g09/bsd/g09.profile\n" .
@@ -272,5 +272,58 @@ sub count_time {
 
     return $time;
 }
+
+
+sub call_g09 {
+    my %params = @_;
+
+    my ($com_file, $walltime, 
+        $numprocs, $template_job,
+        $node) = ($params{com_file}, $params{walltime}, $params{numprocs},
+                  $params{template_job}, $params{node});
+
+    chomp(my $jobname = `basename $com_file .com`);
+    my $jobfile = "$jobname.job";
+
+    my $shellfile = "$jobname.sh";
+
+    unless (-e $shellfile) {
+
+        open SHELL, ">$shellfile";
+        
+        my $template_pattern = TEMPLATE_JOB;
+
+        my @job_command = @{$template_job->{command}};
+
+        for my $command (@job_command) {
+            $command =~ s/\Q$template_pattern->{JOB_NAME}/$jobname/g;
+            $command =~ s/\Q$template_pattern->{WALL_TIME}/$walltime/g;
+            $command =~ s/\Q$template_pattern->{N_PROCS}/$numprocs/g;
+            $command =~ s/\Q$template_pattern->{NODE_TYPE}/$node/g;
+            #remove the formula part
+            $command =~ s/&formula&\n(.*\n)*&formula&\n//g;
+
+            for my $var (sort keys %{ $template_job->{formula} }) {
+                my $var_value = eval($template_job->{formula}->{$var});
+                $command =~ s/\Q$var/$var_value/g;
+            }
+
+            next if ($command =~ /^exit/);
+            print SHELL "$command\n";
+        }
+        close SHELL;
+
+        chmod (0755, $shellfile);
+    }
+    system("sh $shellfile");
+}
+
+
+
+
+  
+    
+
+
 
 1;
