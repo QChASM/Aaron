@@ -4,12 +4,15 @@ use lib $ENV{'PERL_LIB'};
 use lib $ENV{'AARON'};
 
 use Constants qw(:OTHER_USEFUL :PHYSICAL);
+use Cwd qw(cwd);
 
 my $AARON = $ENV{'AARON'};
 my $HART_TO_KCAL = HART_TO_KCAL;
 my $MAXCYCLE = MAX_CYCLE;
 my $launch_failed = 0;
 my $CUTOFF = CUTOFF;
+my $parent = cwd;
+
 
 
 package G09Job;
@@ -28,15 +31,13 @@ sub new {
     my $class = shift;
     my %params = @_;
 
-    my ($name, $step, $cycle, 
+    my ($name, $step, $cycle, $Wkey,
         $thermo, $attempt, $status, 
-        $catalysis, $Gkey, $Ckey,
-        $template_job, $system) = ($params{name}, $params{step}, 
-                                   $params{cycle}, $params{thermo},
-                                   $params{attempt}, $params{status}, 
-                                   $params{catalysis}, $params{Gkey},
-                                   $params{Ckey}, $params{template_job},
-                                   $params{system});
+        $catalysis, $Gkey, $template_job) = ($params{name}, $params{step}, 
+                                             $params{cycle}, $params{Wkey},
+                                             $params{thermo}, $params{attempt}, 
+                                             $params{status}, $params{catalysis}, 
+                                             $params{Gkey}, $params{template_job});
     $name //= '';
     $step //= 1;
     $cycle //= 1;
@@ -56,9 +57,8 @@ sub new {
         msg => '',
         error => '',
         Gkey => $Gkey,
-        Ckey => $Ckey,
+        Wkey => $Wkey,
         template_job => $template_job,
-        system => $system
     };
 
     bless $self, $class;
@@ -425,12 +425,17 @@ sub run_stepX {
 
         my $quit = $self->build_com();
         if ($quit) {
-            chdir($self->{Ckey}->{parent});
+            chdir($parent);
             close_log();
             exit 0;
         }
         $self->submit();
+    }elsif ($self->{status} eq 'start') {
+        $self->build_com();
+        $self->submit();
+        $self->{status} = 'pending';
     }
+
 }
 
 
@@ -521,7 +526,7 @@ sub kill_running {
 sub submit {
     my $self = shift;
 
-    if ($self->{Ckey}->{nosub}) {
+    if ($self->{Wkey}->{nosub}) {
         return;
     }
 
@@ -534,25 +539,25 @@ sub submit {
     my ($wall, $nprocs);
 
     if ($step == 1) {
-        $wall = $self->{system}->{SHORT_WALL};
-        $nprocs = $self->{system}->{SHORT_PROCS};
+        $wall = $self->{Gkey}->{short_wall};
+        $nprocs = $self->{Gkey}->{short_procs};
     }else {
-        $wall = $self->{system}->{WALL};
-        $nprocs = $self->{system}->{N_PROCS};
+        $wall = $self->{Gkey}->{wall};
+        $nprocs = $self->{Gkey}->{n_procs};
     }
 
-    if ($self->{Ckey}->{debug} || $self->{Ckey}->{short}) {
-        $wall = $self->{system}->{SHORT_WALL};
+    if ($self->{Wkey}->{debug} || $self->{Wkey}->{short}) {
+        $wall = $self->{Gkey}->{short_wall};
     }
 
-    unless($self->{Ckey}->{nosub}) {
+    unless($self->{Wkey}->{nosub}) {
         $launch_failed += AaronTools::JobControl::submit_job( 
                                  directory => $geometry,
                                   com_file => "$filename.$step.com",
                                   walltime => $wall,
                                   numprocs => $nprocs,
                               template_job => $self->{template_job},
-                                      node => $self->{system}->{NODE_TYPE} );
+                                      node => $self->{Gkey}->{node} );
     }
 
     if ($launch_failed > MAX_LAUNCH_FAILED) {
@@ -602,7 +607,7 @@ sub build_com {
     my $method = $self->{Gkey}->{level}->method();
     my $high_method = $self->{Gkey}->{high_level}->method() if $self->{Gkey}->{high_level};
 
-    if ($self->{Ckey}->{debug}) {
+    if ($self->{Wkey}->{debug}) {
         $method = $low_method;
         $high_method = $low_method;
     }
@@ -650,7 +655,7 @@ sub build_com {
                                  last ERROR;
                                }
 
-        if ($error eq 'QUOTA') { if ( ! $self->{Ckey}->{no_quota}) {
+        if ($error eq 'QUOTA') { if ( ! $self->{Wkey}->{no_quota}) {
                                     my $msg = "\nAARON thinks you hit the disk quota. "  .
                                            "Make more space or have quota increased. Then add " .
                                            "\"-noquota\" in the command line to restart\n";
@@ -710,7 +715,7 @@ sub build_com {
 
                                   $self->{msg} = $msg;
                                   $self->{status} = 'restart';
-                                  if ($self->{Ckey}->{record}) {
+                                  if ($self->{Wkey}->{record}) {
                                       system("mv $file_name.$step.log $file_name.log.$step");
                                   }else{
                                       system("rm -fr $file_name.$step.*");
@@ -723,7 +728,7 @@ sub build_com {
 
                                    $self->{msg} = $msg;
                                    $self->{status} = 'restart';
-                                   if ($self->{Ckey}->{record}) {
+                                   if ($self->{Wkey}->{record}) {
                                        system("mv $file_name.$step.log $file_name.log.$step");
                                    }else{
                                        system("rm -fr $file_name.$step.*");
@@ -975,7 +980,7 @@ sub remove_later_than2 {
     foreach my $later_step (2..$self->maxstep()) {
         if (-e "$filename.$later_step.com") {
             print_message("Removing $filename.$later_step.com...\n");
-            if ($self->{Ckey}->{record}) {
+            if ($self->{Wkey}->{record}) {
                 system("mv $filename.$later_step.com $filename.com.$later_step");
             }else {
                 system("rm -fr $filename.$later_step.com");
@@ -984,7 +989,7 @@ sub remove_later_than2 {
 
         if (-e "$filename.$later_step.log") {
             print_message("Removing $filename.$later_step.log...\n");
-            if ($self->{Ckey}->{record}) {
+            if ($self->{Wkey}->{record}) {
                 system("mv $filename.$later_step.log $filename.$later_step.log.$later_step");
             }else {
                 system("rm -fr $filename.$later_step.log");
@@ -1450,7 +1455,7 @@ sub remove_later_than1 {
     foreach my $later_step (1..$self->maxstep()) {
         if (-e "$filename.$later_step.com") {
             print_message("Removing $filename.$later_step.com...\n");
-            if ($self->{Ckey}->{record}) {
+            if ($self->{Wkey}->{record}) {
                 system("mv $filename.$later_step.com $filename.com.$later_step");
             }else {
                 system("rm -fr $filename.$later_step.com");
@@ -1459,7 +1464,7 @@ sub remove_later_than1 {
 
         if (-e "$filename.$later_step.log") {
             print_message("Removing $filename.$later_step.log...\n");
-            if ($self->{Ckey}->{record}) {
+            if ($self->{Wkey}->{record}) {
                 system("mv $filename.$later_step.log $filename.$later_step.log.$later_step");
             }else {
                 system("rm -fr $filename.$later_step.log");
@@ -1529,11 +1534,15 @@ sub run_stepX {
 
         my $quit = $self->build_com( directory => '.');
         if ($quit) {
-            chdir($self->{Ckey}->{parent});
+            chdir($parent);
             close_log();
             exit 0;
         }
         $self->submit();
+    }elsif ($self->{status} eq 'start') {
+        $self->build_com();
+        $self->submit();
+        $self->{status} = 'pending';
     }
 }
 
@@ -1572,7 +1581,7 @@ sub _check_step {
                 $self->{status} = 'failed';
                 $self->{error} = $output->error();
                 $self->{err_msg} = $output->{error_msg};
-                if ($self->{Ckey}->{record}) {
+                if ($self->{Wkey}->{record}) {
                     my $saved_log = $file_name . "_attempt$self->{attempt}.$step.log";
                     system("mv $file_name.$step.log $saved_log");
                 }
@@ -1591,7 +1600,7 @@ sub _check_step {
 sub submit {
     my $self = shift;
 
-    if ($self->{Ckey}->{nosub}) {
+    if ($self->{Wkey}->{nosub}) {
         return;
     }
 
@@ -1602,24 +1611,24 @@ sub submit {
     my ($wall, $nprocs);
 
     if ($step == 1) {
-        $wall = $self->{system}->{SHORT_WALL};
-        $nprocs = $self->{system}->{SHORT_PROCS};
+        $wall = $self->{Gkey}->{short_wall};
+        $nprocs = $self->{Gkey}->{short_procs};
     }else {
-        $wall = $self->{system}->{WALL};
-        $nprocs = $self->{system}->{N_PROCS};
+        $wall = $self->{Gkey}->{wall};
+        $nprocs = $self->{Gkey}->{n_procs};
     }
 
-    if ($self->{Ckey}->{debug} || $self->{Ckey}->{short}) {
-        $wall = $self->{system}->{SHORT_WALL};
+    if ($self->{Wkey}->{debug} || $self->{Wkey}->{short}) {
+        $wall = $self->{Gkey}->{short_wall};
     }
 
-    unless($self->{Ckey}->{nosub}) {
+    unless($self->{Wkey}->{nosub}) {
         AaronTools::JobControl::call_g09( 
                 com_file => "$filename.$step.com",
                 walltime => $wall,
                 numprocs => $nprocs,
             template_job => $self->{template_job},
-                    node => $self->{system}->{NODE_TYPE} );
+                    node => $self->{Gkey}->{node} );
     }
 }
 

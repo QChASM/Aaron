@@ -9,6 +9,7 @@ my $AARON = $ENV{'AARON'};
 use G09Job;
 use AaronInit qw($template_job);
 use AaronTools::Geometry;
+use AaronTools::G_key;
 use AaronOutput qw(init_log);
 
 use Cwd qw(cwd);
@@ -23,12 +24,7 @@ my $parent = cwd;
 my $system = { WALL => $system_ada->{WALL},
                N_PROCS => $system_ada->{N_PROCS} };
 
-my $Gkey = { charge => 0,
-             mult => 1,
-             level => new AaronInit::Theory_level(),
-             solvent => 'gas',
-             pcm => 'pcm',
-             temperature => ROOM_TEMPERATURE };
+my $Gkey = new AaronTools::G_Key;
 
 my $Ckey = { sleeptime => SLEEP_TIME,
              parent => $parent};
@@ -55,23 +51,26 @@ GetOptions(
     'pcm=s' => \$Gkey->{pcm},
 );
 
-$Gkey->{charge} = shift @chargemult if $chargemult[0];
-$Gkey->{mult} = shift @chargemult if $chargemult[0];
+my ($input_xyz) = grep { $_ =~ /\.xyz$/ } @ARGV;
+my ($input_name) = $input_xyz =~ /(\S+)\.xyz/;
+
+if (-e "$input_name.1.com") {
+    $Gkey->read_key_from_com("$input_name.1.com");
+}else {
+    $Gkey->{charge} = shift @chargemult if $chargemult[0];
+    $Gkey->{mult} = shift @chargemult if $chargemult[0];
+    $Gkey->{level}->read_method($method);
+    @basis && do{$Gkey->{level}->read_basis($_) for (@basis)};
+    $ecp && do{$Gkey->{level}->read_ecp($ecp)};
+    #read gen
+    $Gkey->{level}->check_gen();
+}    
 
 $system->{SHORT_WALL} = $system->{WALL};
 $system->{SHORT_PROCS} = $system->{N_PROCS};
 
-my ($input_xyz) = grep { $_ =~ /\.xyz$/ } @ARGV;
-my ($input_name) = $input_xyz =~ /(\S+)\.xyz/;
-
 my $geometry = new AaronTools::Geometry( name => $input_name );
 
-$Gkey->{level}->read_method($method);
-@basis && do{$Gkey->{level}->read_basis($_) for (@basis)};
-$ecp && do{$Gkey->{level}->read_ecp($ecp)};
-
-#read gen
-$Gkey->{level}->check_gen();
 
 my $G09job = new G09Job_TS_Single(
     name => $input_name,
@@ -84,10 +83,10 @@ my $G09job = new G09Job_TS_Single(
 #main 
 init_log($input_name);
 
-unless ($Ckey->{restart}) {
-    $G09job->build_com( directory => '.');
-    $G09job->set_status('2submit');
-}
+#unless (-e "$input_name.1.com") {
+#    $G09job->build_com( directory => '.');
+#    $G09job->set_status('2submit');
+#}
 
 while ($G09job->job_running()) {
     $G09job->check_status_run();

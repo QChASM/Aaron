@@ -5,7 +5,7 @@ use strict;
 use lib $ENV{'AARON'};
 
 use Constants qw(:INFORMATION :THEORY :PHYSICAL);
-use AaronInit qw(%arg_in %arg_parser $system $parent $jobname $ligs_subs);
+use AaronInit qw($G_Key %arg_parser $W_Key $parent $jobname $ligs_subs);
 
 use Cwd;
 use Exporter qw(import);
@@ -16,6 +16,7 @@ our @EXPORT = qw(&init_log print_message print_params terminate_AARON
 my $ol;
 my $out_file;
 my $old_data;
+my $queue = $ENV{'QUEUE_TYPE'};
 
 sub init_log {
     my $job_name = shift;
@@ -115,9 +116,9 @@ sub print_message {
 sub print_params {
     my $version = INFO->{VERSION};
     my $AARON_HOME = INFO->{AARON_HOME};
-    my $method = $arg_in{level}->method();
-    my $high_method = $arg_in{high_level}->method();
-    my $low_method = $arg_in{low_level}->method();
+    my $method = $G_Key->{level}->method();
+    my $high_method = $G_Key->{high_level}->method();
+    my $low_method = $G_Key->{low_level}->method();
 
     print $ol "----------------------------------------------------------------------------------\n";
     print $ol "Parameters\n";
@@ -125,26 +126,26 @@ sub print_params {
     print $ol " AARON_HOME          = $AARON_HOME\n";
     print $ol "  version            = $version\n";
     print $ol "\n Reaction parameters:\n";
-    print $ol "  reaction_type      = $arg_in{reaction_type}\n";
-    print $ol "  solvent            = $arg_in{solvent}\n";
-    print $ol "  temperature        = $arg_in{temperature} K\n";
-    print $ol "  MaxRTS             = $arg_in{MaxRTS}\n";
-    print $ol "  MaxSTS             = $arg_in{MaxSTS}\n";
-    print $ol "  TS_path            = $arg_in{TS_path}\n";
+    print $ol "  reaction_type      = $W_Key->{reaction_type}\n";
+    print $ol "  solvent            = $G_Key->{solvent}\n";
+    print $ol "  temperature        = $G_Key->{temperature} K\n";
+    print $ol "  MaxRTS             = $W_Key->{MaxRTS}\n";
+    print $ol "  MaxSTS             = $W_Key->{MaxSTS}\n";
+    print $ol "  TS_path            = $W_Key->{TS_path}\n";
     print $ol "\n Methods:\n";
     print $ol "  method = $method\n";
     print $ol "  high level method  = $high_method\n" if $high_method;
-    if($arg_in{basis}) {
-        print $ol "  basis set file     = $arg_in{basis}\n";
+    if(my $basis = $G_Key->footer()) {
+        print $ol "  basis set file     = $basis\n";
     }
-    print $ol "  solvent model      = $arg_in{pcm}\n";
+    print $ol "  solvent model      = $G_Key->{pcm}\n";
     print $ol "  low-level method   = $low_method\n";
     print $ol "\n Queue parameters:\n";
-    print $ol "  wall               = $system->{WALL} hours\n";
-    print $ol "  nprocs             = $system->{N_PROCS}\n";
-    print $ol "  shortwall          = $system->{SHORT_WALL} hours\n" if $system->{SHORT_WALL};
-    print $ol "  shortprocs         = $system->{SHORT_PROCS}\n" if $system->{SHORT_PROCS};
-    print $ol "  queue_name         = $system->{QUEUE_NAME}\n" if $system->{QUEUE_NAME};
+    print $ol "  wall               = $W_Key->{wall} hours\n";
+    print $ol "  nprocs             = $W_Key->{n_procs}\n";
+    print $ol "  shortwall          = $W_Key->{short_wall} hours\n" if $W_Key->{short_wall};
+    print $ol "  shortprocs         = $W_Key->{short_procs}\n" if $W_Key->{short_procs};
+    print $ol "  queue_name         = $queue\n" if $queue;
 
     if(@ARGV) {
         print $ol "\n command-line flags  = @ARGV\n";
@@ -399,7 +400,7 @@ sub print_ee {
     }
 
 
-    if ($arg_in{high_method}) {
+    if ($G_Key->{high_level}->method()) {
         if ($absolute_only || $arg_parser{multistep} || $absolute) {
             $data .= sprintf "%19s%13s%13s%13s%13s%13s%13s%13s\n", 'E', 'H', 'G', 'G_Grimme',
                                                     'E\'', 'H\'', 'G\'', 'G_Grimme\'';

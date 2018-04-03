@@ -31,19 +31,20 @@ use Cwd qw(getcwd);
 use Getopt::Long;
 use Exporter qw(import);
 use AaronTools::Atoms qw(:BASIC :LJ);
+use AaronTools::G_Key;
 use Data::Dumper;
 
 #default values for some argument
 
-our @EXPORT = qw(%arg_in %arg_parser $ligs_subs $parent $jobname
-                 $template_job $system init_main grab_cata_coords write_status);
+our @EXPORT = qw($G_Key $W_Key %arg_parser $ligs_subs $parent $jobname
+                 $template_job init_main write_status);
 
-my $TS_lib = NAMES->{TS_LIB};
 my $LIG_OLD = NAMES->{LIG_OLD};
 my $LIG_NONE = NAMES->{LIG_NONE};
 our $jobname;
-my $masses = MASS;
 our $parent = getcwd();
+our $G_Key;
+our $W_Key;
 my $input_file;
 
 #content of template job file
@@ -52,35 +53,6 @@ our $template_job = {};
 
 #ligand and substituent information
 our $ligs_subs = {};
-
-#all arguments for AARON
-our %arg_in = (
-    TS_path => '',
-    MaxRTS => 1,
-    MaxSTS => 1,
-    solvent => 'gas',
-    temperature => ROOM_TEMPERATURE,
-    reaction_type => '',
-    gen => '',
-    low_level => new AaronInit::Theory_level( method => 'PM6' ),
-    level => new AaronInit::Theory_level( method => 'B3LYP' ),
-    high_level => new AaronInit::Theory_level(),
-    denfit => 1,
-    pcm => PCM,
-    catalyst => '',
-    charge => 0,
-    mult => 1,
-    template => '',
-    emp_dispersion => '',
-    input_conformers_only => 0,
-    full_conformers => 0,
-    selectivity => ['R', 'S'],
-    no_ee => 0,
-);
-
-#THe default system is Ada if not specified
-#$system is a hash reference
-our $system = ADA;
 
 #read command line arguments
 sub check_modules {
@@ -138,6 +110,7 @@ sub read_args{
         'multistep' => \$arg_parser{multistep},
         'absthermo' => \$arg_parser{absthermo},
         'sleep=s' => \$arg_parser{sleeptime},
+        'no_quota' => \$arg_parser{noquota},
     ) or pod2usage (
         -input => "$AARON/pod_ref",
         -exitval => 1,
@@ -156,55 +129,28 @@ sub read_args{
         -input => "$AARON/pod_ref",
         -exitval => 1,
         -verbose => 0 );
+
+    ($jobname) = $input_file =~ /(\S+)\.in/;
 }
 
 
 #read arguments from input file
 sub read_params {
+    
+    $G_Key = new AaronTools::G_Key();
+    $W_Key = new AaronTools::Workflow_Key();
+
     open my $in_h, "< $input_file" or die "Can't open $input_file:$!\n";
 
     ($jobname) = $input_file =~ /(\S+)\.in/; 
 
     my $lig = {};
     my $sub = {};
+    my $custom;
 
     while(<$in_h>) {
-        /[sS]olvent=(\S+)/ && do {$arg_in{solvent} = $1; next;};
-        /[pP]cm=(\S+)/ && do {$arg_in{pcm} = $1; next;};
-        /[tT]emperature=(\S+)/ && do {$arg_in{temperature} = $1; next;};
-        /[rR]eaction_type=(\S+)/ && do {$arg_in{reaction_type} = $1; next;};
-        /^[eE]mp_dispersion=(\S+)/ && do {$arg_in{emp_dispersion} = $1; next;};
-        /[gG]en=(\S+)/ && do {$arg_in{gen} = $1; next;};
-        /[lL]ow_method=(\S+)/ && do {$arg_in{low_level}->read_method($1); next;};
-        /^[mM]ethod=(\S+)/ && do {$arg_in{level}->read_method($1); next;};
-        /[hH]igh_method=(\S+)/ && do {$arg_in{high_level}->read_method($1); next;};
-        /^[lL]ow_ecp=(\S+)/ && do {$arg_in{low_level}->read_ecp($1); next;};
-        /^[eE]cp=(.+)/ && do {$arg_in{level}->read_ecp($1); next;};
-        /[hH]igh_ecp=(.+)/ && do {$arg_in{high_level}->read_ecp($1); next;};
-        /^[lL]ow_basis=(.+)/ && do {$arg_in{low_level}->read_basis($1); next;};
-        /^[bB]asis=(.+)/ && do {$arg_in{level}->read_basis($1); next;};
-        /^[hH]igh_basis=(.+)/ && do {$arg_in{high_level}->read_basis($1); next;};
-        /[dD]enfit=(\S+)/ && do {$arg_in{denfit} = $1; next;};
-        /[cC]harge=(\S+)/ && do {$arg_in{charge} = $1; next;};
-        /[mM]ult=(\S+)/ && do {$arg_in{mult} = $1; next;}; 
-        /[tT]emplate=(\S+)/ && do {$arg_in{template} = $1; next;};
-        /[Ii]nput_conformers_only=(\d+)/ && do {$arg_in{input_conformers_only} = $1; next;};
-        /[Ff]ull_conformers=(\d+)/ && do {$arg_in{full_conformers} = $1; next;};
-        /[Ss]electivity=(\S+)/ && do {$arg_in{selectivity} = [split(/;/, $1)];next;};
-        /[Nn]o_ee=(\d+)/ && do {$arg_in{no_ee} = $1; next;};
-
-        #System information
-        /^\&[sS]ystem/ && do {
-            while(<$in_h>) {
-                /^\&$/ && do {last;};
-                /n_procs=(\d+)/ && do {$system->{N_PROCS}=$1; next;};
-                /^wall=(\d+)/ && do {$system->{WALL}=$1; next;};
-                /short_procs=(\d+)/ && do {$system->{SHORT_PROCS}=$1; next;};
-                /^short_wall=(\d+)/ && do {$system->{SHORT_WALL}=$1; next;};
-                /node_type=(\S+)/ && do {$system->{NODE_TYPE}=$1; next;};
-            }
-        };
         #new ligand information
+        /[Cc]ustome=(\S+)/ && do {$custom = $1; next;};
         /^\&[Ll]igands/ && do {
             while(<$in_h>) {
                 /^\&$/ && do {last;};
@@ -248,6 +194,10 @@ sub read_params {
             }
         };
     }
+    close $in_h;
+
+    $G_Key->read_key_from_input($input_file, $custom);
+    $W_Key->read_input($input_file);
 
     #combine ligand and sub information;
     for my $ligand (keys %{ $lig }) {
@@ -295,49 +245,6 @@ sub read_params {
             $ligs_subs->{$ligand}->{substrate}->{$lig_sub_ali} = $sub->{$sub_ali};
         }
     }
-
-    #chomp each value
-    for my $key (keys %arg_in) {
-        chomp $arg_in{$key};
-    }
-    close $in_h;
-    
-    #examine arguments;
-    if ($#{$arg_in{selectivity}} == 0 &&
-        ($arg_in{selectivity}->[0] eq 'NONE')) {
-        $arg_in{selectivity} = [];
-    }
-    
-    unless ($arg_in{template}) {
-        print "A template must be figure out explicitly in the <jobname>.in file " .
-              "by template=xxxxx, \n" .
-              "If this catalyst contains different steps in a reaction, " .
-              "you should figure out the step too. e.g. template=catalyst/TS1. \n" .
-              "Exit without calculation\n";
-        exit(1);
-    }
-
-    my $TS_path = (-d "$HOME/$TS_lib/$arg_in{reaction_type}/$arg_in{template}") ?
-                    "$HOME/$TS_lib/$arg_in{reaction_type}/" : 
-                    "$AARON/$TS_lib/$arg_in{reaction_type}/";
-
-    unless (-d $TS_path) {
-        print "Can't find $arg_in{template} in either user defined TS library: ".
-              "$HOME/$TS_lib/ or the built_in library: $AARON/$TS_lib/$arg_in{template}\n";
-        exit(1);
-    }
-
-    for my $level ( $arg_in{low_level}, $arg_in{level}, $arg_in{high_level} ) {
-        $level->check_gen($arg_in{gen});
-    }
-
-    if ($arg_in{high_method}){
-        unless ($arg_in{high_basis}->initiated()) {
-            $arg_in{high_basis} = $arg_in{basis};
-        }
-    }
-
-    $arg_in{TS_path} = $TS_path;
 }
 
 
@@ -385,24 +292,6 @@ sub get_job_template {
     }
 }
 
-
-sub grab_cata_coords {
-    #change catalyst from catalyst/TS into catalyst_TS
-    my @temp = split('/', $arg_in{catalyst});
-    my $catalyst = shift(@temp);
-    $catalyst =~ s/\//_/g;
-    my $cata_xyz = $catalyst.".xyz";
-    unless (-e $cata_xyz) {
-        print "You want to map new catalyst, but you didn't provide geometry of the new catalyst.\n";
-        print "Exist without calculation.\n";
-        exit(1);
-    }
-    my @cat_coords = grab_coords($cata_xyz);
-
-    return @cat_coords;
-}
-
-
 sub write_status {
     my %status;
 
@@ -422,7 +311,6 @@ sub write_status {
 
     close STATUS;
 }
-
 
 sub read_status {
     my $STATUS;
@@ -455,306 +343,6 @@ sub init_main {
     sleep(10);
 }
 
-
-package AaronInit::Theory_level;
-use strict; use warnings;
-use lib $ENV{'AARON'};
-use lib $ENV{'PERL_LIB'};
-
-use AaronTools::Atoms qw(:BASIC);
-
-sub new {
-    my $class = shift;
-
-    my %params = @_;
-
-    my $self = { 
-        basis => {},
-        gen_basis => [],
-        method => $params{method},
-    };
-
-    bless $self, $class;
-
-    return $self;
-}
-
-
-sub read_method {
-    my $self = shift;
-
-    my ($method) = @_;
-
-    $self->{method} = $method;
-}
-
-
-sub read_basis {
-    my $self = shift;
-
-    my ($line) = @_;
-
-    my @entry = split(/\s+/, $line);
-
-    my @atoms;
-    for my $entry (@entry) {
-        if (exists $masses->{$entry}) {
-            push (@atoms, $entry);
-        }else {
-            if ($entry =~ /^gen/) {
-                push (@{$self->{gen_basis}}, $entry);
-            }elsif (@atoms) {
-                @{$self->{basis}}{@atoms} = ($entry) x (scalar @atoms);
-            }else {
-                for my $element (keys %{ $masses }) {
-                    unless (exists $self->{basis}->{$element}) {
-                        $self->{basis}->{$element} = $entry;
-                    }
-                }
-            }
-        }
-    }
-}
-
-
-sub read_ecp {
-    my $self = shift;
-
-    my ($line) = @_;
-
-    $self->{ecp} = {};
-
-    my @entry = split(/\s+/, $line);
-
-    my @atoms;
-    for my $entry (@entry) {
-        if (exists $masses->{$entry}) {
-            push (@atoms, $entry);
-        }else {
-            if (@atoms) {
-                @{$self->{ecp}}{@atoms} = ($entry) x (scalar @atoms);
-            }else {
-                print "You must indicate the atom type using this ecp: $entry\n";
-                exit 0;
-            }
-        }
-    }
-}
-
-
-sub check_gen {
-    my $self = shift;
-
-    my ($gen) = @_;
-
-    $gen //= '';
-
-    my @gen_basis = @{ $self->{gen_basis} };
-    my @gen_files = grep { $_ ne 'gen' } @gen_basis;
-
-    my @correct_gen_basis;
-    my $typein;
-    if (@gen_files) {
-        if ($gen) {
-            my @basis;
-
-            opendir(GEN, $gen) or do {
-                my $msg = "Cannot open directory $gen to read basis set files\n".
-                          "please stop at this time and fix your gen library\n".
-                          "Or type in your basis following the guide.\n";
-                warn($msg);
-                $typein = 1;
-            };
-            unless ($typein) {
-                $self->{gen} = $gen;
-                $self->{gen} =~ s/\/$//;
-                $self->{gen} .= '/';
-
-                @basis = readdir(GEN);
-                closedir(GEN);
-                for my $file (@gen_files) {
-                    my $basis_file = $file;
-                    $basis_file =~ s/^gen\///;
-
-                    unless (grep { $_ eq $basis_file } @basis) {
-                        my $msg = "Cannot find basis set file $basis_file in $gen\n".
-                                  "please stop at this time and fix your gen library\n".
-                                  "Or type in your basis following the guide.\n";
-                        warn($msg);
-                        $typein = 1;
-                    }else {
-                        push (@correct_gen_basis, $file);
-                    }
-                    
-                    for (keys %{ $self->{basis} }) {
-                        delete $self->{basis}->{$_} if ($self->{basis}->{$_} eq $file);
-                    }
-                }
-            }
-        }else {
-            my $msg = "No path to the basis set files was found.\n".
-                      "Please stop at this time and write your path to the basis library in xxxx\n".
-                      "Or type in your basis following the guide.\n";
-            warn($msg);
-            $typein = 1;
-        }
-    }
-
-    $self->{gen_basis} = [@correct_gen_basis];
-
-    $typein = 1 if grep { $_ eq 'gen' } @gen_basis;
-
-    if ($typein) {
-        print "Type in your basis below. For example:\n".
-              "-H     0\n".
-              "S   3   1.00\n".
-              "     34.0613410              0.60251978E-02\n".
-              "      5.1235746              0.45021094E-01\n".
-              "      1.1646626              0.20189726\n".
-              "S   1   1.00\n".
-              "      0.32723041             1.0000000\n".
-              "S   1   1.00\n".
-              "      0.10307241             1.0000000\n".
-              "P   1   1.00\n".
-              "      0.8000000              1.0000000\n".
-              "****\n".
-              "-C     0\n".
-              "......\n\n".
-              "And then press ctrl-D to finishi entering\n";
-
-        my @basis = <STDIN>;
-        chomp @basis;
-
-        my $basis = join ("\n", @basis);
-
-        $self->{typein_basis} = $basis;
-    }
-}
-
-
-sub method {
-    my $self = shift;
-
-    my $method;
-
-    if ($self->{ecp}) {
-        $method = $self->{method} . "/genecp";
-    }elsif (@{$self->{gen_basis}}) {
-        $method = $self->{method}. "/gen";
-    }elsif (@{$self->unique_basis()} > 1) {
-        $method = $self->{method}. "/gen";
-    }elsif ($self->{typein_basis}) {
-        $method = $self->{method}. "/gen";
-    }elsif (@{$self->unique_basis()} == 1) {
-        $method = $self->{method} . "/$self->unique_basis{}->[0]";
-    }else {
-        $method = $self->{method};
-    }
-
-    return $method;
-}
-
-    
-sub unique_basis {
-    my $self = shift;
-
-    my @basis = values %{ $self->{basis} };
-
-    my @unique;
-
-    for my $basis (@basis) {
-        unless (grep {$_ eq $basis} @unique) {push (@unique, $basis);}
-    }
-
-    return [@unique];
-}
-
-
-sub unique_ecp {
-    my $self = shift;
-
-    my @basis = values %{ $self->{ecp} };
-
-    my @unique;
-
-    for my $basis (@basis) {
-        unless (grep {$_ eq $basis} @unique) {push (@unique, $basis);}
-    }
-
-    return [@unique];
-}
-
-sub footer {
-    my $self = shift;
-    my ($geometry) = @_;
-
-    my $return = '';
-
-    if (keys %{ $self->{basis} }) {
-        if (@{$self->unique_basis()} > 1 ||
-            $self->{ecp} ||
-            $self->{gen_basis} ||
-            $self->{typein_basis}) {
-
-            my @elements = @{ $geometry->{elements} };
-
-            my @unique_basis = @{$self->unique_basis()};
-
-            for my $basis (@unique_basis) {
-                my @atoms = grep { $self->{basis}->{$_} eq $basis } keys %{ $self->{basis} };
-
-                my @exit_atoms;
-
-                for my $atom (@atoms) {
-                    if (grep { $_ eq $atom } @elements) {
-                        push (@exit_atoms, $atom);
-                    }
-                }
-
-                $return .= sprintf "%s " x @exit_atoms, @exit_atoms;
-                $return .= "0\n";
-                $return .= "$basis\n";
-                $return .= '*' x 4 . "\n";
-            }
-        }
-    }
-
-    if (@{ $self->{gen_basis} }) {
-        for my $gen_basis (@{ $self->{gen_basis} }) {
-            $return .= "\@" . $self->{gen} . $gen_basis . "/N\n";
-        }
-    }
-
-    if ($self->{typein_basis}) {
-        $return .= "$self->{typein_basis}\n";
-    }
-
-    if ($self->{ecp}) {
-        $return .= "\n";
-
-        my @elements = @{ $geometry->{elements} };
-
-        my @unique_ecp = @{$self->unique_ecp()};
-
-        for my $ecp (@unique_ecp) {
-            my @atoms = grep { $self->{ecp}->{$_} eq $ecp } keys %{ $self->{ecp} };
-
-            my @exit_atoms;
-
-            for my $atom (@atoms) {
-                if (grep { $_ eq $atom } @elements) {
-                    push (@exit_atoms, $atom);
-                }
-            }
-
-            $return .= sprintf "%s " x @exit_atoms, @exit_atoms;
-            $return .= "0\n";
-            $return .= "$ecp\n";
-        }
-    }
-
-    return $return;
-}
 
 
 1
