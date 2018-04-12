@@ -126,7 +126,18 @@ sub copy {
                                          coords => [ map { [ @$_ ] } @{ $self->{coords} } ],
                                          connection => [ map { [ @$_ ] } @{ $self->{connection} } ],
                                          constraints => [ map { [ @$_ ] } @{ $self->{constraints} } ] );
-};
+}
+
+
+sub geometry_read {
+    my $self = shift;
+
+    if (@{$self->{elements}}) {
+        return 1;
+    }
+
+    return 0;
+}
 
 
 sub update_coords {
@@ -389,12 +400,82 @@ sub get_all_connected {
 sub check_connectivity {
     my ($self) = @_;
 
+    my @wrong_connectivity;
+
     for my $atom (0..$#{ $self->{elements} }) {
         if ($#{ $self->{connection}->[$atom] } + 1 > 
-            $CONNECTIVITY->{$self->{elements}->[$atom]}) {return $atom;}
+            $CONNECTIVITY->{$self->{elements}->[$atom]}) {
+            push (@wrong_connectivity, $atom);
+        }
     }
-    return -1;
+    return [@wrong_connectivity];
 }
+
+
+#THIS is to check if the connectivity of the structure changed
+sub examine_connectivity {
+    my ($self) = shift;
+
+    my %params = @_;
+
+    my ($file, $thres) = ($params{file}, $params{thres});
+
+    $self->refresh_connected();
+
+    my $geo_ref = new AaronTools::Geometry();
+    $geo_ref->read_geometry($file);
+
+    my ($broken, $formed) = $self->compare_connectivity(geo_ref=>$geo_ref, thres=>$thres);
+
+    my $fail;
+    for my $constraint (keys %{$broken}, keys %{$formed}) {
+        push(@{ $self->{constraints} }, [[split('-', $constraint)]]);
+        $fail = 1;
+    }
+    return $fail;
+}
+
+
+sub compare_connectivity {
+    my ($self) = shift;
+
+    my %params = @_;
+
+    my ($geo_ref, $thres) = ($params{geo_ref}, $params{thres});
+
+    if ($#{ $self->{connection} } != $#{ $geo_ref->{connection} }) {
+        warn "Number of atoms are not equal";
+    }
+
+    my %broken;
+    my %formed;
+
+    for my $atom (0..$#{$self->{connection}}) {
+        if ($self->{elements}->[$atom] ne $geo_ref->{elements}->[$atom]) {
+            my $atom_warn = $atom + 1;
+            warn "Atom $atom_warn are not same element in two structures";
+         }
+
+         my %con1 = map {$_ => 1} @{ $self->{connection}->[$atom] };
+         my %con2 = map {$_ => 1} @{ $geo_ref->{connection}->[$atom] };
+
+         my @broken_atoms = grep { !$con1{$_} && 
+            (abs($self->distance(atom1=>$atom, atom2=>$_) - 
+                $geo_ref->distance(atom1=>$atom, atom2=>$_)) > $thres) } keys %con2;
+         my @formed_atoms = grep { !$con2{$_} &&
+            (abs($self->distance(atom1=>$atom, atom2=>$_) - 
+                $geo_ref->distance(atom1=>$atom, atom2=>$_)) > $thres)} keys %con1;
+
+         my @broken_bonds = map { join('-', sort($atom, $_)) } @broken_atoms;
+         my @formed_bonds = map { join('-', sort($atom, $_)) } @formed_atoms;
+
+         @broken{@broken_bonds} = ();
+         @formed{@formed_bonds} = ();
+     }
+     return(\%broken, \%formed);
+}
+
+
 
 
 #put in the start and end atom, return what a substituent object.
@@ -425,6 +506,8 @@ sub examine_constraints {
     my $return = 0;
     my $con_return;
     for my $constraint (@{ $self->{constraints} }) {
+        next unless $constraint->[1];
+
         my $bond = $constraint->[0];
         my $d_con = $constraint->[1];
 

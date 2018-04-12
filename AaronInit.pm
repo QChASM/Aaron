@@ -108,7 +108,6 @@ sub read_args{
         'restart' => \$arg_parser{restart},
         'record' => \$W_Key->{record},
         'short' => \$W_Key->{short},
-        'multistep' => \$arg_parser{multistep},
         'absthermo' => \$arg_parser{absthermo},
         'sleep=s' => \$arg_parser{sleeptime},
         'no_quota' => \$W_Key->{no_quota},
@@ -148,7 +147,6 @@ sub read_params {
 
     while(<$in_h>) {
         #new ligand information
-        /[Cc]ustome=(\S+)/ && do {$custom = $1; next;};
         /^\&[Ll]igands/ && do {
             while(<$in_h>) {
                 /^\&$/ && do {last;};
@@ -194,7 +192,7 @@ sub read_params {
     }
     close $in_h;
 
-    $G_Key->read_key_from_input(input => $input_file, custom => $custom);
+    $G_Key->read_key_from_input(input => $input_file);
     $W_Key->read_input($input_file);
 
     #combine ligand and sub information;

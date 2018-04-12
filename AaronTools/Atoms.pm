@@ -128,7 +128,7 @@ use constant RIJ => {CC => 4.00, CN => 3.75, NC => 3.75, CO => 3.60, OC => 3.60,
     ClCa => 3.04, CaBr => 3.16, BrCa => 3.16, CaI => 3.35, ICa => 3.35, CaMg => 1.64, MgCa => 1.64, CaZn => 1.73,
     ZnCa => 1.73, CaCa => 1.98, X => 0};
 
-use constant CONNECTIVITY => { H => 1, B => 4, C => 4, N => 4, O => 2, F => 1, Si => 6,
-                               P => 4, S => 4, Cl => 1, I => 1, Br => 1, X => 1000 };
+use constant CONNECTIVITY => { H=>1, B=>4, C=>4, N=>4, O=>2, F=>1, Si=>6, Rh=>6, Fe=>6, Ni=>6, Cu=>6, Ru=>6, Pd=>6, 
+                               P=>4, S=>4, Cl=>1, I=>1, Br=>1, X=>1000, Pt=>6, Au=>6 };
 
 use constant UNROTATABLE_BOND => { CC => 1.40, SiSi => 2.10, CSi => 1.75 };

@@ -52,6 +52,8 @@ GetOptions(
     'solvent|s=s' => \$redundacy,
     'pcm=s' => \$redundacy,
     'denfit' => \$redundacy,
+    'custom' => \$redundacy,
+    'emp_disp' => \$redundacy,
 ) or pod2usage(
     -exitval => 1,
     -verbose => 1,

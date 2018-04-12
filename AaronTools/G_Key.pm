@@ -27,9 +27,17 @@ sub new {
         short_procs => $params{short_procs},
         short_wall => $params{short_wall},
         node=> $params{node},
+        gen => $params{gen},
+        custom => $params{custom},
+        emp_disp => $params{emp_disp},
+        con_thres => $params{con_thres},
     };
 
     bless $self, $class;
+
+    $self->{custom} //= 'Default';
+    $self->{solvent} //= 'gas';
+    $self->{con_thres} //= 0.5;
 
     $self->{level} = new AaronTools::Theory_level();
     $self->{low_level} = new AaronTools::Theory_level();
@@ -61,10 +69,20 @@ sub read_key_from_com {
     ($temperature) = $command_line =~ /temperature=(\d+\.?\d+)/;
     ($solvent) = $command_line =~ /solvent=(\S+\))/;
     ($pcm) = $command_line =~ /scrf=\((\S+),/;
+    ($self->{emp_disp}) = $command_line =~ /EmpiricalDispersion=(\S+)/;
 
     $temperature && do {$self->{temperature} = $temperature};
     $solvent && do {$self->{solvent} = $solvent};
     $pcm && do {$self->{pcm} = $pcm};
+
+    my $chargemult;
+
+    for (1..4) {
+        $chargemult = <COM>;
+    }
+
+    ($self->{charge}, $self->{mult}) = $chargemult =~ /^(\d)\s(\d)/;
+
 
     my $hit_coords;
     while (<COM>) {
@@ -75,8 +93,14 @@ sub read_key_from_com {
     }
 
     my $footer = '';
+    my $hit_constraint;
     while (<COM>) {
-        /^B\s\d\s\d\sF/ && do {next};
+        /^B\s\d+\s\d+\sF/ && do { 
+            while (<COM>) {
+                /^$/ && do {last};
+            }
+            next;
+        };
         $footer .= $_;
     }
 
@@ -89,7 +113,8 @@ sub read_key_from_com {
 sub _read_key_from_input {
     my $self = shift;
 
-    my ($input, $theory) = @_;
+    my ($input) = @_;
+    my $theory = $self->{custom};
 
     open INPUT, "<$input" or die "Can't open $input:$!\n";
 
@@ -105,25 +130,29 @@ sub _read_key_from_input {
         }
 
         /^$/ && do {last if $hit};
+        /[Cc]ustome=(\S+)/ && do {$self->{custom} = $1; next;};
         /^[gG]en=(\S+)/ && do {$self->{gen} = $1 unless $self->{gen}; next;};
-        /^\s*[nN]_procs=(\d+)/ && do{
-            $self->{n_procs} = $1 unless $self->{n_procs}; next;
-        };
-        
-        /^\s*[wW]all=(\d+)/ && do {$self->{wall} = $1 unless $self->{wall}; next;};
-        /^\s*[sS]hort_procs=(\d+)/ && do {
-            $self->{short_procs} = $1 unless $self->{short_procs}; next;
-        };
-
-        /^\s*[sS]hort_wall=(\d+)/ && do {
-            $self->{short_wall} = $1 unless $self->{short_wall}; next;
-        };
-
-        /^\s*[nN]ode=(\s)/ && do {
-            $self->{node} = $1 unless $self->{node}; next;
-        };
 
         if ($hit) {
+            #system
+            /^\s*[nN]_procs=(\d+)/ && do{
+                $self->{n_procs} = $1 unless $self->{n_procs}; next;
+            };
+            
+            /^\s*[wW]all=(\d+)/ && do {$self->{wall} = $1 unless $self->{wall}; next;};
+            /^\s*[sS]hort_procs=(\d+)/ && do {
+                $self->{short_procs} = $1 unless $self->{short_procs}; next;
+            };
+
+            /^\s*[sS]hort_wall=(\d+)/ && do {
+                $self->{short_wall} = $1 unless $self->{short_wall}; next;
+            };
+
+            /^\s*[nN]ode=(\s)/ && do {
+                $self->{node} = $1 unless $self->{node}; next;
+            };
+            #G09
+            /emp_disp=(\S+)/  && do {$self->{emp_disp} = $1 unless $self->{emp_disp}; next;};
             /\s*[sS]olvent=(\S+)/ && do {$self->{solvent} = $1 unless $self->{solvent}; next;};
             /\s*[pP]cm=(\S+)/ && do {$self->{pcm} = $1 unless $self->{pcm}; next;};
 
@@ -167,11 +196,8 @@ sub _read_key_from_input {
 
 sub read_key_from_input {
     my $self = shift;
-    my %params = @_;
 
-    my ($input, $theory) = ($params{input}, $params{custom});
-
-    $theory //= 'Default';
+    my ($input) = @_; ;
  
     $self->_read_key_from_input($input) if $input;
 
@@ -206,7 +232,7 @@ sub new {
         input_conformers_only => $params{input_conformers_only},
         full_conformers => $params{full_conformers},
         selectivity => $params{selectivity},
-        no_ee => $params{selectivity},
+        multistep => $params{multistep},
         debug => $params{debug},
         nosub => $params{nosub},
         record => $params{record},
@@ -223,7 +249,7 @@ sub new {
    $self->{input_conformers_only} //= 0;
    $self->{full_conformers} //= 0;
    $self->{selectivity} //= ['R', 'S'];
-   $self->{no_ee} //= 0;
+   $self->{multistep} //= 0;
    $self->{debug} //= 0;
    $self->{nosub} //= 0;
    $self->{record} //= 0;
@@ -246,7 +272,7 @@ sub read_input {
         /[Ii]nput_conformers_only=(\d+)/ && do {$self->{input_conformers_only} = $1; next;};
         /[Ff]ull_conformers=(\d+)/ && do {$self->{full_conformers} = $1; next;};
         /[Ss]electivity=(\S+)/ && do {$self->{selectivity} = [split(/;/, $1)];next;};
-        /[Nn]o_ee=(\d+)/ && do {$self->{no_ee} = $1; next;};
+        /[Mm]ultistep=(\d+)/ && do {$self->{multistep} = $1; next;};
     }
 
     close IN;

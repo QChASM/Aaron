@@ -315,7 +315,21 @@ sub call_g09 {
 
         chmod (0755, $shellfile);
     }
-    system("sh $shellfile");
+
+    my $walltime_sec = $walltime * 3600;
+    eval {
+        local $SIG{ALRM} = sub { die "TIMEOUT\n" };
+        alarm $walltime_sec;
+        eval {
+            system("sh $shellfile");
+        };
+        alarm 0;
+    };
+    alarm 0;
+
+    if ($@) {
+        die unless $@ eq "TIMEOUT\n";
+    }
 }
 
 

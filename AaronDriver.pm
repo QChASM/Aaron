@@ -241,7 +241,7 @@ sub dir_tree {
 
     &$imitate($top_dir_tar, $f_file);
 
-    $arg_parser{multistep} = 1 if ($ts_found && $min_found);
+    $W_Key->{multistep} = 1 if ($ts_found && $min_found);
 
     chdir($current_dir);
 
@@ -436,7 +436,7 @@ sub _analyze_result {
                     ! @{$job->{thermo}} && do { next; };
 
                     my @thermo_rel;
-                    if ($arg_parser{multistep}) {
+                    if ($W_Key->{multistep}) {
                         @thermo_rel = @{ $job->{thermo} };
                     }else {
                         @thermo_rel = map { ($job->{thermo}->[$_] - $min[$_]) * $hart_to_kcal }
@@ -452,7 +452,7 @@ sub _analyze_result {
                 $thermo->{$key}->{geos}->{$geo}->{thermo} = [@thermo_cf];
             }else {
                 for my $i (0..$#{ $jobs->{$geo}->{thermo} }) {
-                    if ($arg_parser{multistep}) {
+                    if ($W_Key->{multistep}) {
                         $thermo->{$key}->{geos}->{$geo}->{thermo}->[$i] =
                             $jobs->{$geo}->{thermo}->[$i];
                     }else {
@@ -471,7 +471,7 @@ sub _analyze_result {
 
     my $data = print_ee($thermo);
 
-    if ($arg_parser{absthermo} || ! $arg_parser{multistep}) {
+    if ($arg_parser{absthermo} || ! $W_Key->{multistep}) {
         $data .= "Absolute thermo";
         $data .= print_ee($thermo, 0, 1);
     }

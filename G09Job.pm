@@ -634,6 +634,10 @@ sub build_com {
         high_method => $high_method,
     );
 
+    if ($self->{Gkey}->{emp_disp}) {
+        $route .= " EmpiricalDispersion=$self->{Gkey}->{emp_disp}";
+    }
+
     ERROR: {    
         if ($error eq 'CONV') {my $scf_change = $route =~ /scf=xqc/ ?
                                                 0 : ($route .= " scf=xqc");
@@ -1314,10 +1318,10 @@ sub check_step {
 
     $self->_check_step();
 
-    if ($self->{status} eq 'running' ||
-        ($self->{status} eq 'done')) {
-        $self->check_reaction() if ($self->{step} > 1);
+    if ($self->{step} == 1 && ($self->{status} ne 'start')) {
+        $self->examine_connectivity();
     }
+    $self->check_reaction() if ($self->{step} > 1);
 }
 
 
@@ -1398,6 +1402,43 @@ sub com_route_footer {
 }
 
 
+sub examine_connectivity {
+
+    my $self = shift;
+
+    my $geometry = $self->{name};
+
+    my $filename = $self->file_name();
+
+    my $catalysis = $self->{catalysis};
+
+    my $fail = $catalysis->examine_connectivity(file=>"$filename.1.com",
+                                                thres=>$self->{Gkey}->{con_thres});
+
+    if ($fail) {
+        $self->{attempt} ++;
+        if ($self->{attempt} > 5) {
+            $self->{status} = 'killed';
+            $self->{msg} = 'killed because of too many attempts';
+            return;
+        }
+
+        $self->{catalysis}->read_geometry("$filename.1.com");
+
+        $self->remove_later_than1();
+
+        $self->{step} = 1;
+        
+        print_message("bond changing uncorrectly, repeating step1 by fixing changed bond");
+
+        $self->build_com( directory => '.');
+        $self->{status} = '2submit';
+
+        $self->{msg} = "repeat step2 due to unexpected bond change, now waiting in the queue ";
+    }
+}
+
+
 sub check_reaction {
 
     my $self = shift;
@@ -1420,7 +1461,7 @@ sub check_reaction {
             return;
         }
 
-        $self->{catalysis}->update_geometry("$filename.1.log");
+        $self->{catalysis}->read_geometry("$filename.1.log");
 
         $self->remove_later_than1(); 
 
@@ -1432,7 +1473,6 @@ sub check_reaction {
         $self->{catalysis}->change_distance( atom1 => $con->[0],
                                              atom2 => $con->[1],
                                        by_distance => $distance );
-        $self->{catalysis}->_update_geometry();
 
         print_message("Changing the distance by $distance A\n");
 
@@ -1451,13 +1491,15 @@ sub remove_later_than1 {
     my $geometry = $self->{name};
 
     my $filename = "$geometry/" . $self->file_name();
+    my $step = $self->{step};
 
     #remove evering thing more than step 2
     foreach my $later_step (1..$self->maxstep()) {
         if (-e "$filename.$later_step.com") {
             print_message("Removing $filename.$later_step.com...\n");
             if ($self->{Wkey}->{record}) {
-                system("mv $filename.$later_step.com $filename.com.$later_step");
+                my $saved_com = $filename . "_attempt$self->{attempt}.$step.com";
+                system("mv $filename.$later_step.com $saved_com");
             }else {
                 system("rm -fr $filename.$later_step.com");
             }
@@ -1466,7 +1508,8 @@ sub remove_later_than1 {
         if (-e "$filename.$later_step.log") {
             print_message("Removing $filename.$later_step.log...\n");
             if ($self->{Wkey}->{record}) {
-                system("mv $filename.$later_step.log $filename.$later_step.log.$later_step");
+                my $saved_log = $filename . "_attempt$self->{attempt}.$step.log";
+                system("mv $filename.$later_step.log $saved_log");
             }else {
                 system("rm -fr $filename.$later_step.log");
             }
@@ -1518,14 +1561,6 @@ sub run_stepX {
             $self->submit();
         }
     }elsif ($self->{status} eq 'failed') {
-        if ($self->{gout}->{geometry}) {
-            $self->{catalysis}->conformer_geometry($self->{gout}->{geometry});
-        }else {
-            my $com = "$file_name.$self->{step}.com";
-
-            $self->{catalysis}->update_geometry($com);
-        }
-    
         $self->{attempt} ++;
         if ($self->{attempt} > 5) {
             $self->{status} = 'killed';
@@ -1582,6 +1617,9 @@ sub _check_step {
                 $self->{status} = 'failed';
                 $self->{error} = $output->error();
                 $self->{err_msg} = $output->{error_msg};
+                if ($geometry->geometry_read()) {
+                    $self->{catalysis}->conformer_geometry($geometry);
+                }
                 if ($self->{Wkey}->{record}) {
                     my $saved_log = $file_name . "_attempt$self->{attempt}.$step.log";
                     system("mv $file_name.$step.log $saved_log");
@@ -1627,4 +1665,24 @@ sub submit {
                     node => $self->{Gkey}->{node} );
     }
 }
+
+
+sub print_status {
+    my $self = shift;
+
+    my $time =localtime; 
+
+    my $msg = "Status at $time:\n";
+    $msg .= "$self->{name} at cycle $self->{cycle}, step $self->{step}, attempt $self->{attempt}\n";
+    
+    if ($self->{error}) {
+        $msg .= "Error found in job: $self->{msg}\n";
+    }
+
+    $msg .= '-' x 80;
+    $msg .= "\n";
+
+    print_message($msg);
+}
+
 
