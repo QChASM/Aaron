@@ -427,12 +427,10 @@ sub examine_connectivity {
 
     my ($broken, $formed) = $self->compare_connectivity(geo_ref=>$geo_ref, thres=>$thres);
 
-    my $fail;
-    for my $constraint (keys %{$broken}, keys %{$formed}) {
-        push(@{ $self->{constraints} }, [[split('-', $constraint)]]);
-        $fail = 1;
-    }
-    return $fail;
+    $broken = [map {[split('-', $_)]} keys %{$broken}];
+    $formed = [map {[split('-', $_)]} keys %{$formed}];
+
+    return ($broken, $formed);
 }
 
 

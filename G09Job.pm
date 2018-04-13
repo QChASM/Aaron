@@ -1259,6 +1259,7 @@ use strict; use warnings;
 use Cwd qw(cwd);
 use Constants qw(:OTHER_USEFUL);
 use AaronOutput qw(print_message close_log);
+use Data::Dumper;
 
 our @ISA = qw(G09Job);
 
@@ -1412,18 +1413,98 @@ sub examine_connectivity {
 
     my $catalysis = $self->{catalysis};
 
-    my $fail = $catalysis->examine_connectivity(file=>"$filename.1.com",
+    my ($broken, $formed) = $catalysis->examine_connectivity(file=>"$filename.1.com",
                                                 thres=>$self->{Gkey}->{con_thres});
+    if (@{$broken} || @{$formed}) {
 
-    if ($fail) {
+        my $Gout = new AaronTools::G09Out(file => "$filename.$self->{step}.log",
+                                          read_opt => 1);
+        my @geos = $Gout->opts();
+
+        my $first_change = 999999;
+
+        for my $bond (@{$broken}, @{$formed}) {
+            my $i = $Gout->bond_change($bond);
+            $first_change = $i if ($i < $first_change);
+        }
+
+        my $geo = $Gout->{opts}->[$first_change];
+
+        my @constraints = map {[@{$_->[0]}]} @{$catalysis->{constraints}};
+
+        for my $bond (@{$broken}) {
+            my @constraints_temp = map {[@$_]} @constraints;
+            @constraints = ();
+            while (@constraints_temp) {
+                my $constraint = shift @constraints_temp;
+                my $atom1;
+                my $atom2;
+
+                if ($constraint->[0] == $bond->[0] ||
+                    ($constraint->[0] == $bond->[1])) {
+                    $atom1 = $constraint->[0];
+                    $atom2 = $constraint->[1];
+                }elsif($constraint->[1] == $bond->[0] ||
+                       ($constraint->[1] == $bond->[1])) {
+                    $atom1 = $constraint->[1];
+                    $atom2 = $constraint->[0];
+                }
+
+                if ($atom1 || $atom2) {
+                    $geo->change_distance(atom1=>$atom1,
+                                          atom2=>$atom2,
+                                    by_distance=>0.1,
+                                      fix_atom1=>1);
+                }else {
+                    push (@constraints, $constraint);
+                }
+            }
+        }
+
+        @constraints = map {[@{$_->[0]}]} @{$catalysis->{constraints}};
+
+        for my $bond (@{$formed}) {
+            my @constraints_temp = map {[@$_]} @constraints;
+            @constraints = ();
+            while (@constraints_temp) {
+                my $constraint = shift @constraints_temp;
+                my $atom1;
+                my $atom2;
+
+                if ($constraint->[0] == $bond->[0] ||
+                    ($constraint->[0] == $bond->[1])) {
+                    $atom1 = $constraint->[0];
+                    $atom2 = $constraint->[1];
+                }elsif($constraint->[1] == $bond->[0] ||
+                       ($constraint->[1] == $bond->[1])) {
+                    $atom1 = $constraint->[1];
+                    $atom2 = $constraint->[0];
+                }
+
+                if ($atom1 && $atom2) {
+                    $geo->change_distance(atom1=>$atom1,
+                                          atom2=>$atom2,
+                                    by_distance=>-0.1,
+                                      fix_atom1=>1);
+                }else {
+                    push (@constraints, $constraint);
+                }
+            }
+        }
+
+        $self->{catalysis}->conformer_geometry($geo);
+
+        for my $bond (@{$broken}, @{$formed}) {
+            push (@{$self->{catalysis}->{constraints}}, [$bond]);
+        }
+
+        #workflow
         $self->{attempt} ++;
         if ($self->{attempt} > 5) {
             $self->{status} = 'killed';
             $self->{msg} = 'killed because of too many attempts';
             return;
         }
-
-        $self->{catalysis}->read_geometry("$filename.1.com");
 
         $self->remove_later_than1();
 
