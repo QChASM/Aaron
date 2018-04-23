@@ -186,6 +186,7 @@ sub _read_key_from_input {
             /\s*[dD]enfit=(\S+)/ && do {$self->{denfit} = $1 unless $self->{denfit}; next;};
             /\s*[cC]harge=(\S+)/ && do {$self->{charge} = $1 unless $self->{charge}; next;};
             /\s*[mM]ult=(\S+)/ && do {$self->{mult} = $1 unless $self->{mult}; next;}; 
+            /\s*[Cc]on_thres=(\S+)/ && do {$self->{con_thres} = $1 unless $self->{con_thres}; next;};
         }
     }
 

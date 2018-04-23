@@ -321,7 +321,7 @@ sub call_g09 {
         local $SIG{ALRM} = sub { die "TIMEOUT\n" };
         alarm $walltime_sec;
         eval {
-            system("sh $shellfile");
+            system("timeout $walltime_sec sh $shellfile");
         };
         alarm 0;
     };

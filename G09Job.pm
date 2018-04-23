@@ -222,6 +222,124 @@ sub _check_step {
 }
 
 
+sub examine_connectivity {
+
+    my $self = shift;
+
+    my $geometry = $self->{name};
+
+    my $filename = $self->file_name();
+
+    my $catalysis = $self->{catalysis};
+
+    my ($broken, $formed) = $catalysis->examine_connectivity(file=>"$filename.2.com",
+                                                thres=>$self->{Gkey}->{con_thres});
+    if (@{$broken} || @{$formed}) {
+
+        my $Gout = new AaronTools::G09Out(file => "$filename.$self->{step}.log",
+                                          read_opt => 1);
+        my $first_change = 999999;
+
+        for my $bond (@{$broken}, @{$formed}) {
+            my $i = $Gout->bond_change($bond);
+            $first_change = $i if ($i < $first_change);
+        }
+
+        my $geo = $Gout->{opts}->[$first_change];
+
+        my @constraints = map {[@{$_->[0]}]} @{$catalysis->{constraints}};
+
+        for my $bond (@{$broken}) {
+            my @constraints_temp = map {[@$_]} @constraints;
+            @constraints = ();
+            while (@constraints_temp) {
+                my $constraint = shift @constraints_temp;
+                my $atom1;
+                my $atom2;
+
+                if ($constraint->[0] == $bond->[0] ||
+                    ($constraint->[0] == $bond->[1])) {
+                    $atom1 = $constraint->[0];
+                    $atom2 = $constraint->[1];
+                }elsif($constraint->[1] == $bond->[0] ||
+                       ($constraint->[1] == $bond->[1])) {
+                    $atom1 = $constraint->[1];
+                    $atom2 = $constraint->[0];
+                }
+
+                if ($atom1 || $atom2) {
+                    $geo->change_distance(atom1=>$atom1,
+                                          atom2=>$atom2,
+                                    by_distance=>0.1,
+                                      fix_atom1=>1);
+                }else {
+                    push (@constraints, $constraint);
+                }
+            }
+        }
+
+        @constraints = map {[@{$_->[0]}]} @{$catalysis->{constraints}};
+
+        for my $bond (@{$formed}) {
+            my @constraints_temp = map {[@$_]} @constraints;
+            @constraints = ();
+            while (@constraints_temp) {
+                my $constraint = shift @constraints_temp;
+                my $atom1;
+                my $atom2;
+
+                if ($constraint->[0] == $bond->[0] ||
+                    ($constraint->[0] == $bond->[1])) {
+                    $atom1 = $constraint->[0];
+                    $atom2 = $constraint->[1];
+                }elsif($constraint->[1] == $bond->[0] ||
+                       ($constraint->[1] == $bond->[1])) {
+                    $atom1 = $constraint->[1];
+                    $atom2 = $constraint->[0];
+                }
+
+                if ($atom1 && $atom2) {
+                    $geo->change_distance(atom1=>$atom1,
+                                          atom2=>$atom2,
+                                    by_distance=>-0.1,
+                                      fix_atom1=>1);
+                }else {
+                    push (@constraints, $constraint);
+                }
+            }
+        }
+
+        $self->{catalysis}->conformer_geometry($geo);
+
+        for my $bond (@{$broken}, @{$formed}) {
+            push (@{$self->{catalysis}->{constraints}}, [$bond]);
+        }
+
+        #workflow
+        $self->{attempt} ++;
+        if ($self->{attempt} > $self->{maxstep}) {
+            $self->{status} = 'killed';
+            $self->{msg} = 'killed because of too many attempts';
+            return;
+        }
+
+        $self->remove_later_than1();
+
+        $self->{step} = 2;
+        
+        print_message("bond changing uncorrectly, repeating step1 by fixing changed bond");
+
+        $self->build_com( directory => '.');
+
+        $self->{constraints} = [grep {$_->[1]} @{ $self->{constraints} }];
+
+        $self->{status} = '2submit';
+
+        $self->{msg} = "repeat step2 due to unexpected bond change, now waiting in the queue ";
+    }
+}
+
+
 sub check_conformers {
     my $self = shift;
    
@@ -881,6 +999,7 @@ sub check_step {
     if ($self->{status} eq 'running' ||
         ($self->{status} eq 'done')) {
         $self->check_reaction() if ($self->{step} > 2);
+        $self->examine_connectivity() if ($self->{step} == 2);
     }
 }
 
@@ -917,8 +1036,8 @@ sub check_reaction {
 
         my $distance = $failed * 0.1;
 
-        $self->{catalysis}->change_distance( atom1 => $con->[0],
-                                             atom2 => $con->[1],
+        $self->{catalysis}->change_distance( atom1 => $con->[0]->[0],
+                                             atom2 => $con->[0]->[1],
                                        by_distance => $distance );
         $self->{catalysis}->_update_geometry();
 
@@ -1147,6 +1266,10 @@ sub check_step {
     my $self = shift;
 
     $self->_check_step();
+    if ($self->{status} eq 'running' ||
+        ($self->{status} eq 'done')) {
+        $self->examine_connectivity() if ($self->{step} == 2);
+    }
 }
 
 
@@ -1419,8 +1542,6 @@ sub examine_connectivity {
 
         my $Gout = new AaronTools::G09Out(file => "$filename.$self->{step}.log",
                                           read_opt => 1);
-        my @geos = $Gout->opts();
-
         my $first_change = 999999;
 
         for my $bond (@{$broken}, @{$formed}) {
@@ -1500,7 +1621,7 @@ sub examine_connectivity {
 
         #workflow
         $self->{attempt} ++;
-        if ($self->{attempt} > 5) {
+        if ($self->{attempt} > $self->{maxstep}) {
             $self->{status} = 'killed';
             $self->{msg} = 'killed because of too many attempts';
             return;
@@ -1513,6 +1634,9 @@ sub examine_connectivity {
         print_message("bond changing uncorrectly, repeating step1 by fixing changed bond");
 
         $self->build_com( directory => '.');
+
+        $self->{constraints} = [grep {$_->[1]} @{ $self->{constraints} }];
+
         $self->{status} = '2submit';
 
         $self->{msg} = "repeat step2 due to unexpected bond change, now waiting in the queue ";
@@ -1534,6 +1658,10 @@ sub check_reaction {
 
     if ($failed) {
 
+        $self->{catalysis}->read_geometry("$filename.1.log");
+
+        $self->remove_later_than1(); 
+
         $self->{cycle} ++;
 
         if ($self->{cycle} > $MAXCYCLE) {
@@ -1542,18 +1670,18 @@ sub check_reaction {
             return;
         }
 
-        $self->{catalysis}->read_geometry("$filename.1.log");
-
-        $self->remove_later_than1(); 
-
-        $self->{step} = 2;
+        $self->{step} = 1;
         $self->{attempt} = 1;
 
-        my $distance = $failed * 0.1;
+        my $distance = $failed * 0.2;
 
-        $self->{catalysis}->change_distance( atom1 => $con->[0],
-                                             atom2 => $con->[1],
+        $self->{catalysis}->change_distance( atom1 => $con->[0]->[0],
+                                             atom2 => $con->[0]->[1],
                                        by_distance => $distance );
+
+        $con->[1] += $distance;
+
+        $self->{catalysis}->printXYZ("$geometry.xyz");
 
         print_message("Changing the distance by $distance A\n");
 
@@ -1569,9 +1697,7 @@ sub remove_later_than1 {
 
     my $self = shift;
 
-    my $geometry = $self->{name};
-
-    my $filename = "$geometry/" . $self->file_name();
+    my $filename = $self->file_name();
     my $step = $self->{step};
 
     #remove evering thing more than step 2
@@ -1579,7 +1705,7 @@ sub remove_later_than1 {
         if (-e "$filename.$later_step.com") {
             print_message("Removing $filename.$later_step.com...\n");
             if ($self->{Wkey}->{record}) {
-                my $saved_com = $filename . "_attempt$self->{attempt}.$step.com";
+                my $saved_com = $filename . "_cycle$self->{cycle}_attempt$self->{attempt}.$later_step.com";
                 system("mv $filename.$later_step.com $saved_com");
             }else {
                 system("rm -fr $filename.$later_step.com");
@@ -1589,7 +1715,7 @@ sub remove_later_than1 {
         if (-e "$filename.$later_step.log") {
             print_message("Removing $filename.$later_step.log...\n");
             if ($self->{Wkey}->{record}) {
-                my $saved_log = $filename . "_attempt$self->{attempt}.$step.log";
+                my $saved_log = $filename . "_cycle$self->{cycle}_attempt$self->{attempt}.$later_step.log";
                 system("mv $filename.$later_step.log $saved_log");
             }else {
                 system("rm -fr $filename.$later_step.log");
@@ -1702,7 +1828,7 @@ sub _check_step {
                     $self->{catalysis}->conformer_geometry($geometry);
                 }
                 if ($self->{Wkey}->{record}) {
-                    my $saved_log = $file_name . "_attempt$self->{attempt}.$step.log";
+                    my $saved_log = $file_name . "_cycle$self->{cycle}_attempt$self->{attempt}.$step.log";
                     system("mv $file_name.$step.log $saved_log");
                 }
             }

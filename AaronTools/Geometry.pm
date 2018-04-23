@@ -512,12 +512,12 @@ sub examine_constraints {
         my $d = $self->distance( atom1 => $bond->[0],
                                  atom2 => $bond->[1] );
         if ($d - $d_con > $CUTOFF->{D_CUTOFF}) {
-            $return = 1;
-            $con_return = $bond;
+            $return = -1;
+            $con_return = $constraint;
             last;
         }elsif ($d_con - $d > $CUTOFF->{D_CUTOFF}) {
-            $return = -1;
-            $con_return = $bond;
+            $return = 1;
+            $con_return = $constraint;
             last;
         }
     }
@@ -545,25 +545,26 @@ sub change_distance {
 
     my ($atom1, $atom2, $distance, 
         $by_distance,
-        $move_atom2, $move_frag) = ( $params{atom1},
+        $fix_atom1, $move_frag) = ( $params{atom1},
+
                                      $params{atom2},
                                      $params{distance},
                                      $params{by_distance},
                                      $params{fix_atom1},
                                      $params{translate_group} );
 
-    $move_atom2 //= 0;
+    $fix_atom1 //= 0;
     $move_frag //= 1;
 
     my ($all_connected_atoms1, $all_connected_atoms2);
     if ($move_frag) {
         $all_connected_atoms2 = $self->get_all_connected($atom2, $atom1);
-        if ($move_atom2) {
+        unless ($fix_atom1) {
             $all_connected_atoms1 = $self->get_all_connected($atom1, $atom2);
         }
     }else {
         $all_connected_atoms2 = [$atom2];
-        if ($move_atom2) {
+        unless ($fix_atom1) {
             $all_connected_atoms1 = [$atom1];
         }
     }
