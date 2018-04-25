@@ -1,0 +1,98 @@
+#!/usr/bin/perl -w
+
+use strict;
+use lib $ENV{'AARON'};
+use lib $ENV{'PERL_LIB'};
+
+use Getopt::Long;
+use Pod::Usage;
+use Math::Trig;
+use AaronTools::Geometry;
+
+sub main {
+    my $files = shift;
+    my %opt   = @_;
+
+    foreach my $file ( @{$files} ) {
+        my $geom = new AaronTools::Geometry();
+        $geom->{name} = $file;
+        $geom->read_geometry($file);
+        unless ( @{ $geom->elements() } ) {
+            die("Cannot read geometry from file\n");
+        }
+
+        $geom->mirror_coords( $opt{axis} );
+
+        # prints to STDOUT if $outfile == '' or saves to infile_mirror-axis.xyz
+		my $outfile = '';
+        if ( $opt{write} ne '-' ) {
+			$outfile = $file =~ s/.*\/(.*)\..*/$1/r;
+			if ($opt{write} ne ''){
+				if ( $opt{write} =~ /.*\/$/ ){
+					$outfile = $opt{write}.$outfile
+				} else {
+					$outfile = $opt{write}.'/'.$outfile
+				}
+			}
+            $outfile .= '_mirror-'.$opt{axis}.'.xyz';
+            print("Saving mirrored coords to $outfile\n");
+        }
+        $geom->printXYZ($outfile);
+    }
+}
+
+my %opt;
+$opt{help}  = '';
+$opt{axis}  = '';
+$opt{write} = '-';
+GetOptions(
+    'help|h'  => \$opt{help},
+    'axis|a=s'  => \$opt{axis},
+    'write|w:s' => \$opt{write} )
+  or pod2usage( {
+      -exitval => 1,
+      -verbose => 1
+  } );
+pod2usage(0) if $opt{help};
+pod2usage( {
+        -message => "Please specify at least one filename\n",
+        -exitval => 1,
+        -verbose => 1
+    } ) if @ARGV < 1;
+pod2usage( {
+        -message => "Please specify x, y, or z to mirror\n",
+        -exitval => 1,
+        -verbose => 1
+    } ) unless ( $opt{axis} and $opt{axis} =~ m/[xXyYzZ]/ );
+
+&main( \@ARGV, %opt );
+
+=pod
+
+=head1 SYNOPSIS
+
+mirror [options] -a x|y|z file [file2 file3 ...]
+
+=head1 OPTIONS
+
+=over
+
+=item B<-a x>, B<--axis x>
+
+ Specify axis perpendicular to reflection plane
+ Options are x, y, or z
+
+=item B<-w [directory]>, B<--write [directory]>
+
+ Write new geometry output to xyz file instead of STDOUT
+ File name will be: <infile_name>_mirror.xyz
+ Directory defaults to current working directory
+
+=item B<-h>, B<--help>
+
+ Print this help message and exit
+
+=back
+
+=cut
+
