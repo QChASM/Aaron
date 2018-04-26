@@ -6,6 +6,7 @@ use lib $ENV{'PERL_LIB'};
 
 use AaronInit qw(init_main %arg_in $ligs_subs);
 use AaronOutput qw(print_ee);
+use Data::Dumper;
 
 #initiate AARON, reading needed information from command line and input files
 init_main();
@@ -39,18 +40,22 @@ sub _analyze_result {
     my @geo = grep{ $_ =~ /^$item\// } sort keys %{$jobs};
 
     my @stereo_geo;
-
     for my $geo (@{ $arg_in{selectivity} }) {
-        push (@stereo_geo,
-              [grep {$_ =~ /\/$geo\//} @geo]);
+        if (my @geo_temp = grep {$_ =~ /\/$geo\//i} @geo) {
+            push (@stereo_geo, [@geo_temp]);
+        }
     }
 
-    @stereo_geo = ([@geo]) unless @stereo_geo;
+    my $no_sele;
+    unless (@stereo_geo) {
+        @stereo_geo = ([@geo]);
+        $no_sele = 1;
+    }
 
     my $thermo = {};
 
     for my $n (0..$#stereo_geo) {
-        my $key = $arg_in{selectivity}->[$n] ? $arg_in{selectivity}->[$n] : 'NONE';
+        my $key = $no_sele ? 'NONE' : $arg_in{selectivity}->[$n];
 
         $thermo->{$key} = {};
         $thermo->{$key}->{geos} = {};
@@ -76,7 +81,6 @@ sub _analyze_result {
             }
         }
     }
-
     return print_ee($thermo, 1);
 }
 
