@@ -1,0 +1,123 @@
+#!/usr/bin/perl -w
+
+use strict;
+use lib $ENV{'AARON'};
+use lib $ENV{'PERL_LIB'};
+
+use Getopt::Long;
+use Pod::Usage;
+use Math::Trig;
+use AaronTools::Geometry;
+
+sub main {
+    my $axis  = shift;
+    my $angle = shift;
+    my $files = shift;
+    my %opt   = @_;
+
+    # perform rotation for each file
+    foreach my $file ( @{$files} ) {
+        my $geom = new AaronTools::Geometry();
+        $geom->{name} = $file;
+        $geom->read_geometry($file);
+        unless ( @{ $geom->elements() } ) {
+            die("Cannot read geometry from file\n");
+        }
+
+        $geom->rotate( $axis, $angle );
+
+		# prints to STDOUT if $outfile == '' or saves to infile_rotate-axis-angle.xyz
+        my $outfile = '';
+        if ( $opt{write} ne '-' ) {
+            $outfile = $file =~ s/.*\/(.*)\..*/$1/r;
+            if ( $opt{write} ne '' ) {
+                if ( $opt{write} =~ /.*\/$/ ) {
+                    $outfile = $opt{write} . $outfile;
+                } else {
+                    $outfile = $opt{write} . '/' . $outfile;
+                }
+            }
+            if ( $opt{radians} ) {
+                $outfile .= '_rotate-' . $axis . '-' . $angle . '.xyz';
+            } else {
+                $outfile .= '_rotate-' . $axis . '-' . rad2deg($angle) . '.xyz';
+            }
+            print("Saving rotated coords to $outfile\n");
+        }
+        $geom->printXYZ($outfile);
+    }
+}
+
+# read in options
+my %opt;
+$opt{help}    = '';
+$opt{radians} = '';
+$opt{write}   = '-'; # '-' indicates no write, '' indicates write to cwd
+GetOptions(
+    'help|h'    => \$opt{help},
+    'radians|r' => \$opt{radians},
+    'write|w:s' => \$opt{write} )
+  or pod2usage( {
+      -exitval => 1,
+      -verbose => 1
+  } );
+pod2usage(0) if $opt{help};
+
+# requiree axis, angle, and original coords
+pod2usage( {
+        -message => "Please provide an axis, an angle, and at least one file\n",
+        -exitval => 1,
+        -verbose => 1
+    } ) if @ARGV < 3;
+
+# axis should be cartesian axis
+my $axis = shift(@ARGV);
+pod2usage( {
+        -message => "Rotation axis must be either x, y, or z axis\n",
+        -exitval => 1,
+        -verbose => 1
+    } ) unless ( $axis =~ m/[xXyYzZ]/ );
+
+# angle should be a number
+my $angle = shift(@ARGV);
+pod2usage( {
+        -message => "Rotation angle must be a number.\n",
+        -exitval => 1,
+        -verbose => 1
+    } ) unless $angle =~ /^-?\d+\.?\d*$/;
+
+# angle should be in radians
+unless ( $opt{radians} ) {
+    $angle = deg2rad($angle);
+}
+
+&main( $axis, $angle, \@ARGV, %opt );
+
+=pod
+
+=head1 SYNOPSIS
+
+mirror [options] axis angle file [file2 file3 ...]
+
+=head1 OPTIONS
+
+=over
+
+=item B<-r>, B<--radians>
+
+ Angle specified in radians (default is degrees)
+
+=item B<-w [directory]>, B<--write [directory]>
+
+ Write new geometry output to xyz file instead of STDOUT
+ File name will be: <infile_name>_rotate-<axis>-<angle>.xyz
+ Directory defaults to current working directory
+
+=item B<-h>, B<--help>
+
+ Print this help message and exit
+
+=back
+
+=cut
+
