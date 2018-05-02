@@ -33,9 +33,9 @@ sub main {
             $geom->rotate( $opt{axis}, $angle );
 
 			# prints to STDOUT if $outfile == '' or saves to infile_rotate-axis-angle.xyz
-            my $outfile = '';
+            my $outfile = $file;
             if ( $opt{write} ne '-' ) {
-                $outfile = $file =~ s/.*\/(.*)\..*/$1/r;
+                $outfile =~ s/.*\/(.*)\..*/$1/;
                 if ( $opt{write} ne '' ) {
                     if ( $opt{write} =~ /.*\/$/ ) {
                         $outfile = $opt{write} . $outfile;

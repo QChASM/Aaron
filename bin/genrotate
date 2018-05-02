@@ -43,12 +43,12 @@ sub main {
             # prints to STDOUT if $opt{write} == ''
             # or saves to infile_genrotate_axis_angle.xyz
             # $opt{write} = path, defaults to cwd
-            my $outfile = '';
+            my $outfile = $file;
             my $axis = join( '_', @{ $opt{vector} } );
             if ( $opt{write} ne '-' ) {
 
                 # strip just file name (no path or file extension)
-                $outfile = $file =~ s/.*\/(.*)\..*/$1/r;
+                $outfile =~ s/.*\/(.*)\..*/$1/;
                 if ( $opt{write} ne '' ) {
 
                     # if no directory specified, write to cwd
