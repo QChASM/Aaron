@@ -14,9 +14,10 @@ sub main {
     my $files  = shift;
     my %opt    = @_;
     my $angle  = $opt{angle};
-    my $vector = V( $opt{vector} );
+    my $vector = V( @{ $opt{vector} } );
     my $nrots  = 0;
 
+    # set angle if equally spaced rotations requested
     unless ( $opt{angle} ) {
         $angle = 2 * pi / $opt{nrots};
     }
@@ -32,18 +33,26 @@ sub main {
                 die("Cannot read geometry from file\n");
             }
 
-            if ( $opt{targets} ) {
+            # rotates target atoms if specified, defaults to all atoms
+            if ( @{ $opt{targets} } ) {
                 $geom->genrotate( $vector, $angle, $opt{targets} );
             } else {
                 $geom->genrotate( $vector, $angle );
             }
 
-   # prints to STDOUT if $outfile == '' or saves to infile_rotate-axis-angle.xyz
+            # prints to STDOUT if $opt{write} == ''
+            # or saves to infile_genrotate_axis_angle.xyz
+            # $opt{write} = path, defaults to cwd
             my $outfile = '';
-            my $axis = join( '_', $opt{vector} );
+            my $axis = join( '_', @{ $opt{vector} } );
             if ( $opt{write} ne '-' ) {
+
+                # strip just file name (no path or file extension)
                 $outfile = $file =~ s/.*\/(.*)\..*/$1/r;
                 if ( $opt{write} ne '' ) {
+
+                    # if no directory specified, write to cwd
+                    # make sure we don't have double path seperators!
                     if ( $opt{write} =~ /.*\/$/ ) {
                         $outfile = $opt{write} . $outfile;
                     } else {
@@ -51,16 +60,16 @@ sub main {
                     }
                 }
                 if ( $opt{radians} ) {
-                    $outfile .=
-                      '_genrotate_' . $opt{axis} . '_' . $angle . '.xyz';
+                    $outfile .= '_genrotate_' . $axis . '_' . $angle . '.xyz';
                 } else {
                     $outfile .=
-                        '_genrotate_'
-                      . $opt{axis} . '_'
-                      . rad2deg($angle) . '.xyz';
+                      '_genrotate_' . $axis . '_' . rad2deg($angle) . '.xyz';
                 }
                 print("Saving rotated coords to $outfile\n");
             }
+
+            # $outfile will be empty string if write to file not requested
+            # printXYZ('') prints to STDOUT
             $geom->printXYZ($outfile);
 
             # increase angle and decrease rotation count
@@ -76,19 +85,21 @@ sub main {
 
 # read in options
 my %opt;
+my @vector;
+my @targets;
 $opt{help}    = '';
-$opt{vector}  = '';
-$opt{angle}   = '';
+$opt{vector}  = \@vector;
+$opt{angle}   = 0;
 $opt{nrots}   = 1;
-$opt{targets} = '';
+$opt{targets} = \@targets;
 $opt{radians} = '';
-$opt{write}   = '-';    # '-' indicates no write, '' indicates write to cwd
+$opt{write}   = '-';         # '-' indicates no write, '' indicates write to cwd
 GetOptions(
     'help|h'         => \$opt{help},
-    'vector|v=f{3}'  => \$opt{vector},
+    'vector|v=f{3}'  => \@vector,
     'angle|a:f'      => \$opt{angle},
     'nrots|n:i'      => \$opt{nrots},
-    'targets|t:s{,}' => \$opt{targets},
+    'targets|t:i{,}' => \@targets,
     'radians|r'      => \$opt{radians},
     'write|w:s'      => \$opt{write} )
   or pod2usage( {
@@ -103,23 +114,23 @@ pod2usage( {
           "Please provide an axis vector, an angle and/or a number of rotations, and at least one file\n",
         -exitval => 1,
         -verbose => 1
-    }
-) unless ( @ARGV > 0 and $opt{vector} and ( $opt{angle} or $opt{nrots} ) );
+    } )
+  unless ( @ARGV > 0 and @{ $opt{vector} } and ( $opt{angle} or $opt{nrots} ) );
 
 pod2usage( {
         -message => "Number of rotations must be a positive integer.\n",
         -exitval => 1,
         -verbose => 1
-    } ) unless ( $opt{nrots} == '' or $opt{nrots} =~ /^\d+$/ );
+    } ) if ( $opt{nrots} < 0 );
 
 # targets supplied as 1-indexed, Aaron uses 0-indexing
-foreach my $t ( $opt{targets} ) {
+foreach my $t ( @{ $opt{targets} } ) {
     $t -= 1;
 }
 
 # angle should be in radians
 unless ( $opt{radians} ) {
-    $angle = deg2rad($angle);
+    $opt{angle} = deg2rad( $opt{angle} );
 }
 
 &main( \@ARGV, %opt );
@@ -139,6 +150,7 @@ genrotate [options] -v x y z -n rotations file [file2 file3 ...]
 =item B<-v x y z>, B<--vector x y z>
 
  The rotation vector defined by the points (0, 0, 0), (x, y, z).
+ Should be space separated.
 
 =item B<-a angle>, B<--angle angle>
 
@@ -160,7 +172,7 @@ genrotate [options] -v x y z -n rotations file [file2 file3 ...]
 =item B<-w [directory]>, B<--write [directory]>
 
  Write new geometry output to xyz file instead of STDOUT
- File name will be: <infile_name>_rotate-<axis>-<angle>.xyz
+ File name will be: <infile_name>_genrotate_<axis>_<angle>.xyz
  Directory defaults to current working directory
 
 =item B<-h>, B<--help>
