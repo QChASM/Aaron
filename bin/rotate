@@ -10,51 +10,72 @@ use Math::Trig;
 use AaronTools::Geometry;
 
 sub main {
-    my $axis  = shift;
-    my $angle = shift;
     my $files = shift;
     my %opt   = @_;
+	my $angle = $opt{angle};
+	my $nrots = 0;
 
-    # perform rotation for each file
-    foreach my $file ( @{$files} ) {
-        my $geom = new AaronTools::Geometry();
-        $geom->{name} = $file;
-        $geom->read_geometry($file);
-        unless ( @{ $geom->elements() } ) {
-            die("Cannot read geometry from file\n");
-        }
+	unless ( $opt{angle} ){
+		$angle = 2*pi / $opt{nrots};
+	}
 
-        $geom->rotate( $axis, $angle );
+	while ( $nrots < $opt{nrots} ) {
+		# perform rotation for each file
+		foreach my $file ( @{$files} ) {
+			my $geom = new AaronTools::Geometry();
+			$geom->{name} = $file;
+			$geom->read_geometry($file);
+			unless ( @{ $geom->elements() } ) {
+				die("Cannot read geometry from file\n");
+			}
 
-		# prints to STDOUT if $outfile == '' or saves to infile_rotate-axis-angle.xyz
-        my $outfile = '';
-        if ( $opt{write} ne '-' ) {
-            $outfile = $file =~ s/.*\/(.*)\..*/$1/r;
-            if ( $opt{write} ne '' ) {
-                if ( $opt{write} =~ /.*\/$/ ) {
-                    $outfile = $opt{write} . $outfile;
-                } else {
-                    $outfile = $opt{write} . '/' . $outfile;
-                }
-            }
-            if ( $opt{radians} ) {
-                $outfile .= '_rotate-' . $axis . '-' . $angle . '.xyz';
-            } else {
-                $outfile .= '_rotate-' . $axis . '-' . rad2deg($angle) . '.xyz';
-            }
-            print("Saving rotated coords to $outfile\n");
-        }
-        $geom->printXYZ($outfile);
-    }
+			$geom->rotate( $opt{axis}, $angle );
+
+			# prints to STDOUT if $outfile == '' or saves to infile_rotate-axis-angle.xyz
+			my $outfile = '';
+			if ( $opt{write} ne '-' ) {
+				$outfile = $file =~ s/.*\/(.*)\..*/$1/r;
+				if ( $opt{write} ne '' ) {
+					if ( $opt{write} =~ /.*\/$/ ) {
+						$outfile = $opt{write} . $outfile;
+					} else {
+						$outfile = $opt{write} . '/' . $outfile;
+					}
+				}
+				if ( $opt{radians} ) {
+					$outfile .= '_rotate-' . $opt{axis} . '-' . $angle . '.xyz';
+				} else {
+					$outfile .= '_rotate-' . $opt{axis} . '-' . rad2deg($angle) . '.xyz';
+				}
+				print("Saving rotated coords to $outfile\n");
+			}
+			$geom->printXYZ($outfile);
+
+			# increase angle and decrease rotation count
+			$nrots += 1;
+			if ( $opt{angle} ) {
+				$angle += $opt{angle};
+			}
+			else {
+				$angle = 2*pi*( $nrots + 1 ) / $opt{nrots};
+			}
+		}
+	}
 }
 
 # read in options
 my %opt;
 $opt{help}    = '';
+$opt{axis} = '';
+$opt{angle} = '';
+$opt{nrots} = 1;
 $opt{radians} = '';
 $opt{write}   = '-'; # '-' indicates no write, '' indicates write to cwd
 GetOptions(
     'help|h'    => \$opt{help},
+	'axis|x=s' => \$opt{axis},
+	'angle|a:i' => \$opt{angle},
+	'nrots|n:i' => \$opt{nrots},
     'radians|r' => \$opt{radians},
     'write|w:s' => \$opt{write} )
   or pod2usage( {
@@ -65,26 +86,29 @@ pod2usage(0) if $opt{help};
 
 # requiree axis, angle, and original coords
 pod2usage( {
-        -message => "Please provide an axis, an angle, and at least one file\n",
+        -message => "Please provide an axis, an angle and/or a number of rotations, and at least one file\n",
         -exitval => 1,
         -verbose => 1
-    } ) if @ARGV < 3;
+	} ) unless (@ARGV > 0 and $opt{axis} and ($opt{angle} or $opt{nrots}));
 
 # axis should be cartesian axis
-my $axis = shift(@ARGV);
 pod2usage( {
         -message => "Rotation axis must be either x, y, or z axis\n",
         -exitval => 1,
         -verbose => 1
-    } ) unless ( $axis =~ m/[xXyYzZ]/ );
+    } ) unless ( $opt{axis} =~ m/[xXyYzZ]/ );
 
-# angle should be a number
-my $angle = shift(@ARGV);
+# angle and number of rotations should be a number
 pod2usage( {
         -message => "Rotation angle must be a number.\n",
         -exitval => 1,
         -verbose => 1
-    } ) unless $angle =~ /^-?\d+\.?\d*$/;
+    } ) unless ( $opt{angle} == '' or $opt{angle} =~ /^-?\d+\.?\d*$/);
+pod2usage( {
+		-message => "Number of rotations must be a positive integer.\n",
+		-exitval => 1,
+		-verbose => 1
+	} ) unless ( $opt{nrots} == '' or $opt{nrots} =~ /^\d+$/ );
 
 # angle should be in radians
 unless ( $opt{radians} ) {
@@ -97,11 +121,26 @@ unless ( $opt{radians} ) {
 
 =head1 SYNOPSIS
 
-mirror [options] axis angle file [file2 file3 ...]
+mirror [options] -x x|y|z -a angle [-n repeat] file [file2 file3 ...]
+
+mirror [options] -x x|y|z -n rotations file [file2 file3 ...]
 
 =head1 OPTIONS
 
 =over
+
+=item B<-x axis>, B<--axis axis>
+
+ Specify rotation about x, y, or z axis.
+
+=item B<-a angle>, B<--angle angle>
+
+ Specify the angle to rotate.
+
+=item B<-n num>, B<--nrot num>
+
+ If used with --angle specified, repeats the rotation <num> times.
+ If used without --angle specified, performs <num> equally spaced rotations (implies angle=360/num).
 
 =item B<-r>, B<--radians>
 

@@ -1,0 +1,173 @@
+#!/usr/bin/perl -w
+
+use strict;
+use lib $ENV{'AARON'};
+use lib $ENV{'PERL_LIB'};
+
+use Getopt::Long;
+use Pod::Usage;
+use Math::Trig;
+use Math::Vector::Real;
+use AaronTools::Geometry;
+
+sub main {
+    my $files  = shift;
+    my %opt    = @_;
+    my $angle  = $opt{angle};
+    my $vector = V( $opt{vector} );
+    my $nrots  = 0;
+
+    unless ( $opt{angle} ) {
+        $angle = 2 * pi / $opt{nrots};
+    }
+
+    while ( $nrots < $opt{nrots} ) {
+
+        # perform rotation for each file
+        foreach my $file ( @{$files} ) {
+            my $geom = new AaronTools::Geometry();
+            $geom->{name} = $file;
+            $geom->read_geometry($file);
+            unless ( @{ $geom->elements() } ) {
+                die("Cannot read geometry from file\n");
+            }
+
+            if ( $opt{targets} ) {
+                $geom->genrotate( $vector, $angle, $opt{targets} );
+            } else {
+                $geom->genrotate( $vector, $angle );
+            }
+
+   # prints to STDOUT if $outfile == '' or saves to infile_rotate-axis-angle.xyz
+            my $outfile = '';
+            my $axis = join( '_', $opt{vector} );
+            if ( $opt{write} ne '-' ) {
+                $outfile = $file =~ s/.*\/(.*)\..*/$1/r;
+                if ( $opt{write} ne '' ) {
+                    if ( $opt{write} =~ /.*\/$/ ) {
+                        $outfile = $opt{write} . $outfile;
+                    } else {
+                        $outfile = $opt{write} . '/' . $outfile;
+                    }
+                }
+                if ( $opt{radians} ) {
+                    $outfile .=
+                      '_genrotate_' . $opt{axis} . '_' . $angle . '.xyz';
+                } else {
+                    $outfile .=
+                        '_genrotate_'
+                      . $opt{axis} . '_'
+                      . rad2deg($angle) . '.xyz';
+                }
+                print("Saving rotated coords to $outfile\n");
+            }
+            $geom->printXYZ($outfile);
+
+            # increase angle and decrease rotation count
+            $nrots += 1;
+            if ( $opt{angle} ) {
+                $angle += $opt{angle};
+            } else {
+                $angle = 2 * pi * ( $nrots + 1 ) / $opt{nrots};
+            }
+        }
+    }
+}
+
+# read in options
+my %opt;
+$opt{help}    = '';
+$opt{vector}  = '';
+$opt{angle}   = '';
+$opt{nrots}   = 1;
+$opt{targets} = '';
+$opt{radians} = '';
+$opt{write}   = '-';    # '-' indicates no write, '' indicates write to cwd
+GetOptions(
+    'help|h'         => \$opt{help},
+    'vector|v=f{3}'  => \$opt{vector},
+    'angle|a:f'      => \$opt{angle},
+    'nrots|n:i'      => \$opt{nrots},
+    'targets|t:s{,}' => \$opt{targets},
+    'radians|r'      => \$opt{radians},
+    'write|w:s'      => \$opt{write} )
+  or pod2usage( {
+      -exitval => 1,
+      -verbose => 1
+  } );
+pod2usage(0) if $opt{help};
+
+# requires axis vector, angle or number of rotations, and at least one file
+pod2usage( {
+        -message =>
+          "Please provide an axis vector, an angle and/or a number of rotations, and at least one file\n",
+        -exitval => 1,
+        -verbose => 1
+    }
+) unless ( @ARGV > 0 and $opt{vector} and ( $opt{angle} or $opt{nrots} ) );
+
+pod2usage( {
+        -message => "Number of rotations must be a positive integer.\n",
+        -exitval => 1,
+        -verbose => 1
+    } ) unless ( $opt{nrots} == '' or $opt{nrots} =~ /^\d+$/ );
+
+# targets supplied as 1-indexed, Aaron uses 0-indexing
+foreach my $t ( $opt{targets} ) {
+    $t -= 1;
+}
+
+# angle should be in radians
+unless ( $opt{radians} ) {
+    $angle = deg2rad($angle);
+}
+
+&main( \@ARGV, %opt );
+
+=pod
+
+=head1 SYNOPSIS
+
+genrotate [options] -v x y z -a angle [-n repeat] file [file2 file3 ...]
+
+genrotate [options] -v x y z -n rotations file [file2 file3 ...]
+
+=head1 OPTIONS
+
+=over
+
+=item B<-v x y z>, B<--vector x y z>
+
+ The rotation vector defined by the points (0, 0, 0), (x, y, z).
+
+=item B<-a angle>, B<--angle angle>
+
+ The angle of rotation.
+
+=item B<-n num>, B<--nrot num>
+
+ If used with --angle specified, repeats the rotation <num> times.
+ If used without --angle specified, performs <num> equally spaced rotations (implies angle=360/num).
+
+=item B<-t list>, B<--targets list>
+
+ List of atom numbers to rotate (1-indexed). Defaults to all atoms.
+
+=item B<-r>, B<--radians>
+
+ Angle specified in radians (default is degrees).
+
+=item B<-w [directory]>, B<--write [directory]>
+
+ Write new geometry output to xyz file instead of STDOUT
+ File name will be: <infile_name>_rotate-<axis>-<angle>.xyz
+ Directory defaults to current working directory
+
+=item B<-h>, B<--help>
+
+ Print this help message and exit
+
+=back
+
+=cut
+
