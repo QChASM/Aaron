@@ -33,8 +33,9 @@ sub main {
             $geom->rotate( $opt{axis}, $angle );
 
 			# prints to STDOUT if $outfile == '' or saves to infile_rotate-axis-angle.xyz
-            my $outfile = $file;
+            my $outfile = '';
             if ( $opt{write} ne '-' ) {
+				$outfile = $file;
                 $outfile =~ s/.*\/(.*)\..*/$1/;
                 if ( $opt{write} ne '' ) {
                     if ( $opt{write} =~ /.*\/$/ ) {
@@ -91,7 +92,7 @@ pod2usage( {
           "Please provide an axis, an angle and/or a number of rotations, and at least one file\n",
         -exitval => 1,
         -verbose => 1
-    } ) unless ( @ARGV > 0 and $opt{axis} and ( $opt{angle} or $opt{nrots} ) );
+    } ) unless ( @ARGV > 0 and $opt{axis} and ( $opt{angle} or $opt{nrots} > 1 ) );
 
 # axis should be cartesian axis
 pod2usage( {
@@ -100,7 +101,7 @@ pod2usage( {
         -verbose => 1
     } ) unless ( $opt{axis} =~ m/[xXyYzZ]/ );
 
-# number of rotations should be a positive number (defaults to zero)
+# number of rotations should be a positive number (defaults to 1)
 pod2usage( {
         -message => "Number of rotations must be a positive integer.\n",
         -exitval => 1,

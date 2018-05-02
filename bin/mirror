@@ -24,8 +24,9 @@ sub main {
         $geom->mirror_coords( $opt{axis} );
 
         # prints to STDOUT if $outfile == '' or saves to infile_mirror-axis.xyz
-		my $outfile = $file;
+		my $outfile = '';
         if ( $opt{write} ne '-' ) {
+			$outfile = $file;
 			$outfile =~ s/.*\/(.*)\..*/$1/;
 			if ($opt{write} ne ''){
 				if ( $opt{write} =~ /.*\/$/ ){

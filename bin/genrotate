@@ -43,10 +43,10 @@ sub main {
             # prints to STDOUT if $opt{write} == ''
             # or saves to infile_genrotate_axis_angle.xyz
             # $opt{write} = path, defaults to cwd
-            my $outfile = $file;
+            my $outfile = '';
             my $axis = join( '_', @{ $opt{vector} } );
             if ( $opt{write} ne '-' ) {
-
+				$outfile = $file;
                 # strip just file name (no path or file extension)
                 $outfile =~ s/.*\/(.*)\..*/$1/;
                 if ( $opt{write} ne '' ) {
@@ -115,7 +115,7 @@ pod2usage( {
         -exitval => 1,
         -verbose => 1
     } )
-  unless ( @ARGV > 0 and @{ $opt{vector} } and ( $opt{angle} or $opt{nrots} ) );
+  unless ( @ARGV > 0 and @{ $opt{vector} } and ( $opt{angle} or $opt{nrots} > 1 ) );
 
 pod2usage( {
         -message => "Number of rotations must be a positive integer.\n",
