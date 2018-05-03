@@ -10,8 +10,8 @@ use AaronInit qw(%arg_in %arg_parser $system $parent $jobname $ligs_subs);
 use Cwd;
 use Exporter qw(import);
 
-our @EXPORT = qw(&init_log print_message print_params close_logfile 
-                 clean_up print_ee print_status);
+our @EXPORT = qw(&init_log print_message print_params terminate_AARON 
+                 clean_up print_ee print_status close_log sleep_AARON);
 
 my $ol;
 my $out_file;
@@ -327,7 +327,7 @@ sub print_status {
 
 
 sub print_ee {
-    my ($thermo, $absolute) = @_;
+    my ($thermo, $absolute_only, $absolute) = @_;
 
     my $data = '';
 
@@ -343,7 +343,7 @@ sub print_ee {
         }
 
         foreach my $thermo (@{$thermo}) {
-            if ($absolute) {
+            if ($absolute_only || $arg_parser{multistep} || $absolute) {
                 $data .= sprintf "%13.4f", $thermo;
             }else {
                 $data .= sprintf "%10.1f", $thermo;
@@ -353,7 +353,7 @@ sub print_ee {
     };
 
     my @data_keys;
-    if ($absolute) {
+    if ($absolute_only) {
         @data_keys = sort grep {$thermo->{$_}->{found}} keys %{ $thermo };
     }else {
         @data_keys = sort grep {@{$thermo->{$_}->{sum}}} keys %{ $thermo };
@@ -397,7 +397,7 @@ sub print_ee {
 
 
     if ($arg_in{high_method}) {
-        if ($absolute) {
+        if ($absolute_only || $arg_parser{multistep} || $absolute) {
             $data .= sprintf "%19s%13s%13s%13s%13s%13s%13s%13s\n", 'E', 'H', 'G', 'G_Grimme',
                                                     'E\'', 'H\'', 'G\'', 'G_Grimme\'';
         }else {
@@ -405,7 +405,7 @@ sub print_ee {
                                                     'E\'', 'H\'', 'G\'', 'G_Grimme\'';
         }
     }else {
-        if ($absolute) {
+        if ($absolute_only || $arg_parser{multistep} || $absolute) {
             $data .= sprintf "%19s%13s%13s%13s\n", 'E', 'H', 'G', 'G_Grimme',
         }else {
             $data .= sprintf "%16s%10s%10s%10s\n", 'E', 'H', 'G', 'G_Grimme',
@@ -436,7 +436,7 @@ sub print_ee {
 
             $geo = (split(/\//, $geo))[-1];
 
-            if ($absolute) {
+            if ($absolute_only && $thermo_geo->{conformers}) {
                 $data .= sprintf "%-6s\n", $geo;
             }else {
                 &$print_thermo( name => $geo, 
@@ -450,7 +450,7 @@ sub print_ee {
                                        cf => 1) if @{ $thermo_geo->{conformers}->{$cf} };
                 }
             }
-            $data .= '-' x 86 . "\n" if (!$absolute && @{ $thermo_geo->{thermo} });
+            $data .= '-' x 86 . "\n" if (!$absolute_only && @{ $thermo_geo->{thermo} });
         }
         $data .= "\n";
     }
@@ -483,10 +483,28 @@ sub clean_up {
 } #End clean_up
 
 
-sub close_logfile {
+sub close_log {
     my $date = localtime;
     print $ol "AARON stopped $date\n";
     close ($ol);
+}
+
+
+sub terminate_AARON {
+    print_message("Aaron finished, terminated normally\n");
+    clean_up($parent)
+    &close_log();
+}
+
+
+sub sleep_AARON {
+    print  "Aaron will check for next cycle after $arg_parser{sleeptime} seconds\n" .
+           " Sleeping...\n";
+    close ($ol);
+
+    sleep($arg_parser{sleeptime});
+
+    open $ol, ">>$out_file" or die "Can't open $out_file\n";
 }
 
 1;

@@ -4,53 +4,50 @@ use strict; use warnings;
 use lib $ENV{'AARON'};
 use lib $ENV{'PERL_LIB'};
 
-my $json;
+my $HOME = $ENV{'HOME'};
+my $AARON = $ENV{'AARON'};
+
+use Constants qw(:INFORMATION :THEORY :PHYSICAL :SYSTEM :JOB_FILE :OTHER_USEFUL);
+use Pod::Usage;
+
+my @authors = @{ INFO->{AUTHORS} };
+my $version = INFO->{VERSION};
+my $lastupdate = INFO->{LASTUPDATE};
+
 my $module = {};
 #Check necessary modules are installed
+my $helpMsg = "\nAARON: An Automated Reaction Optimizer for new catalyst\n".
+              "- Computational toolkit to aid in optimizing transition states with the Gaussian09 quantum chemistry software.\n\n".
+              "Authors: @authors.\n\nLast Update: $lastupdate\n\n".
+              "AARON automates the optimization of transition states for a wide variety of metal-free asymmetric reactions.\n".
+              "Based on a library of TS structures previously computed using model catalysts, \n".
+              "AARON replaces the model catalyst with a user-supplied catalyst and then performs a prescribed series of \n".
+              "constrained and uncontrained optimizations to arrive at final predicted structures and energies for all transition states.\n";
+
+#arguments for AARON taking from command line
+our %arg_parser = ( sleeptime => SLEEP_TIME );
+&read_args();
+
 &check_modules();
 
 use Cwd qw(getcwd);
 use Getopt::Long;
-use Constants qw(:INFORMATION :THEORY :PHYSICAL :SYSTEM :JOB_FILE :OTHER_USEFUL);
 use Exporter qw(import);
 use AaronTools::Atoms qw(:BASIC :LJ);
 use Data::Dumper;
 
 #default values for some argument
 
-my @authors = @{ INFO->{AUTHORS} };
-my $version = INFO->{VERSION};
-my $lastupdate = INFO->{LASTUPDATE};
-
-our @EXPORT = qw(%arg_in %arg_parser $ligs_subs $parent $jobname $MAXSTEP
+our @EXPORT = qw(%arg_in %arg_parser $ligs_subs $parent $jobname
                  $template_job $system init_main grab_cata_coords write_status);
 
 my $TS_lib = NAMES->{TS_LIB};
 my $LIG_OLD = NAMES->{LIG_OLD};
 my $LIG_NONE = NAMES->{LIG_NONE};
-my $HOME = $ENV{'HOME'};
-my $AARON = $ENV{'AARON'};
 our $jobname;
 my $masses = MASS;
 our $parent = getcwd();
-our $MAXSTEP = MAXSTEP;
-
-my $helpMsg = "\nAARON: An Automated Reaction Optimizer for Non-metal-catalyzed reactions  - Computational toolkit to aid in optimizing transition states with the Gaussian09 quantum chemistry software.\n\nAuthors: @authors.\n\nLast Update: $lastupdate\n\nAARON automates the optimization of transition states for a wide variety of metal-free asymmetric reactions. Based on a library of TS structures previously computed using model catalysts, AARON replaces the model catalyst with a user-supplied catalyst and then performs a prescribed series of constrained and uncontrained optimizations to arrive at final predicted structures and energies for all transition states.  
-
-Command Line Options
-     \"-debug\"    - Runs all optimizations using the PM6 semi-empirical method with a wall time of 2 hours.
-     \"-nosub\"    - Builds .com files for the current step without submitting anything
-     \"-method\"   - allows user to set method 
-     \"-basis\"    - allows user to set basis
-     \"-record\"   -failed cycles will be saved rather than cleaned up.
-     \"-short\"    - Runs all optimization with a wall time of 2 hours.
-     \"-sleep\"    - Sleeping time for Aaron between each two cycles.
-
-     NOTE: some of these don't work yet in version $version\n
-";
-
-#arguments for AARON taking from command line
-our %arg_parser;
+my $input_file;
 
 #content of template job file
 our $template_job = {};
@@ -115,23 +112,11 @@ sub check_modules {
     my $msg = '';
     my $quit = 0;
     for my $mod (sort keys %$module) {
-        if ($mod eq 'XS') {
-            if (! $module->{$mod}->{install}) {
-                $msg .= "No $module->{$mod}->{mod} found in the perl library. " .
-                        "Aaron will make new status hash anyway and not use restart modes. " .
-                        "But we suggest you to install this module. " .
-                        "Then Aaron can run in a better way.\n";
-                $json = 0;
-            }else {
-                $json = 1;
-            }
-        }else {
-            if (! $module->{$mod}->{install}) {
-                $msg .= "No $module->{$mod}->{mod} found in the perl library. "  .
-                        "This is fatal to Aaron, Aaron will quit at this time. " .
-                        "Please install that module.\n";
-                $quit = 1;
-            }
+        if (! $module->{$mod}->{install}) {
+            $msg .= "No $module->{$mod}->{mod} found in the perl library. "  .
+                    "This is fatal to Aaron, Aaron will quit at this time. " .
+                    "Please install that module.\n";
+            $quit = 1;
         }
     }
     print $msg;
@@ -148,27 +133,39 @@ sub read_args{
     GetOptions(
         'debug' => \$arg_parser{debug},
         'nosub' => \$arg_parser{nosub},
-        'help' => \$arg_parser{help},
+        'help|h' => \$arg_parser{help},
         'restart' => \$arg_parser{restart},
         'record' => \$arg_parser{record},
         'short' => \$arg_parser{short},
+        'multistep' => \$arg_parser{multistep},
+        'absthermo' => \$arg_parser{absthermo},
         'sleep=s' => \$arg_parser{sleeptime},
-    ) or die ("Error in command line arguments\n $helpMsg");
+    ) or pod2usage (
+        -input => "$AARON/pod_ref",
+        -exitval => 1,
+        -verbose => 1 );
 
-    if ($arg_parser{help}) {
-        print $helpMsg;
-        exit(1);
-    }
-    unless ($arg_parser{sleeptime}) {
-        $arg_parser{sleeptime} = SLEEP_TIME;
-    }
+    pod2usage(
+        -msg => $helpMsg,
+        -input => "$AARON/pod_ref",
+        -exitval => 1,
+        -verbose => 1) if $arg_parser{help};
+
+    ($input_file) = grep { $_ =~ /\.in$/ } @ARGV;
+
+    $input_file or pod2usage (
+        -msg => "A input file must be provided\n",
+        -input => "$AARON/pod_ref",
+        -exitval => 1,
+        -verbose => 0 );
 }
 
 
 #read arguments from input file
 sub read_params {
-    my $input_file = &find_input();
-    open my $in_h, "< $input_file" or die "Can't open job_info!";
+    open my $in_h, "< $input_file" or die "Can't open $input_file:$!\n";
+
+    ($jobname) = $input_file =~ /(\S+)\.in/; 
 
     my $lig = {};
     my $sub = {};
@@ -336,9 +333,7 @@ sub read_params {
         $level->check_gen($arg_in{gen});
     }
 
-    unless ($arg_in{high_method}) {
-        $MAXSTEP--;
-    }else {
+    if ($arg_in{high_method}){
         unless ($arg_in{high_basis}->initiated()) {
             $arg_in{high_basis} = $arg_in{basis};
         }
@@ -438,26 +433,10 @@ sub read_status {
 }
 
 
-sub find_input {
-    opendir (DIR, '.') or die "Cannot open launch directory\n";
-    my @files = readdir(DIR);
-    my $input_file;
-    for (@files) {
-        /(\S+)\.in/ && do {
-            $jobname = $1;
-            $input_file = $_;
-            last;
-        };
-    }
-    return $input_file;
-}
-
-
 #main function to initiate Aaron job
 sub init_main {
     print "Preparing to run transition state searches...\n";
     sleep(2);
-    &read_args();
     &read_params();
     &get_job_template();
     &read_status();
@@ -681,4 +660,5 @@ sub footer {
     return $return;
 }
 
-1;
+
+1

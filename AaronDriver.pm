@@ -8,7 +8,7 @@ use lib $ENV{'PERL_LIB'};
 use Constants qw(:THEORY :PHYSICAL :OTHER_USEFUL :COMPARE);
 use AaronInit qw(%arg_in %arg_parser $parent
                  $ligs_subs $template_job $system grab_cata_coords);
-use AaronOutput qw(print_message close_logfile print_ee);
+use AaronOutput qw(print_message print_ee);
 use AaronTools::Catalysis;
 use G09Job;
 
@@ -92,7 +92,7 @@ sub _make_directories {
                 mkdir "$sub";
             }
 
-            &dir_tree( target => $arg_in{TS_path} . "$arg_in{template}/", 
+            &dir_tree( target => $arg_in{TS_path} . "$arg_in{template}", 
                        substrate => $sub,
                        ligand => $lig_ali,
                   no_new_subs => $arg_in{input_conformers_only} );
@@ -113,7 +113,7 @@ sub _make_directories {
                     print_message($msg);
                 }
 
-                &dir_tree( target => $arg_in{TS_path} . "$arg_in{template}/",
+                &dir_tree( target => $arg_in{TS_path} . "$arg_in{template}",
                            ligand => $lig_ali );
             }
         }
@@ -121,7 +121,7 @@ sub _make_directories {
         if (!-d $lig_ali) {
             mkdir "$lig_ali";
         }
-        &dir_tree( target => $arg_in{TS_path} . "$arg_in{template}/", 
+        &dir_tree( target => $arg_in{TS_path} . "$arg_in{template}", 
                    ligand => $lig_ali,
               no_new_subs => $arg_in{input_conformers_only} );
 
@@ -130,7 +130,7 @@ sub _make_directories {
                 mkdir "$sub";
             }
 
-            my $top_dir_tar = "$parent/$lig_ali/$lig_ali" . "_XYZ/";
+            my $top_dir_tar = "$parent/$lig_ali/$lig_ali" . "_XYZ";
             &dir_tree( target => $top_dir_tar, 
                        substrate => $sub,
                        ligand => $lig_ali,
@@ -169,14 +169,14 @@ sub dir_tree {
         if (! -d $substrate) {
             mkdir $substrate;
         }
-        $top_dir_make = "$substrate/";
+        $top_dir_make = "$substrate";
         $substituents->{substrate} = 
             $ligs_subs->{$ligand}->{substrate}->{$substrate};
     }else {
         if (! -d $ligand) {
             mkdir $ligand;
         }
-        $top_dir_make = "$ligand/";
+        $top_dir_make = "$ligand";
         if ($ligs_subs->{$ligand}->{ligand} ne $LIG_OLD &&
             ($ligs_subs->{$ligand}->{ligand} ne $LIG_NONE)) {
             $new_ligand = $ligs_subs->{$ligand}->{ligand};
@@ -198,13 +198,13 @@ sub dir_tree {
         if ($name =~ /(\S+).xyz/) {
             my $extend = $1;
             my $tempdir = cwd;
-            if ($tempdir =~ /$top_dir_tar(\S+)/) {
+            if ($tempdir =~ /$top_dir_tar(\S+)?/) {
                 
-                my $newdir = $top_dir_make . $1 . "/$extend";
+                my $newdir = $1 ? $top_dir_make . $1 . "/$extend" : $top_dir_make . "/$extend";
                 my $head = $newdir; $head =~ s/\/Cf\d+$//;
 
                 unless ($cata_read->{$newdir}) {
-                    print "Preparing guessed TS for $newdir...\n";
+                    print "Preparing guessed initial structure for $newdir...\n";
                     #make distance hashes for each geometry
                     my $catalysis = new AaronTools::Catalysis( name => $extend,
                                                        substituents => $substituents,
@@ -239,6 +239,7 @@ sub dir_tree {
     #make paths and initialize eevery geometry to be on step0 1st attempt
     foreach my $newdir (keys %{ $new_dir }) {
         my $cat_temp = $new_dir->{$newdir}->{catalysis};
+
         my $cf_num = $cat_temp->number_of_conformers();
 
         #extends_all = (Cf1 ,Cf2, Cf3, Cf4, Cf5)
@@ -246,7 +247,7 @@ sub dir_tree {
         my $extend = $new_dir->{$newdir}->{extend};
         my @extends_new;
 
-        if ($cat_temp > 1) {
+        if ($cat_temp->number_of_conformers() > 1) {
             my ($extend_first) = $extend =~ /[Cc]f(\d+)/;
             $extend_first //= 1;
             $extend_first = ($extend_first - 1) * $cf_num + 1;
@@ -271,9 +272,22 @@ sub dir_tree {
 
             my $head = $new; $head =~ s/\/Cf\d+//;
             if ( ! exists $status->{$head}) {
-                $status->{$head} = new G09Job( name => $head,
-                                          catalysis => $new_dir->{$newdir}->{catalysis} );
+                my @pattern = split('/', $head);
+                my $state = $pattern[-1];
+
+                if ($state =~ /^ts/i) {
+                    $status->{$head} = new G09Job_TS( 
+                        name => $head,
+                        catalysis => $new_dir->{$newdir}->{catalysis} 
+                    );
+                }elsif ($state =~ /^min/i) {
+                    $status->{$head} = new G09Job_MIN(
+                        name => $head,
+                        catalysis => $new_dir->{$newdir}->{catalysis}
+                    );
+                }
             }elsif (%{$status->{$head}->{catalysis}}) {
+
                 $status->{$head}->{catalysis}->conformer_geometry($new_dir->{$newdir}->{catalysis});
             }else {
                 $status->{$head}->{catalysis} = $new_dir->{$newdir}->{catalysis};
@@ -374,16 +388,21 @@ sub _analyze_result {
     my @stereo_geo;
 
     for my $geo (@{ $arg_in{selectivity} }) {
-        push (@stereo_geo,
-              [grep {$_ =~ /\/$geo\//} @geo]);
+        if (my @geo_temp = grep {$_ =~ /\/$geo\//i} @geo) {
+            push (@stereo_geo, [@geo_temp]);
+        }
     }
 
-    @stereo_geo = ([@geo]) unless @stereo_geo;
+    my $no_sele;
+    unless (@stereo_geo) {
+        @stereo_geo = ([@geo]);
+        $no_sele = 1;
+    }
 
     my $thermo = {};
 
     for my $n (0..$#stereo_geo) {
-        my $key = $arg_in{selectivity}->[$n] ? $arg_in{selectivity}->[$n] : 'NONE';
+        my $key = $no_sele ? 'NONE' : $arg_in{selectivity}->[$n];
         $thermo->{$key} = {};
         $thermo->{$key}->{sum} = [];
         $thermo->{$key}->{geos} = {};
@@ -399,8 +418,14 @@ sub _analyze_result {
 
                     ! @{$job->{thermo}} && do { next; };
 
-                    my @thermo_rel = map { ($job->{thermo}->[$_] - $min[$_]) * $hart_to_kcal }
-                                      (0..$#{ $job->{thermo} });
+                    my @thermo_rel;
+                    if ($arg_parser{multistep}) {
+                        @thermo_rel = @{ $job->{thermo} };
+                    }else {
+                        @thermo_rel = map { ($job->{thermo}->[$_] - $min[$_]) * $hart_to_kcal }
+                                          (0..$#{ $job->{thermo} });
+                    }
+
                     for my $i (0..$#thermo_rel) {
                         $thermo_cf_exp->[$i] += exp(-$thermo_rel[$i]/$RT);
                     }
@@ -410,8 +435,13 @@ sub _analyze_result {
                 $thermo->{$key}->{geos}->{$geo}->{thermo} = [@thermo_cf];
             }else {
                 for my $i (0..$#{ $jobs->{$geo}->{thermo} }) {
-                    $thermo->{$key}->{geos}->{$geo}->{thermo}->[$i] = 
-                        ($jobs->{$geo}->{thermo}->[$i] - $min[$i]) * $hart_to_kcal;
+                    if ($arg_parser{multistep}) {
+                        $thermo->{$key}->{geos}->{$geo}->{thermo}->[$i] =
+                            $jobs->{$geo}->{thermo}->[$i];
+                    }else {
+                        $thermo->{$key}->{geos}->{$geo}->{thermo}->[$i] = 
+                            ($jobs->{$geo}->{thermo}->[$i] - $min[$i]) * $hart_to_kcal;
+                    }
                 }
             }
 
@@ -422,7 +452,14 @@ sub _analyze_result {
         }
     }
 
-    return print_ee($thermo);
+    my $data = print_ee($thermo);
+
+    if ($arg_parser{absthermo} || ! $arg_parser{multistep}) {
+        $data .= "Absolute thermo";
+        $data .= print_ee($thermo, 0, 1);
+    }
+
+    return $data;
 }
             
 

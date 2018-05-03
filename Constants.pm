@@ -90,7 +90,11 @@ use constant STANDARD_PRESSURE => 101317;
 
 #Other useful constants
 use constant LAUNCH_DIR => cwd;
-use constant MAXSTEP => 5;
+use constant MAXSTEP => {
+    TS => 5,
+    INT => 4,
+};
+
 use constant MAX_LAUNCH_FAILED => 5;
 use constant MAX_CYCLE => 4;
 use constant SHORT_WALL => 2;
