@@ -18,7 +18,8 @@ sub main {
         $geom->{name} = $file;
         $geom->read_geometry($file);
         unless ( @{ $geom->elements() } ) {
-            die("Cannot read geometry from file\n");
+			print{*STDERR}("Couldn't read geometry: $file\n");
+			next;
         }
 
         $geom->mirror_coords( $opt{axis} );
@@ -44,11 +45,11 @@ sub main {
 
 my %opt;
 $opt{help}  = '';
-$opt{axis}  = '';
+$opt{axis}  = 'x';
 $opt{write} = '-';
 GetOptions(
     'help|h'  => \$opt{help},
-    'axis|a=s'  => \$opt{axis},
+    'axis|x=s'  => \$opt{axis},
     'write|w:s' => \$opt{write} )
   or pod2usage( {
       -exitval => 1,
@@ -64,7 +65,7 @@ pod2usage( {
         -message => "Please specify x, y, or z to mirror\n",
         -exitval => 1,
         -verbose => 1
-    } ) unless ( $opt{axis} and $opt{axis} =~ m/[xXyYzZ]/ );
+    } ) unless ( $opt{axis} =~ m/[xXyYzZ]/ );
 
 &main( \@ARGV, %opt );
 
@@ -72,7 +73,7 @@ pod2usage( {
 
 =head1 SYNOPSIS
 
-mirror [options] -a x|y|z file [file2 file3 ...]
+mirror [options] -x x|y|z file [file2 file3 ...]
 
 =head1 OPTIONS
 
@@ -81,7 +82,7 @@ mirror [options] -a x|y|z file [file2 file3 ...]
 =item B<-a x>, B<--axis x>
 
  Specify axis perpendicular to reflection plane
- Options are x, y, or z
+ Options are x, y, or z (Defaults to x)
 
 =item B<-w [directory]>, B<--write [directory]>
 

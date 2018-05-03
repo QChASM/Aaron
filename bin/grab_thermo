@@ -51,6 +51,10 @@ if ($opt_output) {
 }
 
 for my $file (@ARGV) {
+	unless ( $file ~= /.*\.log/ ){
+		print{*STDERR}("Not a log file: $file\n");
+		next;
+	}
     my $out         = new AaronTools::G09Out( 'file' => $file );
     my $energy      = $out->energy();
     my $enthalpy    = $out->enthalpy();

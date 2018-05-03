@@ -9,7 +9,6 @@ use Pod::Usage;
 use Math::Trig;
 use AaronTools::Geometry;
 
-#asdfadsfadsfads
 sub main {
 	my $file = shift;
 	my %opt = @_;
@@ -18,7 +17,8 @@ sub main {
 	$geom->{name} = $file;
 	$geom->read_geometry($file);
 	unless( @{$geom->elements()} ){
-		die ("Cannot read geometry from file\n");
+		print{*STDERR}("Couldn't read geometry: $file\n");
+		next;
 	}
 
 	if ( @{$opt{print}} ){

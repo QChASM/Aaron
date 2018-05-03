@@ -30,7 +30,8 @@ sub main {
             $geom->{name} = $file;
             $geom->read_geometry($file);
             unless ( @{ $geom->elements() } ) {
-                die("Cannot read geometry from file\n");
+				print{*STDERR}("Couldn't read geometry: $file\n");
+				next;
             }
 
             # rotates target atoms if specified, defaults to all atoms

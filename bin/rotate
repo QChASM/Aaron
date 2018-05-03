@@ -27,7 +27,8 @@ sub main {
             $geom->{name} = $file;
             $geom->read_geometry($file);
             unless ( @{ $geom->elements() } ) {
-                die("Cannot read geometry from file\n");
+				print{*STDERR}("Couldn't read geometry: $file\n");
+				next;
             }
 
             $geom->rotate( $opt{axis}, $angle );
@@ -119,9 +120,9 @@ unless ( $opt{radians} ) {
 
 =head1 SYNOPSIS
 
-mirror [options] -x x|y|z -a angle [-n repeat] file [file2 file3 ...]
+rotate [options] -x x|y|z -a angle [-n repeat] file [file2 file3 ...]
 
-mirror [options] -x x|y|z -n rotations file [file2 file3 ...]
+rotate [options] -x x|y|z -n rotations file [file2 file3 ...]
 
 =head1 OPTIONS
 
