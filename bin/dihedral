@@ -18,7 +18,7 @@ sub main {
 	$geom->read_geometry($file);
 	unless( @{$geom->elements()} ){
 		print{*STDERR}("Couldn't read geometry: $file\n");
-		next;
+		return;
 	}
 
 	if ( @{$opt{print}} ){
@@ -36,7 +36,6 @@ sub main {
 		#prints to STDOUT  if $opt{output} == '' or saves to file
 		$geom->printXYZ($opt{output});
 	}
-	&print_all($geom, $opt{rads});
 }
 
 sub change_dihedral {
