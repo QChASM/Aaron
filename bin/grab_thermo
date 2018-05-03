@@ -51,10 +51,10 @@ if ($opt_output) {
 }
 
 for my $file (@ARGV) {
-	unless ( $file ~= /.*\.log/ ){
-		print{*STDERR}("Not a log file: $file\n");
-		next;
-	}
+    unless ( $file ~= /.*\.log/ ) {
+        print {*STDERR} ("Not a log file: $file\n");
+        next;
+    }
     my $out         = new AaronTools::G09Out( 'file' => $file );
     my $energy      = $out->energy();
     my $enthalpy    = $out->enthalpy();
@@ -69,8 +69,7 @@ for my $file (@ARGV) {
 
         close(OFILE) || die "couldn't close $opt_output: $!";
 
-    }
-    else {
+    } else {
         print("*** $file ***\n") if $#ARGV > 0;
         printf( "E        = %.6f\n",   $energy );
         printf( "H        = %.6f\n",   $enthalpy );

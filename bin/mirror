@@ -18,25 +18,25 @@ sub main {
         $geom->{name} = $file;
         $geom->read_geometry($file);
         unless ( @{ $geom->elements() } ) {
-			print{*STDERR}("Couldn't read geometry: $file\n");
-			next;
+            print {*STDERR} ("Couldn't read geometry: $file\n");
+            next;
         }
 
         $geom->mirror_coords( $opt{axis} );
 
         # prints to STDOUT if $outfile == '' or saves to infile_mirror-axis.xyz
-		my $outfile = '';
+        my $outfile = '';
         if ( $opt{write} ne '-' ) {
-			$outfile = $file;
-			$outfile =~ s/.*\/(.*)\..*/$1/;
-			if ($opt{write} ne ''){
-				if ( $opt{write} =~ /.*\/$/ ){
-					$outfile = $opt{write}.$outfile
-				} else {
-					$outfile = $opt{write}.'/'.$outfile
-				}
-			}
-            $outfile .= '_mirror-'.$opt{axis}.'.xyz';
+            $outfile = $file;
+            $outfile =~ s/.*\/(.*)\..*/$1/;
+            if ( $opt{write} ne '' ) {
+                if ( $opt{write} =~ /.*\/$/ ) {
+                    $outfile = $opt{write} . $outfile;
+                } else {
+                    $outfile = $opt{write} . '/' . $outfile;
+                }
+            }
+            $outfile .= '_mirror-' . $opt{axis} . '.xyz';
             print("Saving mirrored coords to $outfile\n");
         }
         $geom->printXYZ($outfile);
@@ -48,7 +48,7 @@ $opt{help}  = '';
 $opt{axis}  = 'x';
 $opt{write} = '-';
 GetOptions(
-    'help|h'  => \$opt{help},
+    'help|h'    => \$opt{help},
     'axis|x=s'  => \$opt{axis},
     'write|w:s' => \$opt{write} )
   or pod2usage( {

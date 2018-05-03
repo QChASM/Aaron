@@ -10,138 +10,142 @@ use Math::Trig;
 use AaronTools::Geometry;
 
 sub main {
-	my $file = shift;
-	my %opt = @_;
+    my $file = shift;
+    my %opt  = @_;
 
-	my $geom = new AaronTools::Geometry();
-	$geom->{name} = $file;
-	$geom->read_geometry($file);
-	unless( @{$geom->elements()} ){
-		print{*STDERR}("Couldn't read geometry: $file\n");
-		return;
-	}
+    my $geom = new AaronTools::Geometry();
+    $geom->{name} = $file;
+    $geom->read_geometry($file);
+    unless ( @{ $geom->elements() } ) {
+        print {*STDERR} ("Couldn't read geometry: $file\n");
+        return;
+    }
 
-	if ( @{$opt{print}} ){
-		&print_dihedral($geom, $opt{rads}, @{$opt{print}});
-	}
-	if ( @{$opt{set}} ){
-		&set_dihedral($geom, $opt{rads}, @{$opt{set}});
+    if ( @{ $opt{print} } ) {
+        &print_dihedral( $geom, $opt{rads}, @{ $opt{print} } );
+    }
+    if ( @{ $opt{set} } ) {
+        &set_dihedral( $geom, $opt{rads}, @{ $opt{set} } );
 
-		#prints to STDOUT  if $opt{output} == '' or saves to file
-		$geom->printXYZ($opt{output});
-	}
-	if ( @{$opt{change}} ){
-		&change_dihedral($geom, $opt{rads}, @{$opt{change}});
+        #prints to STDOUT  if $opt{output} == '' or saves to file
+        $geom->printXYZ( $opt{output} );
+    }
+    if ( @{ $opt{change} } ) {
+        &change_dihedral( $geom, $opt{rads}, @{ $opt{change} } );
 
-		#prints to STDOUT  if $opt{output} == '' or saves to file
-		$geom->printXYZ($opt{output});
-	}
+        #prints to STDOUT  if $opt{output} == '' or saves to file
+        $geom->printXYZ( $opt{output} );
+    }
 }
 
 sub change_dihedral {
-	my $geom = shift;
-	my $rads = shift;
-	my @args = @_;
+    my $geom = shift;
+    my $rads = shift;
+    my @args = @_;
 
-	while ( @args > 0 ){
-		my @atoms = splice(@args, 0, 2);
-		for my $atom ( @atoms ){
-			#AaronTools uses 0-indexing for atoms
-			$atom -= 1;
-		}
-		my $angle = shift(@args);
+    while ( @args > 0 ) {
+        my @atoms = splice( @args, 0, 2 );
+        for my $atom (@atoms) {
 
-		unless ( $rads ){
-			$angle = deg2rad($angle);
-		}
+            #AaronTools uses 0-indexing for atoms
+            $atom -= 1;
+        }
+        my $angle = shift(@args);
 
-		$geom->change_dihedral(@atoms, $angle);
-	}
-	return;
+        unless ($rads) {
+            $angle = deg2rad($angle);
+        }
+
+        $geom->change_dihedral( @atoms, $angle );
+    }
+    return;
 }
 
 sub set_dihedral {
-	my $geom = shift;
-	my $rads = shift;
-	my @args = @_;
+    my $geom = shift;
+    my $rads = shift;
+    my @args = @_;
 
-	while ( @args > 0 ){
-		my @atoms = splice(@args, 0, 4);
-		for my $atom ( @atoms ){
-			#AaronTools uses 0-indexing for atoms
-			$atom -= 1;
-		}
-		my $angle = shift(@args);
+    while ( @args > 0 ) {
+        my @atoms = splice( @args, 0, 4 );
+        for my $atom (@atoms) {
 
-		if ( $rads ){
-			$angle = rad2deg($angle);
-		}
+            #AaronTools uses 0-indexing for atoms
+            $atom -= 1;
+        }
+        my $angle = shift(@args);
 
-		$geom->set_dihedral(@atoms, $angle);
-	}
-	return;
+        if ($rads) {
+            $angle = rad2deg($angle);
+        }
+
+        $geom->set_dihedral( @atoms, $angle );
+    }
+    return;
 }
 
 sub print_dihedral {
-	my $geom = shift;
-	my $rads = shift;
-	my @atomlist = @_;
+    my $geom     = shift;
+    my $rads     = shift;
+    my @atomlist = @_;
 
-	while ( @atomlist > 0 ) {
-		my $angle;
-		my @atoms = splice(@atomlist, 0, 4);
-		for my $atom (@atoms){
-			#AaronTools uses 0-indexing for atoms
-			$atom -= 1;
-		}
+    while ( @atomlist > 0 ) {
+        my $angle;
+        my @atoms = splice( @atomlist, 0, 4 );
+        for my $atom (@atoms) {
 
-		eval{ $angle = $geom->dihedral(@atoms) };
-		if ($@) {
-			die "cannot calculate dihedral angle from atoms provided: $@";
-		}
+            #AaronTools uses 0-indexing for atoms
+            $atom -= 1;
+        }
 
-		if ( $rads ){
-			$angle = deg2rad($angle);
-		}
+        eval { $angle = $geom->dihedral(@atoms) };
+        if ($@) {
+            die "cannot calculate dihedral angle from atoms provided: $@";
+        }
 
-		for my $atom ( @atoms ){
-			#switch back to 1-indexing for printing
-			$atom += 1;
-		}
-		printf("Dihedral between atoms %d %d %d %d: %f\n", @atoms, $angle);
-	}
-	return;
+        if ($rads) {
+            $angle = deg2rad($angle);
+        }
+
+        for my $atom (@atoms) {
+
+            #switch back to 1-indexing for printing
+            $atom += 1;
+        }
+        printf( "Dihedral between atoms %d %d %d %d: %f\n", @atoms, $angle );
+    }
+    return;
 }
 
-
 my %opt;
-$opt{help} = '';
-$opt{rads} = '';
+$opt{help}   = '';
+$opt{rads}   = '';
 $opt{output} = '';
 GetOptions(
-	'help|h' => \$opt{help},
-	'radians|r' => \$opt{rads},
-	'change|c=f{3}' => \@{$opt{change}},
-	'print|p=i{4}' => \@{$opt{print}},
-	'set|s=f{5}' => \@{$opt{set}},
-	'output|o=s' => \$opt{output}
-) or pod2usage({
-	-exitval => 1,
-	-verbose => 1
-});
+    'help|h'        => \$opt{help},
+    'radians|r'     => \$opt{rads},
+    'change|c=f{3}' => \@{ $opt{change} },
+    'print|p=i{4}'  => \@{ $opt{print} },
+    'set|s=f{5}'    => \@{ $opt{set} },
+    'output|o=s'    => \$opt{output} )
+  or pod2usage( {
+      -exitval => 1,
+      -verbose => 1
+  } );
 pod2usage(0) if $opt{help};
-pod2usage({
-	-message => "Please specify a filename\n",
-	-exitval => 1,
-	-verbose => 1
-}) if @ARGV < 1;
-pod2usage({
-	-message => "Please specify at least one of the following: --change, --print, --set\n",
-	-exitval => 1,
-	-verbose => 1
-}) unless ( @{$opt{change}} or @{$opt{print}} or @{$opt{set}} );
+pod2usage( {
+        -message => "Please specify a filename\n",
+        -exitval => 1,
+        -verbose => 1
+    } ) if @ARGV < 1;
+pod2usage( {
+        -message =>
+          "Please specify at least one of the following: --change, --print, --set\n",
+        -exitval => 1,
+        -verbose => 1
+    } ) unless ( @{ $opt{change} } or @{ $opt{print} } or @{ $opt{set} } );
 
-&main($ARGV[0], %opt);
+&main( $ARGV[0], %opt );
 
 =pod
 
