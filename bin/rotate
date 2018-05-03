@@ -53,16 +53,22 @@ sub main {
                 }
                 print("Saving rotated coords to $outfile\n");
             }
+			unless ($outfile){
+				if ( $opt{radians} ) {
+					print("Rotated ".$angle/pi."*pi\n");
+				}else{
+					print("Rotated ".rad2deg($angle)." degrees\n");
+				}
+			}
             $geom->printXYZ($outfile);
-
-            # increase angle and decrease rotation count
-            $nrots += 1;
-            if ( $opt{angle} ) {
-                $angle += $opt{angle};
-            } else {
-                $angle = 2 * pi * ( $nrots + 1 ) / $opt{nrots};
-            }
         }
+		# increase angle and decrease rotation count
+		$nrots += 1;
+		if ( $opt{angle} ) {
+			$angle += $opt{angle};
+		} else {
+			$angle = 2 * pi * ( $nrots + 1 ) / $opt{nrots};
+		}
     }
 }
 
