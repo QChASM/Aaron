@@ -1635,7 +1635,7 @@ sub copy {
                                          coords => [ map { [ @$_ ] } @{ $self->{coords} } ],
                                          connection => [ map { [ @$_ ] } @{ $self->{connection} } ],
                                          constraints => [ map { [ @$_ ] } @{ $self->{constraints} } ] );
-    for my $key qw(width length radius angular_offset) {
+    for my $key ("width", "length", "radius", "angular_offset") {
         $new->{$key} = $self->{$key};
     }
     bless $new, "AaronTools::NanoTube";
