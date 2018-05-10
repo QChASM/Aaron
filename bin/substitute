@@ -12,35 +12,32 @@ unshift @INC, ("$ENV{'AARON'}/bin");
 require _utils;
 
 sub main {
-    my $files = shift;
+    my $file = shift;
     my %opt   = @_;
 
-    # perform substitution for each file
-    foreach my $file ( @{$files} ) {
-        my $geom = _utils::get_geom($file);
-        next unless $geom;
+	my $geom = _utils::get_geom($file);
+	return 1 unless $geom;
 
-        # perform substitute for each substituent
-        foreach my $sub ( @{ $opt{subs} } ) {
-            $geom->substitute(
-                'target'           => $opt{target},
-                'sub'              => $sub,
-                'minimize_torsion' => $opt{minimize_torsion} );
+	# perform substitute for each substituent
+	foreach my $sub ( @{ $opt{subs} } ) {
+		$geom->substitute(
+			'target'           => $opt{target},
+			'sub'              => $sub,
+			'minimize_torsion' => $opt{minimize_torsion} );
 
-            # Printing
-            # $outfile will be empty string if write to file not requested
-            my $outfile = _utils::get_outfile( $file, $opt{write},
-                [ ( $opt{target} + 1 ), $sub ] );
+		# Printing
+		# $outfile will be empty string if write to file not requested
+		my $outfile = _utils::get_outfile( $file, $opt{write},
+			[ ( $opt{target} + 1 ), $sub ] );
 
-            # make comment something useful
-            my $comment = _utils::strip_dir($file);
-            $comment .=
-              '   Substituted ' . $sub . ' at atom ' . ( $opt{target} + 1 );
+		# make comment something useful
+		my $comment = _utils::strip_dir($file);
+		$comment .=
+			' -> Substituted atom ' . ( $opt{target} + 1 ) . ' with ' . $sub;
 
-            # prints to STDOUT if $outfile == ''
-            print("Saving substituted coords to $outfile\n") if $outfile;
-            $geom->printXYZ( $outfile, $comment );
-        }
+		# prints to STDOUT if $outfile == ''
+		print("Saving substituted coords to $outfile\n") if $outfile;
+		$geom->printXYZ( $outfile, $comment );
     }
 }
 
@@ -65,23 +62,33 @@ GetOptions(
 pod2usage(0) if $opt{help};
 
 # requires target atom, requested substituent, and file
+unless(@ARGV){
+	# if all arguments got slurped up by @sublist,
+	#
+	push @ARGV, (pop @sublist);
+}
 pod2usage( {
         -message =>
-          "Please provide a target atom, at least one substituent name or file, and at least one geometry file"
-          -exitval => 1,
+          "Please provide a target atom and specify at least one substituent",
+        -exitval => 1,
         -verbose => 1
-    } ) unless ( @ARGV > 0 and $opt{target} > 0 and @sublist > 0 );
+    } ) unless ( $opt{target} > 0 and @sublist > 0 );
+pod2usage( {
+		-message => "Please provide one, and only one, geometry file to substitute",
+		-exitval => 1,
+		-verbose => 1
+	} ) unless (@ARGV == 1);
 
 # target supplied as 1-indexed, Aaron uses 0-indexing
 $opt{target} -= 1;
 
-&main( \@ARGV, %opt );
+&main( $ARGV[0], %opt );
 
 =pod
 
 =head1 SYNOPSIS
 
-substitute [options] -t atom -s sub1 [sub2, sub3, ...] file1 [file2, file3, ...]
+substitute [options] -t atom -s sub1 [sub2, sub3, ...] file
 
 =head1 OPTIONS
 
