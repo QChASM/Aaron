@@ -10,29 +10,28 @@ use Math::Trig;
 use Math::Vector::Real;
 use AaronTools::Geometry;
 
+unshift @INC, ("$ENV{'AARON'}/bin");
+require _utils;
+
 sub main {
     my $files  = shift;
     my %opt    = @_;
     my $angle  = $opt{angle};
     my $vector = V( @{ $opt{vector} } );
-    my $nrots  = 0;
 
     # set angle if equally spaced rotations requested
     unless ( $opt{angle} ) {
         $angle = 2 * pi / $opt{nrots};
     }
 
-    while ( $nrots < $opt{nrots} ) {
+    # perform rotation for each file
+    foreach my $file ( @{$files} ) {
+        my $geom = _utils::get_geom($file);
+        next unless $geom;
 
-        # perform rotation for each file
-        foreach my $file ( @{$files} ) {
-            my $geom = new AaronTools::Geometry();
-            $geom->{name} = $file;
-            $geom->read_geometry($file);
-            unless ( @{ $geom->elements() } ) {
-                print {*STDERR} ("Can't read geometry: $file\n");
-                next;
-            }
+        # perform requested number of rotations
+        my $nrots = 0;
+        while ( $nrots < $opt{nrots} ) {
 
             # rotates target atoms if specified, defaults to all atoms
             if ( @{ $opt{targets} } ) {
@@ -41,48 +40,39 @@ sub main {
                 $geom->genrotate( $vector, $angle );
             }
 
-            # prints to STDOUT if $opt{write} == ''
-            # or saves to infile_genrotate_axis_angle.xyz
-            # $opt{write} = path, defaults to cwd
-            my $outfile = '';
+            # increase rotation count before printing for angle calculation
+            $nrots += 1;
+
+            # Printing
+            # $outfile will be empty string if write to file not requested
             my $axis = join( '_', @{ $opt{vector} } );
-            if ( $opt{write} ne '-' ) {
-                $outfile = $file;
-
-                # strip just file name (no path or file extension)
-                $outfile =~ s/.*\/(.*)\..*/$1/;
-                if ( $opt{write} ne '' ) {
-
-                    # if no directory specified, write to cwd
-                    # make sure we don't have double path seperators!
-                    if ( $opt{write} =~ /.*\/$/ ) {
-                        $outfile = $opt{write} . $outfile;
-                    } else {
-                        $outfile = $opt{write} . '/' . $outfile;
-                    }
-                }
-                if ( $opt{radians} ) {
-                    $outfile .= '_genrotate_' . $axis . '_' . $angle . '.xyz';
-                } else {
-                    $outfile .=
-                      '_genrotate_' . $axis . '_' . rad2deg($angle) . '.xyz';
-                }
-                print("Saving rotated coords to $outfile\n");
+            my $outfile = _utils::get_outfile( $file, $opt{write},
+                [ 'genrotate', $axis, rad2deg($angle) ] );
+            if ( $opt{radians} ) {
+                my $outfile = _utils::get_outfile( $file, $opt{write},
+                    [ 'genrotate', $axis, $angle ] );
             }
 
-            # $outfile will be empty string if write to file not requested
-            # printXYZ('') prints to STDOUT
-            $geom->printXYZ($outfile);
-        }
+            # set comment line to something useful
+            my $comment;
+            if ($outfile) {
+                print("Saving to $outfile\n") if $outfile;
+                $comment = _utils::strip_dir($outfile);
+            } else {
+                print("\n");
+                $comment = _utils::strip_dir($file);
+            }
+            if ( $opt{radians} ) {
+                $comment .= "  Rotated " . $angle * $nrots / pi . "*pi";
+            } else {
+                $comment .= "  Rotated " . rad2deg( $angle * $nrots );
+            }
 
-        # increase angle and decrease rotation count
-        $nrots += 1;
-        if ( $opt{angle} ) {
-            $angle += $opt{angle};
-        } else {
-            $angle = 2 * pi * ( $nrots + 1 ) / $opt{nrots};
+            # printXYZ('') prints to STDOUT
+            $geom->printXYZ( $outfile, $comment );
         }
     }
+    return 0;
 }
 
 # read in options
@@ -153,35 +143,34 @@ genrotate [options] -v x y z -n rotations file [file2 file3 ...]
 
 =item B<-v x y z>, B<--vector x y z>
 
- The rotation vector defined by the points (0, 0, 0), (x, y, z).
- Should be space separated.
+The rotation vector defined by the points (0, 0, 0), (x, y, z).
+Should be space separated.
 
 =item B<-a angle>, B<--angle angle>
 
- The angle of rotation.
+Rotate by ANGLE degrees.
 
 =item B<-n num>, B<--nrot num>
 
- If used with --angle specified, repeats the rotation <num> times.
- If used without --angle specified, performs <num> equally spaced rotations (implies angle=360/num).
+If used with --angle specified, repeats the rotation NUM times.
+Otherwise, performs NUM equally spaced rotations (implies ANGLE=360/NUM).
 
 =item B<-t list>, B<--targets list>
 
- List of atom numbers to rotate (1-indexed). Defaults to all atoms.
+List of atom numbers to rotate (1-indexed). Defaults to all atoms.
 
 =item B<-r>, B<--radians>
 
- Angle specified in radians (default is degrees).
+Angle specified in radians (default is degrees).
 
 =item B<-w [directory]>, B<--write [directory]>
 
- Write new geometry output to xyz file instead of STDOUT
- File name will be: <infile_name>_genrotate_<axis>_<angle>.xyz
- Directory defaults to current working directory
+Write new geometry output to INFILE_genrotate_AXIS_ANGLE.xyz instead of STDOUT.
+Directory defaults to current working directory.
 
 =item B<-h>, B<--help>
 
- Print this help message and exit
+Print this help message and exit.
 
 =back
 

@@ -9,16 +9,16 @@ use Pod::Usage;
 use Math::Trig;
 use AaronTools::Geometry;
 
+unshift @INC, ("$ENV{'AARON'}");
+require _utils;
+
 sub main {
     my $file = shift;
     my %opt  = @_;
 
-    my $geom = new AaronTools::Geometry();
-    $geom->{name} = $file;
-    $geom->read_geometry($file);
-    unless ( @{ $geom->elements() } ) {
-        print {*STDERR} ("Couldn't read geometry: $file\n");
-        return;
+    my $geom = _utils::get_geom();
+    unless ($geom) {
+        return 1;
     }
 
     if ( @{ $opt{print} } ) {
@@ -26,16 +26,16 @@ sub main {
     }
     if ( @{ $opt{set} } ) {
         &set_dihedral( $geom, $opt{rads}, @{ $opt{set} } );
-
-        #prints to STDOUT  if $opt{output} == '' or saves to file
-        $geom->printXYZ( $opt{output} );
     }
     if ( @{ $opt{change} } ) {
         &change_dihedral( $geom, $opt{rads}, @{ $opt{change} } );
-
-        #prints to STDOUT  if $opt{output} == '' or saves to file
-        $geom->printXYZ( $opt{output} );
     }
+
+	#prints to STDOUT  if $opt{output} == '' or saves to file
+	if ( @{ $opt{set} } or @{ $opt{change} } ){
+        $geom->printXYZ( $opt{output} );
+	}
+    return 0;
 }
 
 sub change_dihedral {
@@ -171,7 +171,7 @@ Set new ATOM1-ATOM2-ATOM3-ATOM4 (1-indexed) dihedral to ANGLE
 
 =item B<-o outfile.xyz>, B<--output outfile.xyz>
 
-Write new geometry output to xyz file instead of STDOUT
+Write new geometry output to xyz-file instead of STDOUT
 
 =item B<-r>, B<--radians>
 

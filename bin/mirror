@@ -9,38 +9,39 @@ use Pod::Usage;
 use Math::Trig;
 use AaronTools::Geometry;
 
+unshift @INC, ("$ENV{'AARON'}/bin");
+require _utils;
+
 sub main {
     my $files = shift;
     my %opt   = @_;
 
     foreach my $file ( @{$files} ) {
-        my $geom = new AaronTools::Geometry();
-        $geom->{name} = $file;
-        $geom->read_geometry($file);
-        unless ( @{ $geom->elements() } ) {
-            print {*STDERR} ("Couldn't read geometry: $file\n");
-            next;
-        }
+        my $geom = _utils::get_geom($file);
+		next unless $geom;
 
         $geom->mirror_coords( $opt{axis} );
 
-        # prints to STDOUT if $outfile == '' or saves to infile_mirror-axis.xyz
-        my $outfile = '';
-        if ( $opt{write} ne '-' ) {
-            $outfile = $file;
-            $outfile =~ s/.*\/(.*)\..*/$1/;
-            if ( $opt{write} ne '' ) {
-                if ( $opt{write} =~ /.*\/$/ ) {
-                    $outfile = $opt{write} . $outfile;
-                } else {
-                    $outfile = $opt{write} . '/' . $outfile;
-                }
-            }
-            $outfile .= '_mirror-' . $opt{axis} . '.xyz';
-            print("Saving mirrored coords to $outfile\n");
+        # Printing
+        # Get outfile name, will be '' if write flag not set
+        my $outfile =
+          _utils::get_outfile( $file, $opt{write}, [ 'mirror', $opt{axis} ] );
+
+        # make comment something useful
+        my $comment;
+        if ($outfile) {
+            print("Saving mirrored coords to $outfile\n") if $outfile;
+            $comment = _utils::strip_dir($outfile);
+        } else {
+            print("###\n");
+            $comment = _utils::strip_dir($file);
         }
-        $geom->printXYZ($outfile);
+        $comment .= "   Mirror (" . $opt{axis} . ")";
+
+        # will write to STDOUT if $outfile == ''
+        $geom->printXYZ( $outfile, $comment );
     }
+    return 0;
 }
 
 my %opt;
@@ -73,26 +74,24 @@ pod2usage( {
 
 =head1 SYNOPSIS
 
-mirror [options] -x x|y|z file [file2 file3 ...]
+mirror [options] file [file2 file3 ...]
 
 =head1 OPTIONS
 
 =over
 
-=item B<-a x>, B<--axis x>
+=item B<-x x>, B<--axis x>
 
- Specify axis perpendicular to reflection plane
- Options are x, y, or z (Defaults to x)
+Specify cartesian axis perpendicular to reflection plane (defaults to X).
 
 =item B<-w [directory]>, B<--write [directory]>
 
- Write new geometry output to xyz file instead of STDOUT
- File name will be: <infile_name>_mirror.xyz
- Directory defaults to current working directory
+Write new geometry output to INFILE_mirror.xyz instead of STDOUT.
+Directory defaults to current working directory.
 
 =item B<-h>, B<--help>
 
- Print this help message and exit
+Print this help message and exit
 
 =back
 
