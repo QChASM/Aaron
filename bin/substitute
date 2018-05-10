@@ -1,0 +1,114 @@
+#!/usr/bin/perl -w
+
+use strict;
+use lib $ENV{'AARON'};
+use lib $ENV{'PERL_LIB'};
+
+use Getopt::Long;
+use Pod::Usage;
+use AaronTools::Geometry;
+
+unshift @INC, ("$ENV{'AARON'}/bin");
+require _utils;
+
+sub main {
+    my $files = shift;
+    my %opt   = @_;
+
+    # perform substitution for each file
+    foreach my $file ( @{$files} ) {
+        my $geom = _utils::get_geom($file);
+        next unless $geom;
+
+        # perform substitute for each substituent
+        foreach my $sub ( @{ $opt{subs} } ) {
+            $geom->substitute(
+                'target'           => $opt{target},
+                'sub'              => $sub,
+                'minimize_torsion' => $opt{minimize_torsion} );
+
+            # Printing
+            # $outfile will be empty string if write to file not requested
+            my $outfile = _utils::get_outfile( $file, $opt{write},
+                [ ( $opt{target} + 1 ), $sub ] );
+
+            # make comment something useful
+            my $comment = _utils::strip_dir($file);
+            $comment .=
+              '   Substituted ' . $sub . ' at atom ' . ( $opt{target} + 1 );
+
+            # prints to STDOUT if $outfile == ''
+            print("Saving substituted coords to $outfile\n") if $outfile;
+            $geom->printXYZ( $outfile, $comment );
+        }
+    }
+}
+
+# read in options
+my %opt;
+my @sublist;
+$opt{help}        = '';
+$opt{target}      = 0;
+$opt{subs}        = \@sublist;
+$opt{min_torsion} = '';
+$opt{write} = '-';    # '-' indicates no write, '' indicates write to cwd
+GetOptions(
+    'help|h'      => \$opt{help},
+    'targets|t=i' => \$opt{target},
+    'sub|s=s{1,}' => \@sublist,
+    'minimize|m'  => \$opt{minimize_torsion},
+    'write|w:s'   => \$opt{write} )
+  or pod2usage( {
+      -exitval => 1,
+      -verbose => 1
+  } );
+pod2usage(0) if $opt{help};
+
+# requires target atom, requested substituent, and file
+pod2usage( {
+        -message =>
+          "Please provide a target atom, at least one substituent name or file, and at least one geometry file"
+          -exitval => 1,
+        -verbose => 1
+    } ) unless ( @ARGV > 0 and $opt{target} > 0 and @sublist > 0 );
+
+# target supplied as 1-indexed, Aaron uses 0-indexing
+$opt{target} -= 1;
+
+&main( \@ARGV, %opt );
+
+=pod
+
+=head1 SYNOPSIS
+
+substitute [options] -t atom -s sub1 [sub2, sub3, ...] file1 [file2, file3, ...]
+
+=head1 OPTIONS
+
+=over
+
+=item B<-t atom>, B<--target atom>
+
+Location of substituent (1-indexed).
+
+=item B<-s sub>, B<--sub sub>
+
+Substituent name or file
+
+=item B<-m>, B<--minimize>
+
+Rotate new substituent to minimize LJ potential
+
+=item B<-w [directory]>, B<--write [directory]>
+
+Write new geometry output to INFILE-NAME_TARGET_ATOM_SUB_NAME.xyz instead of STDOUT.
+Directory defaults to current working directory.
+
+=item B<-h>, B<--help>
+
+Print this help message and exit
+
+=back
+
+=cut
+
