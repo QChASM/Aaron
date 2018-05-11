@@ -136,7 +136,7 @@ sub read_args{
 
 #read arguments from input file
 sub read_params {
-    
+   
     open my $in_h, "< $input_file" or die "Can't open $input_file:$!\n";
 
     ($jobname) = $input_file =~ /(\S+)\.in/; 
@@ -191,8 +191,8 @@ sub read_params {
         };
     }
     close $in_h;
-
-    $G_Key->read_key_from_input(input => $input_file);
+    
+    $G_Key->read_key_from_input($input_file);
     $W_Key->read_input($input_file);
 
     #combine ligand and sub information;
@@ -323,12 +323,13 @@ sub read_status {
             ($head) = split(/\-/, $head);
 
             $ligs_subs->{$head}->{jobs}->{$key} = $STATUS->{$key};
+    
             $ligs_subs->{$head}->{jobs}->{$key}->{Gkey} = $G_Key;
             $ligs_subs->{$head}->{jobs}->{$key}->{Wkey} = $W_Key;
             $ligs_subs->{$head}->{jobs}->{$key}->{template_job} = $template_job;
             
             if ($ligs_subs->{$head}->{jobs}->{$key}->{conformers}) {
-                for my $cf (%{ $ligs_subs->{$head}->{jobs}->{$key}->{conformers} }) {
+                for my $cf (sort keys %{ $ligs_subs->{$head}->{jobs}->{$key}->{conformers} }) {
                     $ligs_subs->{$head}->{jobs}->{$key}->{conformers}->{$cf}->{Gkey} = $G_Key;
                     $ligs_subs->{$head}->{jobs}->{$key}->{conformers}->{$cf}->{Wkey} = $W_Key;
                     $ligs_subs->{$head}->{jobs}->{$key}->{conformers}->{$cf}->{template_job} = $template_job;
@@ -344,7 +345,6 @@ sub init_main {
     &read_args();
     &check_modules();
     print "Preparing to run transition state searches...\n";
-    sleep(2);
     &read_params();
     &read_status();
     sleep(10);

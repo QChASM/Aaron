@@ -1478,7 +1478,7 @@ sub printXYZ {
 
     my $handle;
     if($filename) {
-        open $handle, ">$filename" or die "Can't open $filename\n";
+        open $handle, ">>$filename" or die "Can't open $filename\n";
     }else {
         $handle = *STDOUT;
     }

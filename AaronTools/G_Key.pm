@@ -198,7 +198,7 @@ sub _read_key_from_input {
 sub read_key_from_input {
     my $self = shift;
 
-    my ($input) = @_; ;
+    my ($input) = @_;
  
     $self->_read_key_from_input($input) if $input;
 
@@ -366,9 +366,7 @@ sub read_basis {
             push (@atoms, $entry);
         }elsif ($entry =~ /^tm$/i) {
             for my $element (keys %{ $tmetal }) {
-                unless (exists $self->{basis}->{$element}) {
-                    push (@atoms, $element);
-                }
+                push (@atoms, $element);
             }
         }else {
             if ($entry =~ /^gen/) {
@@ -402,9 +400,7 @@ sub read_ecp {
             push (@atoms, $entry);
         }elsif ($entry =~ /^tm$/i) {
             for my $element (keys %{ $tmetal }) {
-                unless (exists $self->{ecp}->{$element}) {
-                    push (@atoms, $element);
-                }
+                push (@atoms, $element);
             }
         }else {
             if (@atoms) {

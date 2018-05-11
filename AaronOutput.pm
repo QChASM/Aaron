@@ -352,7 +352,7 @@ sub print_ee {
 
         foreach my $thermo (@{$thermo}) {
             if ($absolute_only || $arg_parser{multistep} || $absolute) {
-                $data .= sprintf "%13.4f", $thermo;
+                $data .= sprintf "%13.6f", $thermo;
             }else {
                 $data .= sprintf "%10.1f", $thermo;
             }
