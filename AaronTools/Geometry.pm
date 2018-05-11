@@ -756,7 +756,7 @@ sub substitute {
 
     my ($end, $old_sub_atoms) = $self->get_sub($target);  
 
-    my $sub_object = new AaronTools::Substituent( name => $sub, end => $end );
+    my $sub_object = AaronTools::Substituent->new( name => $sub, end => $end );
 
     $self->_substitute( old_sub_atoms => $old_sub_atoms,
                                   sub => $sub_object,
@@ -794,7 +794,7 @@ sub _substitute {
     $end -= grep { $_ < $end } @$delete_atoms;
 
     #modify the constraint, since the deleted atoms can change atom numbers
-    $self->_rearrange_con_sub( delete_atoms => $delete_atoms);
+    $self->_rearrange_con_sub($delete_atoms);
 
     $self->delete_atom($delete_atoms);
     $self->refresh_connected();
@@ -810,6 +810,17 @@ sub _substitute {
     if ($minimize_torsion) {
         $self->minimize_torsion(start_atom => $target, 
                                   end_atom => $end);
+    }
+}
+
+
+sub _rearrange_con_sub {
+    my ($self, $delete_atoms) = @_;
+    for my $constraint (@{$self->{constraints}}) {
+        for my $i (0,1) {
+            my $removed = grep { $_ < $constraint->[0]->[$i] } @$delete_atoms;
+            $constraint->[0]->[$i] -= $removed;
+        }
     }
 }
 
