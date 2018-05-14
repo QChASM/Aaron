@@ -64,7 +64,7 @@ pod2usage(0) if $opt{help};
 # requires target atom, requested substituent, and file
 unless(@ARGV){
 	# if all arguments got slurped up by @sublist,
-	#
+	# use the last one as input geometry file
 	push @ARGV, (pop @sublist);
 }
 pod2usage( {

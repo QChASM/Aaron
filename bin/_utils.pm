@@ -4,8 +4,6 @@ use strict;
 use lib $ENV{'AARON'};
 use lib $ENV{'PERL_LIB'};
 
-use AaronTools::Geometry;
-
 package _utils;
 
 
@@ -44,6 +42,8 @@ sub get_outfile {
 }
 
 sub get_geom {
+	use AaronTools::Geometry;
+
 	my $file = shift;
 	my $geom = new AaronTools::Geometry();
 	$geom->{name} = $file;
@@ -53,6 +53,18 @@ sub get_geom {
 		return 0;
 	}
 	return $geom;
+}
+
+sub get_cat {
+	use AaronTools::Catalysis;
+
+	my $file = shift;
+	my $cat = new AaronTools::Catalysis(name=>($file =~ s/(.*)\..*?$/$1/));
+	unless (@{$cat->{elements}}){
+		print {*STDERR} ("\nCouldn't read geometry: $file\n\n");
+		return 0;
+	}
+	return $cat;
 }
 
 sub strip_dir {

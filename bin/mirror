@@ -33,7 +33,7 @@ sub main {
             print("Saving mirrored coords to $outfile\n") if $outfile;
             $comment = _utils::strip_dir($outfile);
         } else {
-            print("###\n");
+			print("###\n") if ($file ne $files->[0]);
             $comment = _utils::strip_dir($file);
         }
         $comment .= "   Mirror (" . $opt{axis} . ")";

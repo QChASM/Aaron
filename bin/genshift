@@ -45,13 +45,14 @@ sub main {
 
             # generate outfile name and comment string
             my $outfile =
-              _utils::get_outfile( $file, $opt{write}, [ join( '_', @v ) ] );
+              _utils::get_outfile( $file, $opt{write},
+                [ 'shift', join( '_', @v ) ] );
             my $comment = _utils::strip_dir($file);
             $comment .= '   Shifted by (' . join( ',', @v ) . ')';
             if ($outfile) {
                 print("Saved to $outfile\n");
             } else {
-                print("***\n");
+				print("###\n") if ($file ne $files->[0]);
             }
 
             # prints to STDOUT if $outfile == ''
