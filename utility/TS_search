@@ -23,7 +23,7 @@ my $system_ada = ADA;
 my $queue_type = $ENV{'QUEUE_TYPE'} ?
                  $ENV{'QUEUE_TYPE'} : $system_ada->{QUEUE};
 
-my $cores = $system_ada->{N_PROCS};
+my $numprocs = $system_ada->{N_PROCS};
 my $walltime = $system_ada->{WALL};
 my $node = '';
 my $help;
@@ -40,7 +40,7 @@ for my $i (0..$#argv) {
 
 GetOptions(
     'wall|w=i' => \$walltime,
-    'n_procs|p=i' => \$cores,
+    'n_procs|p=i' => \$numprocs,
     'node|n=i' => \$node,
     'help|h' => \$help,
     'restart' => \$redundacy,
@@ -58,6 +58,7 @@ GetOptions(
     -exitval => 1,
     -verbose => 1,
 );
+
 
 pod2usage(
     -msg => $helpMsg,
@@ -87,7 +88,7 @@ my $env_variable = $template_job->{env};
 
 $env_variable =~ s/\Q$template_pattern->{JOB_NAME}/$jobname/g;
 $env_variable =~ s/\Q$template_pattern->{WALL_TIME}/$walltime/g;
-$env_variable =~ s/\Q$template_pattern->{N_PROCS}/$cores/g;
+$env_variable =~ s/\Q$template_pattern->{N_PROCS}/$numprocs/g;
 $env_variable =~ s/\Q$template_pattern->{NODE_TYPE}/$node/g;
 #remove the formula part
 for my $var (sort keys %{ $template_job->{formula} }) {
