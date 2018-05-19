@@ -7,7 +7,6 @@ my $TS_lib = NAMES->{TS_LIB};
 package AaronTools::G_Key;
 use strict; use warnings;
 use Constants qw(:PHYSICAL);
-use Data::Dumper;
 
 my $HOME = $ENV{'HOME'};
 my $AARON = $ENV{'AARON'};
