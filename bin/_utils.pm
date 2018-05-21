@@ -6,6 +6,31 @@ use lib $ENV{'PERL_LIB'};
 
 package _utils;
 
+sub get_geom {
+    use AaronTools::Geometry;
+
+    my $file = shift;
+    my $geom = new AaronTools::Geometry();
+    $geom->{name} = $file;
+    $geom->read_geometry($file);
+    unless ( @{ $geom->elements() } ) {
+        print {*STDERR} ("\nCouldn't read geometry: $file\n\n");
+        return 0;
+    }
+    return $geom;
+}
+
+sub get_cat {
+    use AaronTools::Catalysis;
+
+    my $file = shift;
+    my $cat = new AaronTools::Catalysis( name => ( $file =~ /(.*)\..*?$/ ) );
+    unless ( @{ $cat->{elements} } ) {
+        print {*STDERR} ("\nCouldn't read geometry: $file\n\n");
+        return 0;
+    }
+    return $cat;
+}
 
 sub get_outfile {
 
@@ -15,7 +40,7 @@ sub get_outfile {
     my $filebase = shift;
     my $path     = shift;
     my $appends  = shift(@_) // [];
-	my $sep = '_';
+    my $sep      = '_';
 
     my $outfile = '';
     if ( $path ne '-' ) {
@@ -38,39 +63,13 @@ sub get_outfile {
         }
         $outfile .= '.xyz';
     }
-	return $outfile;
-}
-
-sub get_geom {
-	use AaronTools::Geometry;
-
-	my $file = shift;
-	my $geom = new AaronTools::Geometry();
-	$geom->{name} = $file;
-	$geom->read_geometry($file);
-	unless ( @{ $geom->elements() } ) {
-		print {*STDERR} ("\nCouldn't read geometry: $file\n\n");
-		return 0;
-	}
-	return $geom;
-}
-
-sub get_cat {
-	use AaronTools::Catalysis;
-
-	my $file = shift;
-	my $cat = new AaronTools::Catalysis(name=>($file =~ s/(.*)\..*?$/$1/));
-	unless (@{$cat->{elements}}){
-		print {*STDERR} ("\nCouldn't read geometry: $file\n\n");
-		return 0;
-	}
-	return $cat;
+    return $outfile;
 }
 
 sub strip_dir {
-	my $fname = shift;
-	$fname =~ s/.*\/(.*)/$1/;
-	return $fname;
+    my $fname = shift;
+    $fname =~ s/.*\/(.*)/$1/;
+    return $fname;
 }
 
 1;
