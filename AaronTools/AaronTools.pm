@@ -616,13 +616,18 @@ sub submit {
 
     #Alert user if qsub (or bsub) returns error
     #FIXME
-    if($queue_type eq 'LSF') {
+    if($queue_type eq 'LSF') {	#LSF queues
       if(system("bsub < $jobname.job >& /dev/null")) {
         print "Submission denied!\n";
         return 1;
       }
-    } else {
-      if(system("qsub $jobname.job -N $jobname >& /dev/null")) { 
+    } elsif($queue_type eq 'Slurm') {	#Slurm queues
+      if(system("sbatch $jobname.job >& /dev/null")) {
+        print "Submission denied!\n";
+        return 1;
+      }
+    } else {	#PBS (default)
+      if(system("qsub $jobname.job >& /dev/null")) { 
         print "Submission denied!\n";
         return 1;
       }
@@ -664,9 +669,6 @@ sub make_job_file {
   close(JOB);
 } #End make_job_file
 
-
-  return rad2deg($dihedral);
-}
 
 #get quota and return summary message
 sub get_quota {

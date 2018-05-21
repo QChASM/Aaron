@@ -109,7 +109,11 @@ if($queue_type =~ /LSF/i) {
         print "Submission denied!\n";
     }
 } elsif($queue_type =~ /Slurm/i) {
-    if(system("qsub $jobname.job -N $jobname >& /dev/null")) { 
+    if(system("sbatch $jobname.job >& /dev/null")) { 
+        print "Submission denied!\n";
+    }
+} elsif($queue_type =~ /PBS/i) {
+    if(system("qsub $jobname.job >& /dev/null")) { 
         print "Submission denied!\n";
     }
 }

@@ -137,97 +137,6 @@ sub submit_job {
         }
     }
 
-    
-    unless (-e $jobfile) {
-
-        my $memory=$numprocs*120000000;
-        my $mb;
-        if($queue_type eq 'LSF') {
-            $memory = 0.8*$numprocs*2*10**9/8;		#memory in words per job
-            $mb = 2700;				#memory in MB per core + padding
-        }
-
-        open JOB, ">$jobfile";
-
-        if($queue_type =~ /LSF/i) {					#LSF queue
-            print JOB "#BSUB -J $jobname\n" .
-                      "#BSUB -o $jobname.job.%J\n" .
-                      "#BSUB -L /bin/bash\n" .
-                      "#BSUB -W $walltime:00\n" .
-                      "#BSUB -M $mb\n" .
-                      "#BSUB -R 'rusage[mem=$mb]'\n" .
-                      "#BSUB -R 'span[ptile=$numprocs]'\n" .
-                      "export g09root=$g09root\n" .
-                      ". \$g09root/g09/bsd/g09.profile\n" .
-                      "trap \"rm -r \$SCRATCH/\$LSB_JOBID\" 0 1 2 3 9 13 14 15\n" .
-                      "mkdir \$SCRATCH/\$LSB_JOBID\n" .
-                      "cd \$SCRATCH/\$LSB_JOBID\n" .
-                      "echo -P- $numprocs > Default.Route\n" .
-                      "echo -M- $memory >> Default.Route\n" .
-                      "module purge\n" .
-                      "env\n" .
-                      "cp \$LS_SUBCWD/*.chk .\n" .
-                      "g09  < \$LS_SUBCWD/$jobname.com  > \$LS_SUBCWD/$jobname.log\n" .
-                      "cp *.chk \$LS_SUBCWD/\n" .
-                      "exit\n";
-        }elsif ($queue_type =~ /PBS/i) {					#PBS (default)
-            print JOB "#!/bin/bash\n" .
-                      "#PBS -l walltime=$walltime:00:00,mem=8gb,nodes=1:ppn=$numprocs\n\n\n" .
-                      "export g09root=$g09root\n" .
-                      ". \$g09root/g09/bsd/g09.profile\n\n" .
-                      "trap \"\\rm -r \$TMPDIR/\$PBS_JOBID\" 0 1 2 3 9 13 14 15\n\n" .
-                      "mkdir \$TMPDIR/\$PBS_JOBID\n" .
-                      "cd \$TMPDIR/\$PBS_JOBID\n\n" .
-                      "echo -P- $numprocs > Default.Route\n" .
-                      "echo -M- $memory >> Default.Route\n\n" .
-                      "module purge\n\n" .
-                      "env\n\n" .
-                      "cp \$PBS_O_WORKDIR/*.chk .\n" .
-                      "g09  < \$PBS_O_WORKDIR/$jobname.com > \$PBS_O_WORKDIR/$jobname.log\n\n" .
-                      "cp *.chk \$PBS_O_WORKDIR/\n\n" .
-                      "exit";
-        }elsif ($queue_type =~ /Slurm/i) {
-            print JOB "#!/bin/bash\n" .
-                       "#\n" .
-                       "#SBATCH -J $jobname -e $jobname.job.e%j -o $jobname.job.o%j\n";
-            if ($node) {
-                print JOB "#SBATCH -p $node\n";
-            }else {
-                print JOB "#SBATCH -p medium\n";
-            }
-            print JOB "#SBATCH -t $walltime:00:00 -n $numprocs --mem=56G\n" .
-                      "#SBATCH --ntasks-per-node=$numprocs\n" .
-                      "\n" .
-                      "\n" .
-                      "cd \$TMPDIR\n" .
-                      "\n" .
-                      "df -h\n" .
-                      "export g09root=/sw/group/lms/sw/g09_D01\n" .
-                      ". $g09root/g09/bsd/g09.profile\n" .
-                      "\n" .
-                      "echo -P- 28 > Default.Route \n" .
-                      "echo -M- 56GB >> Default.Route \n" .
-                      "\n" .
-                      "module purge \n" .
-                      "\n" .
-                      "env\n" .
-                      "\n" .
-                      "g09  <  \$SLURM_SUBMIT_DIR/$jobname.com  >  \$SLURM_SUBMIT_DIR/$jobname.log\n" .
-                      "\n" .
-                      "df -h\n" .
-                      "\n" .
-                      "ls -al\n" .
-                      "\n" .
-                      "\cp *.wf? *.47 \$LS_SUBCWD\n" .
-                      "\n" .
-                      "exit\n";
-        }
-        close(JOB);
-    }
-
-    my $failed = 1;
-    #Alert user if qsub (or bsub) returns error
-    #FIXME
     if (-e $jobfile) {
         my $current = getcwd();
         $failed = 0;
@@ -239,7 +148,12 @@ sub submit_job {
                 $failed = 1;
             }
         } elsif($queue_type =~ /Slurm/i) {
-            if(system("qsub $jobname.job -N $jobname >& /dev/null")) { 
+            if(system("sbatch $jobname.job  >& /dev/null")) { 
+                print "Submission denied!\n";
+                $failed = 1;
+            }
+        } elsif($queue_type =~ /PBS/i) {
+            if(system("qsub $jobname.job >& /dev/null")) { 
                 print "Submission denied!\n";
                 $failed = 1;
             }
