@@ -137,6 +137,10 @@ sub submit_job {
         }
     }
 
+    my $failed = 1;
+    #Alert user if qsub (or bsub) returns error
+    #FIXME
+
     if (-e $jobfile) {
         my $current = getcwd();
         $failed = 0;
