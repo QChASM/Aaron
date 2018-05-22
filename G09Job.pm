@@ -885,7 +885,7 @@ sub build_com {
                 system("rm -fr $file_name.chk");
             }
             if ($self->{attempt} > 4) {
-                my $fc_change = (($route =~ s/readfc/calcfcall/) || ($route =~ s/calcfc/calcfcall/));
+                my $fc_change = (($route =~ s/readfc/calcall/) || ($route =~ s/calcfc/calcall/));
                 if ($fc_change) {
                     $self->{msg} .= "calculate fc before each optimization step, ".
                                     "this can take long time.\n";
