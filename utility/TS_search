@@ -99,9 +99,17 @@ for my $var (sort keys %{ $template_job->{formula} }) {
 open JOB, ">$jobname.job" or die "Cannot open $jobname.job file";
 
 print JOB "$env_variable\n";
+
+#Make sure job starts in submission directory
+if($queue_type =~ /LSF/i) {
+    print JOB "cd \$LS_SUBCWD\n";
+} elsif($queue_type =~ /Slurm/i) {
+    print JOB "cd \$SLURM_SUBMIT_DIR\n";
+} elsif($queue_type =~ /PBS/i) {
+    print JOB "cd \$PBS_O_WORKDIR\n";
+}
 print JOB "$AARON/utility/_TS_search.pl @argv\n";
 print JOB "exit\n";
-
 close JOB;
 
 if($queue_type =~ /LSF/i) {
