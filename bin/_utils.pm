@@ -26,10 +26,27 @@ sub get_cat {
     my $file = shift;
     my $cat = new AaronTools::Catalysis( name => ( $file =~ /(.*)\..*?$/ ) );
     unless ( @{ $cat->{elements} } ) {
-        print {*STDERR} ("\nCouldn't read geometry: $file\n\n");
+        print {*STDERR} ("\nCouldn't read catalyst geometry: $file\n\n");
         return 0;
     }
     return $cat;
+}
+
+sub get_lig {
+    use AaronTools::Catalysis;
+
+    my $file = shift;
+    my $lig;
+    if ( $file =~ /.*\.xyz$/ ) {
+        $lig = new AaronTools::Ligand( name => ( $file =~ /(.*)\..*?$/ ) );
+    } else {
+        $lig = new AaronTools::Ligand( name => $file );
+    }
+    unless ( @{ $lig->{elements} } ) {
+        print {*STDERR} ("\nCouldn't read ligand geometry: $file\n\n");
+        return 0;
+    }
+    return $lig;
 }
 
 sub get_outfile {
