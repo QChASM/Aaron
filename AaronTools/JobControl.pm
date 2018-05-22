@@ -148,17 +148,18 @@ sub submit_job {
         chdir($dir);
         if($queue_type =~ /LSF/i) {
             if(system("bsub < $jobname.job >& /dev/null")) {
-                print "Submission denied!\n";
+                print "Submission denied for $jobname.job!\n";
                 $failed = 1;
             }
+#Note: sbatch does not seem to return error codes for failed submissions
         } elsif($queue_type =~ /Slurm/i) {
             if(system("sbatch $jobname.job  >& /dev/null")) { 
-                print "Submission denied!\n";
+		print "Submission denied for $jobname.job!\n";
                 $failed = 1;
             }
         } elsif($queue_type =~ /PBS/i) {
             if(system("qsub $jobname.job >& /dev/null")) { 
-                print "Submission denied!\n";
+		print "Submission denied for $jobname.job!\n";
                 $failed = 1;
             }
         }
