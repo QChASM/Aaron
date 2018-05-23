@@ -37,7 +37,7 @@ GetOptions(
     'record' => \$Wkey->{record},
     'method|m=s' => \$method,
     'wall|w=i' => \$wall,
-    'process|p=i' => \$procs,
+    'n_procs|p=i' => \$procs,
     'node|n=i' => \$Gkey->{node},
     'basis|b=s' => \@basis,
     'ecp|e=s' => \@ecp,
