@@ -153,7 +153,8 @@ sub submit_job {
             }
 #Note: sbatch does not seem to return error codes for failed submissions
         } elsif($queue_type =~ /Slurm/i) {
-            if(system("sbatch $jobname.job  >& /dev/null")) { 
+            my $output = `sbatch < $jobname.job 2>&1`;
+            if($output =~ /error/i) { 
 		print "Submission denied for $jobname.job!\n";
                 $failed = 1;
             }
