@@ -1717,20 +1717,20 @@ sub new {
     return $self;
 }
 
-sub copy {
-    my $self = shift;
-    my $new =  new AaronTools::Geometry( name => $self->{name},
-                                         elements => [ @{ $self->{elements} } ],
-                                         flags => [ @{ $self->{flags} }],
-                                         coords => [ map { [ @$_ ] } @{ $self->{coords} } ],
-                                         connection => [ map { [ @$_ ] } @{ $self->{connection} } ],
-                                         constraints => [ map { [ @$_ ] } @{ $self->{constraints} } ] );
-    for my $key ('width', 'length', 'radius', 'angular_offset') {
-        $new->{$key} = $self->{$key};
-    }
-    bless $new, "AaronTools::NanoTube";
-    return $new;
-};
+#sub copy {
+#    my $self = shift;
+#    my $new =  new AaronTools::Geometry( name => $self->{name},
+#                                         elements => [ @{ $self->{elements} } ],
+#                                         flags => [ @{ $self->{flags} }],
+#                                         coords => [ map { [ @$_ ] } @{ $self->{coords} } ],
+#                                         connection => [ map { [ @$_ ] } @{ $self->{connection} } ],
+#                                         constraints => [ map { [ @$_ ] } @{ $self->{constraints} } ] );
+#    for my $key ('width', 'length', 'radius', 'angular_offset') {
+#        $new->{$key} = $self->{$key};
+#    }
+#    bless $new, "AaronTools::NanoTube";
+#    return $new;
+#};
 
 sub width {
     my $self = shift;
