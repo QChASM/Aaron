@@ -11,31 +11,31 @@ use Data::Dumper;
 use Getopt::Long;
 use Pod::Usage;
 
-#my $helpMsg = "\nThis utility helps users to prepare supporting information.\n";
-#              "Please run this utility under directory where you run AARON.\n";
-#              "Two files will be created, thermochemistry file and geometry file.\n";
+my $helpMsg = "\nThis utility helps users to prepare supporting information.\n" .
+              "Please run this utility under directory where you run AARON.\n" .
+              "Two files will be created, thermochemistry file and geometry file.\n";
 
 my $thermo_file = "thermo_SI.dat";
 my $xyz_file = "geometry_SI.xyz";
 my $help;
-#GetOptions(
-#    'help|h' => \$help,
-#    'thermo_SI|t' => \$thermo_file,
-#    'geometry_SI|g' => \$xyz_file,
-#) or pod2usage (
-#    -exitval => 1,
-#    -verbose => 1 );
-#
-#pod2usage (
-#    -msg => $helpMsg,
-#    -exitval => 1,
-#    -verbose => 1) if $help;
-#
-#my ($input_file) = grep { $_ =~ /\.in$/ } @ARGV;
-#$input_file or pod2usage (
-#    -msg => "A input file must be provided\n",
-#    -exitval => 1,
-#    -verbose => 0 );
+GetOptions(
+    'help|h' => \$help,
+    'thermo_SI|t=s' => \$thermo_file,
+    'geometry_SI|g=s' => \$xyz_file,
+) or pod2usage (
+    -exitval => 1,
+    -verbose => 1 );
+
+pod2usage (
+    -msg => $helpMsg,
+    -exitval => 1,
+    -verbose => 1) if $help;
+
+my ($input_file) = grep { $_ =~ /\.in$/ } @ARGV;
+$input_file or pod2usage (
+    -msg => "A input file must be provided\n",
+    -exitval => 1,
+    -verbose => 0 );
 
 #initiate AARON, reading needed information from command line and input files
 init_main();
@@ -147,6 +147,28 @@ sub _analyze_result {
     return print_ee($thermo, 1);
 }
 
+
+=pod
+
+=head1 SYNOPSIS
+
+$AARON/utility/print_SI [options] input.in
+
+=head1 OPTIONS
+
+=over
+
+=item B<-t THEMO_FILE_NAME>, B<--thermo_SI THERMO_FILE_NAME>
+
+Write thermo data in FILE_NAME rather than thermo_SI.dat
+
+=item B<-g GEOMETRY_FILE_NAME>, B<--geometry_SI GEOMETRY_FILE_NAME>
+
+Write geometry data in FILE_NAME rather than geometry_SI.dat
+
+=back
+
+=cut
 
 
 

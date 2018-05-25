@@ -43,7 +43,6 @@ GetOptions(
     'n_procs|p=i' => \$numprocs,
     'node|n=i' => \$node,
     'help|h' => \$help,
-    'restart' => \$redundacy,
     'record' => \$redundacy,
     'method|m=s' => \$redundacy,
     'basis|b=s' => \@redundacy,
@@ -137,4 +136,74 @@ if($queue_type =~ /LSF/i) {
         print "TS_search job submitted!\n";
     }
 }
+
+
+=pod
+
+=head1 SYNOPSIS
+
+$AARON/utility/TS_search.pl [options] input.xyz
+
+=head1 OPTIONS
+
+=over
+
+=item B<-w time_in_hours>, B<--wall time_in_hours>
+
+wall time of running TS_search on the queue
+
+=item B<-p numer_of_procs>, B<--n_procs number_of_procs>
+
+numer of processors required for TS_search on the queue
+
+=item B<-n node_type>, B<--node node_type>
+
+type of node required
+
+=item B<-r>, B<--record>
+
+track the failed computaions. Failed computaions will be saved as filename_cycleX_attemptX.log. This is recommended.
+
+=item B<-m method>, B<--method method>
+
+level of theory used to search TS.
+
+=item B<-b basis>, B<--basis basis>
+
+basis set used to search TS. The sytax for basis is the same as AARON. Mutliple basis sets are allowed by rasing this flag mutliple times. If you raise the flag as -b gen or -b C N O gen
+then you will be required to put in user defined basis sets. 
+NOTE! if you specify the element don't forget using double quote!
+For example -basis "C N O 6-31G"
+
+=item B<-e ecp>, B<--ecp ecp>
+
+Effective core potential, syntax is similar as basis sets
+
+=item B<-c charge mult>, B<--chargemult charge mult>
+
+charge and multiplicity for the system, no double quote
+
+=item B<-s solvent>, B<--solvent solvent>
+
+solvent for the system, defulat is gas
+
+=item B<--pcm solvent_model>
+
+solvent model
+
+=item B<--denfit>
+
+Use density fitting for electronic structure calculation
+
+=item B<--custom custom_theory>
+
+Use custom theory preset in the .aaronrc
+
+=item B<--emp_disp emp_disp>
+
+empirical dispersion function
+
+=back
+
+=cut
 

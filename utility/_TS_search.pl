@@ -25,7 +25,6 @@ my $method;
 my @ecp;
 my @chargemult;
 
-my $restart;
 my $sleep = SLEEP_TIME;
 my $custom;
 my $wall;
@@ -33,7 +32,6 @@ my $procs;
 
 #read arguments
 GetOptions(
-    'restart' => \$restart,
     'record' => \$Wkey->{record},
     'method|m=s' => \$method,
     'wall|w=i' => \$wall,
