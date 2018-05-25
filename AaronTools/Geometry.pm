@@ -1728,7 +1728,6 @@ sub new {
     return $self;
 }
 
-
 sub copy {
     my $self = shift;
     my $new =  new AaronTools::Geometry( name => $self->{name},

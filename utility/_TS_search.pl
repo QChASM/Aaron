@@ -37,7 +37,7 @@ GetOptions(
     'record' => \$Wkey->{record},
     'method|m=s' => \$method,
     'wall|w=i' => \$wall,
-    'process|p=i' => \$procs,
+    'n_procs|p=i' => \$procs,
     'node|n=i' => \$Gkey->{node},
     'basis|b=s' => \@basis,
     'ecp|e=s' => \@ecp,
@@ -83,7 +83,7 @@ if (@$wrong_con) {
     my $msg = '';
     for my $atom (@$wrong_con) {
         $atom ++;
-        $msg .= "Atoms too calsh around atom $atom, ";
+        $msg .= "Atoms too close around atom $atom, ";
     }
     $msg .= "Aaron has stopped this time, check your structure and fix. If this is right, ".
             "restart AARON with flag -nocrowd\n";
