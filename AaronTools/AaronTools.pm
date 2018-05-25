@@ -724,7 +724,7 @@ sub get_error {
   my %errors = (
     "CHK"   => "NtrErr Called from FileIO",			#delete
     "EIGEN" => "Wrong number of Negative eigenvalues", 		#opt=noeigen
-    "CONV"  => "Convergence failure -- run terminated.", 	#scf=xqc
+    "CONV"  => "Convergence failure -- run terminated.", 	#scf=qc
     "QUOTA" => "Erroneous write", 				#check quota and alert user; REMOVE error from end of file!
     "CLASH" => "Atoms too close", 				#flag as CLASH
     "CHARGEMULT" => "The combination of multiplicity",		#die and alert user to check catalyst structure or fix reaction_data!
