@@ -28,7 +28,7 @@ my $NORM_FINISH = "Normal termination";
 my %errors = (
     "NtrErr Called from FileIO" => 'CHK',         #delete
     "Wrong number of Negative eigenvalues" => 'EIGEN',      #opt=noeigen
-    "Convergence failure -- run terminated." => 'CONV',    #scf=qc
+    "Convergence failure -- run terminated." => 'CONV',    #scf=xqc
     "Erroneous write" => 'QUOTA',               #check quota and alert user; REMOVE error from end of file!
     "Atoms too close" => 'CLASH',               #flag as CLASH
     "The combination of multiplicity" => 'CHARGEMULT',      #die and alert user to check catalyst structure or fix reaction_data!

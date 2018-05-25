@@ -140,7 +140,6 @@ sub submit_job {
     my $failed = 1;
     #Alert user if qsub (or bsub) returns error
     #FIXME
-
     if (-e $jobfile) {
         my $current = getcwd();
         $failed = 0;
@@ -148,19 +147,12 @@ sub submit_job {
         chdir($dir);
         if($queue_type =~ /LSF/i) {
             if(system("bsub < $jobname.job >& /dev/null")) {
-                print "Submission denied for $jobname.job!\n";
+                print "Submission denied!\n";
                 $failed = 1;
             }
-#Note: sbatch does not seem to return error codes for failed submissions
         } elsif($queue_type =~ /Slurm/i) {
-            my $output = `sbatch < $jobname.job 2>&1`;
-            if($output =~ /error/i) { 
-		print "Submission denied for $jobname.job!\n";
-                $failed = 1;
-            }
-        } elsif($queue_type =~ /PBS/i) {
-            if(system("qsub $jobname.job >& /dev/null")) { 
-		print "Submission denied for $jobname.job!\n";
+            if(system("qsub $jobname.job -N $jobname >& /dev/null")) { 
+                print "Submission denied!\n";
                 $failed = 1;
             }
         }

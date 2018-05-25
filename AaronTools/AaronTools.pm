@@ -616,18 +616,13 @@ sub submit {
 
     #Alert user if qsub (or bsub) returns error
     #FIXME
-    if($queue_type eq 'LSF') {	#LSF queues
+    if($queue_type eq 'LSF') {
       if(system("bsub < $jobname.job >& /dev/null")) {
         print "Submission denied!\n";
         return 1;
       }
-    } elsif($queue_type eq 'Slurm') {	#Slurm queues
-      if(system("sbatch $jobname.job >& /dev/null")) {
-        print "Submission denied!\n";
-        return 1;
-      }
-    } else {	#PBS (default)
-      if(system("qsub $jobname.job >& /dev/null")) { 
+    } else {
+      if(system("qsub $jobname.job -N $jobname >& /dev/null")) { 
         print "Submission denied!\n";
         return 1;
       }
@@ -669,6 +664,9 @@ sub make_job_file {
   close(JOB);
 } #End make_job_file
 
+
+  return rad2deg($dihedral);
+}
 
 #get quota and return summary message
 sub get_quota {
@@ -726,7 +724,7 @@ sub get_error {
   my %errors = (
     "CHK"   => "NtrErr Called from FileIO",			#delete
     "EIGEN" => "Wrong number of Negative eigenvalues", 		#opt=noeigen
-    "CONV"  => "Convergence failure -- run terminated.", 	#scf=qc
+    "CONV"  => "Convergence failure -- run terminated.", 	#scf=xqc
     "QUOTA" => "Erroneous write", 				#check quota and alert user; REMOVE error from end of file!
     "CLASH" => "Atoms too close", 				#flag as CLASH
     "CHARGEMULT" => "The combination of multiplicity",		#die and alert user to check catalyst structure or fix reaction_data!

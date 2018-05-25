@@ -1,25 +1,25 @@
-#PBS -S /bin/bash
-#PBS -q wheeler_q
-#PBS -N $jobname
-#PBS -m n
-#PBS -l nodes=1:ppn=$numprocs
-#PBS -l walltime=$walltime:00:00
-#PBS -l mem=$memorygb
-
-module load gaussian/09-Intel-SSE4_2
-export GAUSS_SCRDIR=/lscratch/$USER/$PBS_JOBID
-mkdir -p $GAUSS_SCRDIR
-cd $GAUSS_SCRDIR
-cp $PBS_O_WORKDIR/$jobname.com .
-cp $PBS_O_WORKDIR/*.chk .
+#BSUB -J $jobname
+#BSUB -o $jobname.job.%J
+#BSUB -L /bin/bash
+#BSUB -W $walltime:00
+#BSUB -M 2700
+#BSUB -R 'rusage[mem=2700]'
+#BSUB -n $numprocs
+#BSUB -R 'span[ptile=$numprocs]'
+export g09root=/software/lms/g09_D01
 . $g09root/g09/bsd/g09.profile
-g09 -m="$buffermemGB" -p=$numprocs $jobname.com $PBS_O_WORKDIR/$jobname.log
-cp *.chk $PBS_O_WORKDIR/.
-cd $PBS_O_WORKDIR
-rm -rf $GAUSS_SCRDIR
+trap "rm -r $SCRATCH/$LSB_JOBID" 0 1 2 3 9 13 14 15
+mkdir $SCRATCH/$LSB_JOBID
+cd $SCRATCH/$LSB_JOBID
+echo -P- $numprocs > Default.Route
+echo -M- $memory >> Default.Route
+module purge
+env
+cp $LS_SUBCWD/*.chk .
+g09  < $LS_SUBCWD/$jobname.com  > $LS_SUBCWD/$jobname.log
+cp *.chk $LS_SUBCWD/
 exit
 
 &formula&
-$memory=$numprocs*2
-$buffermem=$numprocs*1.5
+$memory=0.8*$numprocs*2*10**9/8
 &formula&

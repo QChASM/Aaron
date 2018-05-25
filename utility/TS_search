@@ -99,42 +99,18 @@ for my $var (sort keys %{ $template_job->{formula} }) {
 open JOB, ">$jobname.job" or die "Cannot open $jobname.job file";
 
 print JOB "$env_variable\n";
-
-#Make sure job starts in submission directory
-if($queue_type =~ /LSF/i) {
-    print JOB "cd \$LS_SUBCWD\n";
-} elsif($queue_type =~ /Slurm/i) {
-    print JOB "cd \$SLURM_SUBMIT_DIR\n";
-} elsif($queue_type =~ /PBS/i) {
-    print JOB "cd \$PBS_O_WORKDIR\n";
-}
 print JOB "$AARON/utility/_TS_search.pl @argv\n";
 print JOB "exit\n";
+
 close JOB;
 
 if($queue_type =~ /LSF/i) {
     if(system("bsub < $jobname.job >& /dev/null")) {
         print "Submission denied!\n";
-        print "Please check your template.job file in $AARON.\n"
-    } else {
-        print "TS_search job submitted!\n";
     }
-
-#Note: sbatch does not seem to return error codes for failed submissions
 } elsif($queue_type =~ /Slurm/i) {
-    my $output = `sbatch < $jobname.job 2>&1`;
-    if($output =~ /error/i) { 
+    if(system("qsub $jobname.job -N $jobname >& /dev/null")) { 
         print "Submission denied!\n";
-        print "Please check your template.job file in $AARON.\n"
-    } else {
-        print "TS_search job submitted!\n";
-    }
-} elsif($queue_type =~ /PBS/i) {
-    if(system("qsub $jobname.job >& /dev/null")) { 
-        print "Submission denied!\n";
-        print "Please check your template.job file in $AARON.\n"
-    } else {
-        print "TS_search job submitted!\n";
     }
 }
 
