@@ -757,12 +757,12 @@ sub build_com {
     }
 
     ERROR: {    
-        if ($error eq 'CONV') {my $scf_change = $route =~ /scf=qc/ ?
-                                                0 : ($route .= " scf=qc");
+        if ($error eq 'CONV') {my $scf_change = $route =~ /scf=xqc/ ?
+                                                0 : ($route .= " scf=xqc");
             
                                 my $message = " SCF convergence problems with $filename ";
                                 if ($scf_change) {
-                                    $message .= "...scf=qc is in use\n";
+                                    $message .= "...scf=xqc is in use\n";
                                 }
 
                                 $self->{msg} = $message;

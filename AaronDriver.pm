@@ -246,7 +246,6 @@ sub dir_tree {
     chdir($current_dir);
 
     #make paths and initialize eevery geometry to be on step0 1st attempt
-    my ($TS_found, $min_found);
     foreach my $newdir (keys %{ $new_dir }) {
         my $cat_temp = $new_dir->{$newdir}->{catalysis};
 
@@ -293,7 +292,6 @@ sub dir_tree {
                         Wkey => $W_Key,
                         template_job => $template_job,
                     );
-                    $TS_found = 1;
                 }elsif ($state =~ /^min/i) {
                     $status->{$head} = new G09Job_MIN(
                         name => $head,
@@ -302,7 +300,6 @@ sub dir_tree {
                         Wkey => $W_Key,
                         template_job => $template_job,
                     );
-                    $min_found = 1;
                 }
             }elsif (%{$status->{$head}->{catalysis}}) {
 
@@ -340,9 +337,6 @@ sub dir_tree {
             }
         }
         $new_dir->{$newdir}->{catalysis}->init_conf_num();
-    }
-    if ($TS_found && $min_found) {
-        $arg_parser{multistep} = 1;
     }
 }
 
