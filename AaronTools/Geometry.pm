@@ -1806,8 +1806,8 @@ sub new {
 
     if (exists $params{name}) {
         $self->set_name($params{name});
-        if (-f "$AARON/Subs/$self->{name}.xyz") {
-            $self->read_geometry("$AARON/Subs/$self->{name}.xyz");
+        if (-f "$AARON/AaronTools/Subs/$self->{name}.xyz") {
+            $self->read_geometry("$AARON/AaronTools/Subs/$self->{name}.xyz");
         }
     }
 
@@ -1864,7 +1864,7 @@ sub compare_lib {
 
     my $subs = {};
 
-    open (my $fh, "<$AARON/Subs/subs") or die "Cannot open AARON/Subs/subs";
+    open (my $fh, "<$AARON/AaronTools/Subs/subs") or die "Cannot open $AARON/AaronTools/Subs/subs";
 
     while (<$fh>) {
         chomp;

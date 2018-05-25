@@ -208,7 +208,7 @@ sub read_params {
                                 @inexplicit_sub;
 
         #examine the inexplicit sub
-        open (my $fh, "<$AARON/Subs/subs") or die "Cannot open AARON/Subs/subs";
+        open (my $fh, "<$AARON/AaronTools/Subs/subs") or die "Cannot open $AARON/AaronTools/Subs/subs";
         my %subs_record;
 
         while (<$fh>) {
