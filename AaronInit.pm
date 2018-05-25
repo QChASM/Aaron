@@ -57,7 +57,7 @@ our $ligs_subs = {};
 
 #read command line arguments
 sub check_modules {
-    print "Checking required modules...\n";
+    print "Checking for required Perl modules...\n";
 
     eval {
         require Math::Vector::Real;
@@ -94,7 +94,7 @@ sub check_modules {
 
     exit (1) if $quit;
     
-    print "Necessary modules found, Aaron will start in a second\n"; 
+    print "Necessary Perl modules found. Starting AARON...\n"; 
 }
 
 
@@ -222,8 +222,8 @@ sub read_params {
 
         for my $key (keys %inexplicit_sub) {
             unless (exists $subs_record{$key}) {
-                print "The inexplicit substituent on the ligand $key " .
-                      "Cannot found in our database " .
+                print "The substituent on the ligand $key " .
+                      "Cannot be found in our database " .
                       "This substituent is skipped.\n";
                 delete $inexplicit_sub{$key};
             }

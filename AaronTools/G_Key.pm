@@ -7,7 +7,6 @@ my $TS_lib = NAMES->{TS_LIB};
 package AaronTools::G_Key;
 use strict; use warnings;
 use Constants qw(:PHYSICAL);
-use Data::Dumper;
 
 my $HOME = $ENV{'HOME'};
 my $AARON = $ENV{'AARON'};
@@ -321,6 +320,7 @@ package AaronTools::Theory_level;
 use strict; use warnings;
 use lib $ENV{'AARON'};
 use lib $ENV{'PERL_LIB'};
+use Data::Dumper;
 
 use AaronTools::Atoms qw(:BASIC);
 
@@ -522,7 +522,7 @@ sub method {
     }elsif ($self->{typein_basis}) {
         $method = $self->{method}. "/gen";
     }elsif (@{$self->unique_basis()} == 1) {
-        $method = $self->{method} . "/$self->unique_basis{}->[0]";
+        $method = $self->{method} . "/" . $self->unique_basis()->[0];
     }else {
         $method = $self->{method};
     }
@@ -573,7 +573,7 @@ sub footer {
     if (keys %{ $self->{basis} }) {
         if (@{$self->unique_basis()} > 1 ||
             $self->{ecp} ||
-            $self->{gen_basis} ||
+            @{$self->{gen_basis}} ||
             $self->{typein_basis}) {
 
             my @elements = @{ $geometry->{elements} };

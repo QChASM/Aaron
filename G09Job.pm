@@ -757,12 +757,12 @@ sub build_com {
     }
 
     ERROR: {    
-        if ($error eq 'CONV') {my $scf_change = $route =~ /scf=xqc/ ?
-                                                0 : ($route .= " scf=xqc");
+        if ($error eq 'CONV') {my $scf_change = $route =~ /scf=qc/ ?
+                                                0 : ($route .= " scf=qc");
             
                                 my $message = " SCF convergence problems with $filename ";
                                 if ($scf_change) {
-                                    $message .= "...scf=xqc is in use\n";
+                                    $message .= "...scf=qc is in use\n";
                                 }
 
                                 $self->{msg} = $message;
@@ -885,7 +885,7 @@ sub build_com {
                 system("rm -fr $file_name.chk");
             }
             if ($self->{attempt} > 4) {
-                my $fc_change = (($route =~ s/readfc/calcfcall/) || ($route =~ s/calcfc/calcfcall/));
+                my $fc_change = (($route =~ s/readfc/calcall/) || ($route =~ s/calcfc/calcall/));
                 if ($fc_change) {
                     $self->{msg} .= "calculate fc before each optimization step, ".
                                     "this can take long time.\n";
