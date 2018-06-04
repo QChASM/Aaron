@@ -9,14 +9,14 @@ use Pod::Usage;
 use Math::Trig;
 use AaronTools::Geometry;
 
-unshift @INC, ("$ENV{'AARON'}");
+unshift @INC, ("$ENV{'AARON'}/bin");
 require _utils;
 
 sub main {
     my $file = shift;
     my %opt  = @_;
 
-    my $geom = _utils::get_geom();
+    my $geom = _utils::get_geom($file);
     unless ($geom) {
         return 1;
     }
