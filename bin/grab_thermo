@@ -49,7 +49,6 @@ sub main {
         }
     }
     close(OFILE) || die "couldn't close $opt{output}: $!";
-
 }
 
 my %opt;
