@@ -23,7 +23,7 @@ You should know what you are doing when using this flag!
 
 =item B<--record>
 
-When go repeat the failed optimization, the old .log files will be saved for examination
+The overwritten failed .log file will be saved for further examination
 
 =item B<--sleep>
 

@@ -1787,8 +1787,8 @@ sub new {
     
     if (exists $params{name}) {
         $self->set_name($params{name});
-        if (-f "$AARON/Ligands/$self->{name}.xyz") {
-            $self->read_geometry("$AARON/Ligands/$self->{name}.xyz");
+        if (-f "$AARON/AaronTools/Ligands/$self->{name}.xyz") {
+            $self->read_geometry("$AARON/AaronTools/Ligands/$self->{name}.xyz");
         }
 
     }

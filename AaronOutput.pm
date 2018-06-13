@@ -5,7 +5,7 @@ use strict;
 use lib $ENV{'AARON'};
 
 use Constants qw(:INFORMATION :THEORY :PHYSICAL);
-use AaronInit qw(%arg_in %arg_parser $system $parent $jobname $ligs_subs);
+use AaronInit qw($G_Key %arg_parser $W_Key $parent $jobname $ligs_subs);
 
 use Cwd;
 use Exporter qw(import);
@@ -16,16 +16,23 @@ our @EXPORT = qw(&init_log print_message print_params terminate_AARON
 my $ol;
 my $out_file;
 my $old_data;
+my $queue = $ENV{'QUEUE_TYPE'};
 
 sub init_log {
-    $out_file = $parent . '/' . $jobname . "_aaron.log";
+    my %params = @_;
+    my ($job_name, $print_params) = ($params{job_name}, $params{print_params});
+    $print_params //= 0;
+
+    $job_name //= $jobname;
+
+    $out_file = $parent . '/' . $job_name . "_aaron.log";
     if (-e $out_file) {
         open $ol, ">>$out_file" or die "Can't open $out_file\n";
-        &restart_header();
+        &restart_header($print_params);
     }else {
         open $ol, ">>$out_file" or die "Can't open $out_file\n";
         &header();
-        &print_params();
+        &print_params() if $print_params;;
     }
 }
 
@@ -46,7 +53,9 @@ sub header {
       print $ol "                            $author\n";
     }
     print $ol "                          Texas A&M University\n";
-    print $ol "                         September, 2013 - 2017\n\n";
+    print $ol "                         September, 2013 - 2018\n\n";
+    print $ol "                         University of Georgia\n";
+    print $ol "                         August, 2018 - \n\n";
     print $ol "                                          /\\          /\\ \n";
     print $ol "                                         ( \\\\        // )\n";
     print $ol "                                          \\ \\\\      // / \n";
@@ -70,12 +79,9 @@ sub header {
     print $ol "                              Alkylation\n";
     print $ol "                              Reaction\n";
     print $ol "                              Optimizer for\n";
-    print $ol "                              New catalyst\n\n";
+    print $ol "                              New catalysts\n\n";
     print $ol "Citation:\n";
-    print $ol "AARON, verson $version, S. E. Wheeler and B. J. Rooks, Texas A&M University, $year.\n\n";
-    print $ol "B. J. Rooks, M. R. Haas, D. Sepulveda, T. Lu, and S. E. Wheeler, \"Prospects for the
-Co  mputational Design of Bipyridine N,N\'-Dioxide Catalysts for Asymmetric Propargylations\" ACS Catalysis 
-5,   272 (2015).\n\n";
+    print $ol "AARON, verson $version, Y. Guan, V. M. Ingman, B. J. Rooks, and S. E. Wheeler, Texas A&M University, $year.\n\n";
     print $ol "The following should also be cited when AARON is used for bidentate Lewis-base catalyzed alkylation reactions:\n\n";
     print $ol "1. T. Lu, M. A. Porterfield, and S. E. Wheeler, \"Explaining the Disparate Stereoselectivities
 of   N-Oxide Catalyzed Allylations and Propargylations of Aromatic Aldehydes\", Org. Lett. 14, 
@@ -86,18 +92,22 @@ Pr  opargylation of Aromatic Aldehydes Catalyzed by Helical N-Oxides\", J. Am. C
     print $ol "3. D. Sepulveda, T. Lu, and S. E. Wheeler, \"Performance of DFT Methods and Origin of
 St  ereoselectivity in Bipyridine N,N\'-Dioxide Catalyzed Allylation and Propargylation Reactions\", 
 12  , 8346 (2014).\n\n";
+    print $ol "4. B. J. Rooks, M. R. Haas, D. Sepulveda, T. Lu, and S. E. Wheeler, \"Prospects for the
+Co  mputational Design of Bipyridine N,N\'-Dioxide Catalysts for Asymmetric Propargylations\" ACS Catalysis 
+5,   272 (2015).\n\n";
     print $ol "The development of AARON is sponsored in part by the National Science Foundation,\nGrant CHE-1266022.\n\n\n";
 } #end sub header
 
 
 sub restart_header {
+    my $print_params = shift;
     my $date=localtime;
     if (-e $out_file) {
         print $ol "\n---------------------------------------------------------\nAaron job restarted on $date\n\n";
     } else {
         print $ol "Aaron job restarted on $date\n\n";
         &header();
-        &print_params();
+        &print_params() if $print_params;
     }
 }
 
@@ -112,9 +122,9 @@ sub print_message {
 sub print_params {
     my $version = INFO->{VERSION};
     my $AARON_HOME = INFO->{AARON_HOME};
-    my $method = $arg_in{level}->method();
-    my $high_method = $arg_in{high_level}->method();
-    my $low_method = $arg_in{low_level}->method();
+    my $method = $G_Key->{level}->method();
+    my $high_method = $G_Key->{high_level}->method();
+    my $low_method = $G_Key->{low_level}->method();
 
     print $ol "----------------------------------------------------------------------------------\n";
     print $ol "Parameters\n";
@@ -122,26 +132,26 @@ sub print_params {
     print $ol " AARON_HOME          = $AARON_HOME\n";
     print $ol "  version            = $version\n";
     print $ol "\n Reaction parameters:\n";
-    print $ol "  reaction_type      = $arg_in{reaction_type}\n";
-    print $ol "  solvent            = $arg_in{solvent}\n";
-    print $ol "  temperature        = $arg_in{temperature} K\n";
-    print $ol "  MaxRTS             = $arg_in{MaxRTS}\n";
-    print $ol "  MaxSTS             = $arg_in{MaxSTS}\n";
-    print $ol "  TS_path            = $arg_in{TS_path}\n";
+    print $ol "  reaction_type      = $W_Key->{reaction_type}\n" if $W_Key->{reaction_type};
+    print $ol "  solvent            = $G_Key->{solvent}\n";
+    print $ol "  temperature        = $G_Key->{temperature} K\n";
+    print $ol "  MaxRTS             = $W_Key->{MaxRTS}\n" if $W_Key->{MaxRTS};
+    print $ol "  MaxSTS             = $W_Key->{MaxSTS}\n" if $W_Key->{MaxSTS};
+    print $ol "  TS_path            = $W_Key->{TS_path}\n" if $W_Key->{TS_path};
     print $ol "\n Methods:\n";
     print $ol "  method = $method\n";
     print $ol "  high level method  = $high_method\n" if $high_method;
-    if($arg_in{basis}) {
-        print $ol "  basis set file     = $arg_in{basis}\n";
+    if(my $basis = $G_Key->{level}->footer_log()) {
+        print $ol "  basis set file     = $basis\n";
     }
-    print $ol "  solvent model      = $arg_in{pcm}\n";
+    print $ol "  solvent model      = $G_Key->{pcm}\n" if $G_Key->{pcm};
     print $ol "  low-level method   = $low_method\n";
     print $ol "\n Queue parameters:\n";
-    print $ol "  wall               = $system->{WALL} hours\n";
-    print $ol "  nprocs             = $system->{N_PROCS}\n";
-    print $ol "  shortwall          = $system->{SHORT_WALL} hours\n" if $system->{SHORT_WALL};
-    print $ol "  shortprocs         = $system->{SHORT_PROCS}\n" if $system->{SHORT_PROCS};
-    print $ol "  queue_name         = $system->{QUEUE_NAME}\n" if $system->{QUEUE_NAME};
+    print $ol "  wall               = $G_Key->{wall} hours\n";
+    print $ol "  nprocs             = $G_Key->{n_procs}\n";
+    print $ol "  shortwall          = $G_Key->{short_wall} hours\n" if $G_Key->{short_wall};
+    print $ol "  shortprocs         = $G_Key->{short_procs}\n" if $G_Key->{short_procs};
+    print $ol "  queue_name         = $queue\n" if $queue;
 
     if(@ARGV) {
         print $ol "\n command-line flags  = @ARGV\n";
@@ -240,7 +250,7 @@ sub print_status {
 
         @start && do {$msg .= "\nThe following jobs are going to start:\n";};
         for my $geometry(@start) {
-            $msg .= "$geometry is starting the AARON workflow using geometry from TS libraries\n";
+            $msg .= "$geometry is starting the AARON workflow using the geometry from the TS library\n";
         }
 
         @done && do {$msg .= "\nThe following jobs are done:\n";};
@@ -270,7 +280,7 @@ sub print_status {
             $msg .= ($job->{msg} or "No msg recorded") . "\n";
         }
 
-        @restart && do {$msg .= "\nThe following jobs are restarted by some reasons:\n";};
+        @restart && do {$msg .= "\nThe following jobs have been restarted for some reasons:\n";};
         for my $geometry(@restart) {
             my $job = &$_get_job($geometry);
             $msg .= "$geometry step $job->{step} " .
@@ -283,7 +293,7 @@ sub print_status {
             $msg .= "Now at attempt $job->{attempt}, cycle $job->{cycle}.\n";
         }
 
-        @skipped && do {$msg .= "\nThe following jobs are skipped by some error during calculation: \n";};
+        @skipped && do {$msg .= "\nThe following jobs are skipped due to some error during the calculation: \n";};
         for my $geometry(@skipped) {
             my $job = &$_get_job($geometry);
             $msg .= "$geometry step $job->{step} " .
@@ -295,7 +305,7 @@ sub print_status {
             }
         }
 
-        @killed && do {$msg .= "\nThe following jobs are stopped by reason:\n";};
+        @killed && do {$msg .= "\nThe following jobs are stopped:\n";};
         for my $geometry(@killed) {
             my $job = &$_get_job($geometry);
             $msg .= "$geometry\n step $job->{step} attemp $job->{attempt}: ";
@@ -344,7 +354,7 @@ sub print_ee {
 
         foreach my $thermo (@{$thermo}) {
             if ($absolute_only || $arg_parser{multistep} || $absolute) {
-                $data .= sprintf "%13.4f", $thermo;
+                $data .= sprintf "%13.6f", $thermo;
             }else {
                 $data .= sprintf "%10.1f", $thermo;
             }
@@ -396,7 +406,7 @@ sub print_ee {
     }
 
 
-    if ($arg_in{high_method}) {
+    if ($G_Key->{high_level}->method()) {
         if ($absolute_only || $arg_parser{multistep} || $absolute) {
             $data .= sprintf "%19s%13s%13s%13s%13s%13s%13s%13s\n", 'E', 'H', 'G', 'G_Grimme',
                                                     'E\'', 'H\'', 'G\'', 'G_Grimme\'';

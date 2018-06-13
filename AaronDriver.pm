@@ -6,8 +6,8 @@ use lib $ENV{'AARON'};
 use lib $ENV{'PERL_LIB'};
 
 use Constants qw(:THEORY :PHYSICAL :OTHER_USEFUL :COMPARE);
-use AaronInit qw(%arg_in %arg_parser $parent
-                 $ligs_subs $template_job $system grab_cata_coords);
+use AaronInit qw($G_Key %arg_parser $parent
+                 $ligs_subs $template_job $W_Key);
 use AaronOutput qw(print_message print_ee);
 use AaronTools::Catalysis;
 use G09Job;
@@ -37,9 +37,11 @@ my $SUBSTRATE = NAMES->{SUBSTRATE};
 my $LIGAND = NAMES->{LIGAND};
 
 my $hart_to_kcal = HART_TO_KCAL;
-my $RT = BOLTZMANN * $arg_in{temperature};
 
 my $queue_type = $ENV{'QUEUE_TYPE'};
+
+my $ts_found;
+my $min_found;
 
 #################
 #ref to some useful function
@@ -92,14 +94,14 @@ sub _make_directories {
                 mkdir "$sub";
             }
 
-            &dir_tree( target => $arg_in{TS_path} . "$arg_in{template}", 
+            &dir_tree( target => $W_Key->{TS_path} . "$W_Key->{template}", 
                        substrate => $sub,
                        ligand => $lig_ali,
-                  no_new_subs => $arg_in{input_conformers_only} );
+                  no_new_subs => $W_Key->{input_conformers_only} );
         }
 
         unless (%{ $ligs_subs->{$lig_ali}->{substrate} }) {
-            if ($arg_in{input_conformers_only}) {
+            if ($W_Key->{input_conformers_only}) {
                 my $msg = "If you want to search for different conformers for " .
                           "the template transition states, please turn off the " .
                           "input_conformers_only. Otherwise, Aaron has nothing " .
@@ -113,7 +115,7 @@ sub _make_directories {
                     print_message($msg);
                 }
 
-                &dir_tree( target => $arg_in{TS_path} . "$arg_in{template}",
+                &dir_tree( target => $W_Key->{TS_path} . "$W_Key->{template}",
                            ligand => $lig_ali );
             }
         }
@@ -121,9 +123,9 @@ sub _make_directories {
         if (!-d $lig_ali) {
             mkdir "$lig_ali";
         }
-        &dir_tree( target => $arg_in{TS_path} . "$arg_in{template}", 
+        &dir_tree( target => $W_Key->{TS_path} . "$W_Key->{template}", 
                    ligand => $lig_ali,
-              no_new_subs => $arg_in{input_conformers_only} );
+              no_new_subs => $W_Key->{input_conformers_only} );
 
         for my $sub (keys %{ $ligs_subs->{$lig_ali}->{substrate} }) {
             if (!(-d $sub)) {
@@ -198,13 +200,17 @@ sub dir_tree {
         if ($name =~ /(\S+).xyz/) {
             my $extend = $1;
             my $tempdir = cwd;
+
+            $ts_found = 1 if ($extend =~ /^ts/i);
+            $min_found = 1 if ($extend =~ /^min/i);
+
             if ($tempdir =~ /$top_dir_tar(\S+)?/) {
                 
                 my $newdir = $1 ? $top_dir_make . $1 . "/$extend" : $top_dir_make . "/$extend";
                 my $head = $newdir; $head =~ s/\/Cf\d+$//;
 
                 unless ($cata_read->{$newdir}) {
-                    print "Preparing guessed initial structure for $newdir...\n";
+                    print "Preparing initial structure for $newdir...\n";
                     #make distance hashes for each geometry
                     my $catalysis = new AaronTools::Catalysis( name => $extend,
                                                        substituents => $substituents,
@@ -234,10 +240,12 @@ sub dir_tree {
     };
 
     &$imitate($top_dir_tar, $f_file);
+
+    $W_Key->{multistep} = 1 if ($ts_found && $min_found);
+
     chdir($current_dir);
 
     #make paths and initialize eevery geometry to be on step0 1st attempt
-    my ($TS_found, $min_found);
     foreach my $newdir (keys %{ $new_dir }) {
         my $cat_temp = $new_dir->{$newdir}->{catalysis};
 
@@ -279,15 +287,19 @@ sub dir_tree {
                 if ($state =~ /^ts/i) {
                     $status->{$head} = new G09Job_TS( 
                         name => $head,
-                        catalysis => $new_dir->{$newdir}->{catalysis} 
+                        catalysis => $new_dir->{$newdir}->{catalysis} ,
+                        Gkey => $G_Key,
+                        Wkey => $W_Key,
+                        template_job => $template_job,
                     );
-                    $TS_found = 1;
                 }elsif ($state =~ /^min/i) {
                     $status->{$head} = new G09Job_MIN(
                         name => $head,
-                        catalysis => $new_dir->{$newdir}->{catalysis}
+                        catalysis => $new_dir->{$newdir}->{catalysis},
+                        Gkey => $G_Key,
+                        Wkey => $W_Key,
+                        template_job => $template_job,
                     );
-                    $min_found = 1;
                 }
             }elsif (%{$status->{$head}->{catalysis}}) {
 
@@ -312,7 +324,7 @@ sub dir_tree {
                 if (! -d $new && 
                     ($status->{$head}->{conformers}->{$extend_temp}->{status} ne 'repeated')) {
                     make_path($new);
-                    if ($i == 0 || ($arg_in{full_conformers})) {
+                    if ($i == 0 || ($W_Key->{full_conformers})) {
                         my ($num_cf) = $extend_temp =~ /Cf(\d+)/;
                         my $catalysis = $status->{$head}->{conformers}->{$extend_temp}->{catalysis};
                         $catalysis->make_conformer( new_number => $i + 1 );
@@ -325,9 +337,6 @@ sub dir_tree {
             }
         }
         $new_dir->{$newdir}->{catalysis}->init_conf_num();
-    }
-    if ($TS_found && $min_found) {
-        $arg_parser{multistep} = 1;
     }
 }
 
@@ -391,9 +400,11 @@ sub _analyze_result {
         }
     }
 
+    my $RT = BOLTZMANN * $G_Key->{temperature};
+
     my @stereo_geo;
 
-    for my $geo (@{ $arg_in{selectivity} }) {
+    for my $geo (@{ $W_Key->{selectivity} }) {
         if (my @geo_temp = grep {$_ =~ /\/$geo\//i} @geo) {
             push (@stereo_geo, [@geo_temp]);
         }
@@ -408,7 +419,7 @@ sub _analyze_result {
     my $thermo = {};
 
     for my $n (0..$#stereo_geo) {
-        my $key = $no_sele ? 'NONE' : $arg_in{selectivity}->[$n];
+        my $key = $no_sele ? 'NONE' : $W_Key->{selectivity}->[$n];
         $thermo->{$key} = {};
         $thermo->{$key}->{sum} = [];
         $thermo->{$key}->{geos} = {};
@@ -425,7 +436,7 @@ sub _analyze_result {
                     ! @{$job->{thermo}} && do { next; };
 
                     my @thermo_rel;
-                    if ($arg_parser{multistep}) {
+                    if ($W_Key->{multistep}) {
                         @thermo_rel = @{ $job->{thermo} };
                     }else {
                         @thermo_rel = map { ($job->{thermo}->[$_] - $min[$_]) * $hart_to_kcal }
@@ -441,7 +452,7 @@ sub _analyze_result {
                 $thermo->{$key}->{geos}->{$geo}->{thermo} = [@thermo_cf];
             }else {
                 for my $i (0..$#{ $jobs->{$geo}->{thermo} }) {
-                    if ($arg_parser{multistep}) {
+                    if ($W_Key->{multistep}) {
                         $thermo->{$key}->{geos}->{$geo}->{thermo}->[$i] =
                             $jobs->{$geo}->{thermo}->[$i];
                     }else {
@@ -460,7 +471,7 @@ sub _analyze_result {
 
     my $data = print_ee($thermo);
 
-    if ($arg_parser{absthermo} || ! $arg_parser{multistep}) {
+    if ($arg_parser{absthermo} || ! $W_Key->{multistep}) {
         $data .= "Absolute thermo";
         $data .= print_ee($thermo, 0, 1);
     }
