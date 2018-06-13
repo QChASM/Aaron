@@ -50,7 +50,6 @@ sub get_lig {
 }
 
 sub get_outfile {
-
     # prints to STDOUT if $path == ''
     # or saves to infile_append1_append2_etc.xyz
     # $path= '-', defaults to cwd
@@ -61,12 +60,10 @@ sub get_outfile {
 
     my $outfile = '';
     if ( $path ne '-' ) {
-
         # strip just file name (no path or file extension)
         $outfile = $filebase;
         $outfile =~ s/(.*\/)?(.*)\..*?$/$2/;
         if ( $path ne '' ) {
-
             # if no directory specified, write to cwd
             # make sure we don't have double path seperators!
             if ( $path =~ /.*\/$/ ) {
