@@ -317,7 +317,7 @@ sub copy {
     $new->{constraints} = [ map { [ @$_ ] } @{ $self->{constraints} } ];
 
     $new->{ligand} = $self->{ligand}->copy();
-    $new->{center} = $self->{center}->copy();
+    $new->{center} = $self->{center}->copy() if $self->{center};
     $new->{substrate} = $self->{substrate}->copy();
 
     $new->{ligand_atoms} = [@{ $self->{ligand_atoms} }];
@@ -649,7 +649,8 @@ sub screen_subs {
         }
     }
 
-    my @cata = ($self->copy()) x @subs_final;
+    my @cata = map{$self->copy()} (0..$#subs_final);
+
     map {$cata[$_]->substitute($component, %{ $subs_final[$_] })} (0..$#subs_final);
 
     return @cata;
