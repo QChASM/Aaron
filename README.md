@@ -7,9 +7,13 @@ Documentation for AARON will be added coinciding with the publication a paper de
 Command-line versions of the main AaronTools functionality have been implemented, which should allow widespread use of AaronTools even among non-Perl users.
 
 AaronTools is an object-oriented collection of Perl modules designed to:
+
 -Build, measure, manipulate, and compare molecular structures
+
 -Construct input files for and parse output files from Gaussian09
+
 -Analyze data
+
 -Submit and monitor jobs using queuing software commonly found on high-performance computing clusters
 
 AARON is a computational toolkit to automate the QM-based geometry optimization of transition state and intermediate structures for homogeneous catalytic reactions. It is built using AaronTools.
