@@ -1,9 +1,10 @@
 #!/usr/bin/perl -w
 use strict; use warnings;
 
-my $rmsd;
+my @rmsd;
+my @subs = ('Me', 'Et', 'Cl', 'tBu');
 
-eval {
+my $a = eval {
     use lib $ENV{'AARON'};
     use lib $ENV{'PERL_LIB'};
     
@@ -12,23 +13,38 @@ eval {
     use AaronTools::Catalysis;
    
     my $cata = new AaronTools::Catalysis( name => 'catalysis' );
-    
-    my $original = new AaronTools::Catalysis( name=>'ref');
 
-    my $subs = ['Me', 'Et', 'Cl', 'tBu'];
+    my @refs;
 
-    $cata->screen_subs('ligand', 24=>$subs);
+    for my $sub (@subs) {
+        my $ref = new AaronTools::Catalysis(name=>$sub);
+        push (@refs, $ref);
+    }
 
-    $rmsd = $cata->RMSD(ref_geo=>$original);
+    my @catas = $cata->screen_subs('ligand', 14=>[@subs]);
+
+    for my $i (0..3) {
+        my $rmsd = $catas[$i]->RMSD(ref_geo=>$refs[$i]);
+        push (@rmsd, $rmsd);
+    }
+    1
 } or do {
     my $error = $@;
 
     die "Error found in code: $error\n";
 };
 
-unless ($rmsd < 0.2) {
-    die "Substituted structure doesn't match with the reference\n";
+my @fails;
+for my $i (0..3) {
+    unless ($rmsd[$i] < 0.2) {
+        push (@fails, $subs[$i]);
+    }
 }
+
+if (@fails) {
+    my $fail_string = join(', ', @fails);
+    die "Substitutions of $fail_string don't match with the reference structure.\n";
+} 
 
 print "Test past!\n";
 

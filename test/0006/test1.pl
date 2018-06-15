@@ -10,15 +10,9 @@ use Data::Dumper;
 
 use AaronTools::Catalysis;
 
-my $cata = new AaronTools::Catalysis( name => 'catalysis' );
+my $name = 'catalysis';
+my $cata = new AaronTools::Catalysis( name => $name );
 
-
-my $subs = ['Me', 'Et', 'Cl', 'tBu'];
-
-my @cata = $cata->screen_subs('ligand', 24=>$subs);
-
-for my $cata (@cata) {
-    $cata->printXYZ();
-}
+print "$name\n";
 
 
