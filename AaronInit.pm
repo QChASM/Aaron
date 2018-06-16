@@ -8,6 +8,7 @@ my $HOME = $ENV{'HOME'};
 my $AARON = $ENV{'AARON'};
 
 use Constants qw(:INFORMATION :THEORY :PHYSICAL :SYSTEM :JOB_FILE :OTHER_USEFUL);
+use AaronTools::JobControl qw(get_job_template);
 use Pod::Usage;
 
 my @authors = @{ INFO->{AUTHORS} };
@@ -49,8 +50,7 @@ our $W_Key = new AaronTools::Workflow_Key();
 my $input_file;
 
 #content of template job file
-our $template_job = {};
-&get_job_template();
+our $template_job = get_job_template();
 
 #ligand and substituent information
 our $ligs_subs = {};
@@ -243,50 +243,6 @@ sub read_params {
     }
 }
 
-
-sub get_job_template {
-    if ( -e "$AARON/template.job") {
-        my $job_invalid;
-        my $template_pattern = TEMPLATE_JOB;
-
-        $template_job->{job} = "$AARON/template.job";
-        $template_job->{formula} = {};
-        $template_job->{env} = '';
-        $template_job->{command} = [];
-
-        open JOB, "<$AARON/template.job";
-        #get formulas
-        JOB:
-        while (<JOB>) {
-            /^\s*\#/ && do {$template_job->{env} .= $_; next;};
-
-            /&formula&/ && do { 
-                while (<JOB>) {
-                    /&formula&/ && last JOB;
-                    /^(\S+)=(\S+)$/ && do {  
-                        my $formula = $2;
-                        my @pattern = grep {$formula =~ 
-                               /\Q$_\E/} values %$template_pattern;
-
-                        unless (@pattern) {
-                           print "template.job in $AARON is invalid. " .
-                                 "Formula expression is wrong. " .
-                                 "Please see manual.\n";
-                           $job_invalid = 1;
-                           last;
-                        }
-                        $template_job->{formula}->{$1} = $2;
-                    };
-                }
-                last if $job_invalid;
-            };
-            chomp( my $command = $_ );
-            push (@{$template_job->{command}}, $command) unless ($command =~ /^$/);
-        }
-        chomp($template_job->{env});
-        chomp($template_job->{command});
-    }
-}
 
 sub write_status {
     my %status;

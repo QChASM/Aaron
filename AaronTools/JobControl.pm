@@ -9,7 +9,9 @@ use Constants qw(:SYSTEM :JOB_FILE);
 use Exporter qw(import);
 use Cwd qw(getcwd);
 
-our @EXPORT = qw(findJob killJob submit_job count_time);
+our @EXPORT = qw(findJob killJob submit_job count_time get_job_template);
+
+my $AARON = $ENV{'AARON'};
 
 my $queue_type = $ENV{'QUEUE_TYPE'} ?
                  $ENV{'QUEUE_TYPE'} : ADA->{QUEUE};
@@ -252,6 +254,55 @@ sub call_g09 {
     }
 }
 
+
+sub get_job_template {
+    my $template_job = {};
+    if ( -e "$AARON/template.job") {
+        my $job_invalid;
+        my $template_pattern = TEMPLATE_JOB;
+
+        $template_job->{job} = "$AARON/template.job";
+        $template_job->{formula} = {};
+        $template_job->{env} = '';
+        $template_job->{command} = [];
+
+        open JOB, "<$AARON/template.job";
+        #get formulas
+        JOB:
+        while (<JOB>) {
+            /^\s*\#/ && do {$template_job->{env} .= $_; next;};
+
+            /&formula&/ && do {
+                while (<JOB>) {
+                    /&formula&/ && last JOB;
+                    /^(\S+)=(\S+)$/ && do {
+                        my $formula = $2;
+                        my @pattern = grep {$formula =~
+                               /\Q$_\E/} values %$template_pattern;
+
+                        unless (@pattern) {
+                           print "template.job in $AARON is invalid. " .
+                                 "Formula expression is wrong. " .
+                                 "Please see manual.\n";
+                           $job_invalid = 1;
+                           last;
+                        }
+                        $template_job->{formula}->{$1} = $2;
+                    };
+                }
+                last if $job_invalid;
+            };
+            chomp( my $command = $_ );
+            push (@{$template_job->{command}}, $command) unless ($command =~ /^$/);
+        }
+        chomp($template_job->{env});
+        chomp($template_job->{command});
+    }else {
+        die "Cannot find template.job in $AARON.\n";
+    }
+
+    return $template_job;
+}
 
 
 
