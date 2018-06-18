@@ -13,6 +13,8 @@ opendir(CAS, $TESTDIR) or die "Cannot open test directory $TESTDIR: $!";
 my @cases = readdir(CAS);
 closedir(CAS);
 
+chdir($TESTDIR);
+
 @cases = grep {-d $_} @cases;
 @cases = grep {$_ =~ /^\d{4}$/} @cases;
 @cases = sort { $a <=> $b } @cases;
@@ -45,14 +47,12 @@ for my $case (@cases) {
         next;
     }
 
-    eval {
-        `./test.pl`;
-    } or do {
+    if (system('./test.pl')) {
         print "Case $case didn't pass the test, find error message above.\n";
         push (@fail, $case);
         print '-' x 88 . "\n";
         next;
-    };
+    }
 
     $success++;
     print "Case $case passed test!\n";

@@ -87,8 +87,7 @@ sub detect_component {
                 $self->{center_atom} = $TM;
                 $self->{substrate_atoms} = [0..$TM-1];
             }else {
-                print "You specify the catalysis to be a transition metal one. " .
-                      "But no any transition metal was found in the geometry. ".
+                print "No transition metal was found in the geometry. ".
                       "Catalysis is found to be a pure organic system. " .
                       "If this is a Si, P or other non-metal atom centered ".
                       "system, please specify that in the .xyz file.\n";
