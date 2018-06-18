@@ -298,7 +298,7 @@ sub get_job_template {
         chomp($template_job->{env});
         chomp($template_job->{command});
     }else {
-        die "Cannot find template.job in $AARON.\n";
+        die "Cannot found template.job in $AARON folder.\n";
     }
 
     return $template_job;

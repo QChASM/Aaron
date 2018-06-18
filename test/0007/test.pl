@@ -31,12 +31,13 @@ eval {
 
     sleep(10);
 
-    $job_found = findJob('.');
+    ($job_found) = findJob('.');
 
     killJob($job_found) if $job_found;
     sleep(5);
 
     $failed_to_kill = findJob('.');
+    1
 } or do {
     my $error = $@;
 
@@ -54,6 +55,9 @@ unless ($job_found) {
 if ($failed_to_kill) {
     die "Cannot kill the job on the queue.\n";
 }
+
+system("rm -fr test.job*");
+system("rm -fr test.log");
 
 print "Test passed!\n";
 
