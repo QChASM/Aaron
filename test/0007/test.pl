@@ -4,6 +4,7 @@ use strict; use warnings;
 my $failed_to_submit;
 my $job_found;
 my $failed_to_kill;
+my $AARON = $ENV{'AARON'};
 
 eval {
     use lib $ENV{'AARON'};
@@ -31,12 +32,12 @@ eval {
 
     sleep(10);
 
-    ($job_found) = findJob('.');
+    ($job_found) = findJob("$AARON/test");
 
     killJob($job_found) if $job_found;
     sleep(5);
 
-    $failed_to_kill = findJob('.');
+    $failed_to_kill = findJob("$AARON/test");
     1
 } or do {
     my $error = $@;
@@ -48,15 +49,15 @@ system("rm -fr test.job*");
 system("rm -fr test.log");
 
 if ($failed_to_submit) {
-    die "Failed to submit test job to the queue.\n"
+    die "Test failed. Failed to submit test job to the queue.\n"
 }
 
 unless ($job_found) {
-    die "Cannot find job submitted to the queue.\n";
+    die "Test Failed. Cannot find job submitted to the queue. Please find the job and kill manually first.\n";
 }
 
 if ($failed_to_kill) {
-    die "Cannot kill the job on the queue.\n";
+    die "Test Failed. Cannot kill the job on the queue. Please kill the job manually first.\n";
 }
 
 print "Test passed!\n";
