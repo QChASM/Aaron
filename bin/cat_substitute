@@ -15,52 +15,43 @@ sub main {
     my $file = shift;
     my %opt  = @_;
 
-    my $geom = _utils::get_cat($file);
-    return 1 unless $geom;
+	# if substituent is named, just go ahead and pass that to substitute()
+	# otherwise, we should pass substituent numbering to Catalysis class
+	# to preserve indexing when interacting with object
+	my %numbered;
+	$numbered{ligand} = {};
+	$numbered{substrate} = {};
+	my %named;
+	$named{ligand} = {};
+	$named{substrate} = {};
 
-    # debuging
-    if (0) {
-        foreach my $key ( keys %{$geom} ) {
-            print( $key, "\n" );
-        }
-        print("\n");
-        foreach my $item ( @{ $geom->{ligand_atoms} } ) {
-            print( $item, " " );
-        }
-    }
-
-   # perform substitute for each substituent
-   # do ligand subsituents first, as these atoms are listed last in the xyz file
-   # do substrate substitutions last so we don't mess up ligand atom numbering
-    foreach my $sub ( keys %{ $opt{ligand} } ) {
-
-        # if substituent is named, just go ahead and pass that to substitute()
-        # if we are using relative numbering, still need to 0-index
-        # otherwise, calculate atom position in ligand from absolute index
-        my $tmp;
+	# store command line options in the appropriate hash
+	foreach my $sub ( keys %{ $opt{ligand} } ) {
         if ( $sub !~ /^\d+$/ ) {
-            $tmp = $sub;
-        } elsif ( $opt{relnum} ) {
-            $tmp = $sub - 1;
+			$named{ligand}{$sub} = $opt{ligand}{$sub};
         } else {
-            $tmp = $sub - $geom->{ligand_atoms}[0] - 1;
+			$numbered{ligand}{$sub-1} = $opt{ligand}{$sub};
         }
-        $geom->substitute( 'ligand', $tmp => $opt{ligand}{$sub} );
     }
     foreach my $sub ( keys %{ $opt{substrate} } ) {
-
-        # still want to pass named substituents as they are
-        # relative/absolute numbering is the same for substrate atoms
-        # since they come first
-        my $tmp;
-        if ( $sub !~ /^\d+$/ ) {
-            $tmp = $sub;
-        } else {
-            $tmp = $sub - 1;
-        }
-        $geom->substitute( 'substrate', $tmp => $opt{substrate}{$sub} );
+		if ( $sub !~ /^\d+$/ ){
+			$named{substrate}{$sub} = $opt{substrate}{$sub};
+		}else{
+			$numbered{substrate}{$sub-1} = $opt{substrate}{$sub};
+		}
     }
-    $geom->substitute('');
+
+	# create catalysis object with requested substituent indexing
+    my $geom = _utils::get_cat($file, \%numbered);
+    return 1 unless $geom;
+
+	# perform substitute for each substituent
+	foreach my $component ( keys %numbered ){
+		$geom->substitute( $component, %{ $numbered{$component} } );
+	}
+	foreach my $component ( keys %named ){
+		$geom->substitute( $component, %{ $named{$component} } );
+	}
 
     # Printing
     # prints to STDOUT if $outfile == ''
@@ -115,10 +106,6 @@ Replace target (atom or substituent) on ligand with specified substituent
 =item B<-s target=sub>, B<--substrate target=sub>
 
 Replace target (atom or substituent) on substrate with specified substituent
-
-=item B<-r>, B<--relnum>
-
-Use relative ligand/substrate based numbering instead of absolute 1-indexed numbering
 
 =item B<-o outfile>, B<--output outfile>
 

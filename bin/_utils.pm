@@ -23,8 +23,20 @@ sub get_geom {
 sub get_cat {
     use AaronTools::Catalysis;
 
-    my $file = shift;
-    my $cat = new AaronTools::Catalysis( name => ( $file =~ /(.*)\..*?$/ ) );
+	my %params;
+	my $file = shift;
+	$params{substituents} = shift;
+	($params{name}) = ( $file =~ /(.*)\..*?$/ );
+
+    my $cat = new AaronTools::Catalysis('name' => $params{name});
+	my $ligstart = $#{$cat->{coords}} - $#{$cat->{ligand_atoms}};
+	foreach my $sub ( keys %{ $params{substituents}{ligand} } ) {
+		$params{substituents}{ligand}{$sub-$ligstart} =
+			delete $params{substituents}{ligand}{$sub};
+	}
+
+	$cat = new AaronTools::Catalysis(%params) if $params{substituents};
+
     unless ( @{ $cat->{elements} } ) {
         print {*STDERR} ("\nCouldn't read catalyst geometry: $file\n\n");
         return 0;
