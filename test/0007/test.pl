@@ -44,6 +44,9 @@ eval {
     die "Error found in code: $error\n";
 };
 
+system("rm -fr test.job*");
+system("rm -fr test.log");
+
 if ($failed_to_submit) {
     die "Failed to submit test job to the queue.\n"
 }
@@ -55,9 +58,6 @@ unless ($job_found) {
 if ($failed_to_kill) {
     die "Cannot kill the job on the queue.\n";
 }
-
-system("rm -fr test.job*");
-system("rm -fr test.log");
 
 print "Test passed!\n";
 
