@@ -46,7 +46,7 @@ GetOptions(
     'pcm=s' => \$Gkey->{pcm},
     'custom=s' => \$Gkey->{custom},
     'short' => \$Wkey->{short},
-    'debug' => \$Wkey->{debug},
+    'debug|d' => \$Wkey->{debug},
     'noquota' => \$Wkey->{no_quota},
     'emp_disp=s' => \$Gkey->{emp_disp},
 );
@@ -95,7 +95,8 @@ my $G09job = new G09Job_TS_Single(
     catalysis => $geometry,
     Gkey => $Gkey,
     Wkey => $Wkey,
-    template_job => $template_job );
+    template_job => $template_job,
+    );
 
 #unless (-e "$input_name.1.com") {
 #    $G09job->build_com( directory => '.');

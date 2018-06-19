@@ -1490,6 +1490,12 @@ sub com_route_footer {
 
     my $print_flag;
 
+    if ($self->{Wkey}->{debug}) {
+        $method = "B97D/3-21G";
+    }
+
+    my $footer_theory = $self->{Wkey}->{debug} ? '' : $self->{Gkey}->{level}->footer($catalysis);
+
     SWITCH: {
         if ($step == 1) { $route = "\%chk=$filename.chk\n";
                           $route .= "#$method opt=(modredundant,maxcyc=1000)";
@@ -1499,7 +1505,7 @@ sub com_route_footer {
                               $footer .= "B $bond[0] $bond[1] F\n";
                           }
                           $footer .= "\n";
-                          $footer .= $self->{Gkey}->{level}->footer($catalysis);
+                          $footer .= $footer_theory;
 
                           last SWITCH; }
 
@@ -1509,12 +1515,12 @@ sub com_route_footer {
                           }else {
                             $route .= "#$method opt=(calcfc,ts,maxcyc=1000)";
                           }
-                          $footer .= $self->{Gkey}->{level}->footer($catalysis);
+                          $footer .= $footer_theory;
                           last SWITCH; }
 
         if ($step == 3) { $route = "\%chk=$filename.chk\n";
                           $route .= "#$method freq=(hpmodes,noraman,temperature=$self->{Gkey}->{temperature})";
-                          $footer .= $self->{Gkey}->{level}->footer($catalysis);
+                          $footer .= $footer_theory;
                           last SWITCH; }
     }
 

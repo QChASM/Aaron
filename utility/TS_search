@@ -53,6 +53,7 @@ GetOptions(
     'denfit' => \$redundacy,
     'custom' => \$redundacy,
     'emp_disp' => \$redundacy,
+    'debug|d' => \$redundacy,
 ) or pod2usage(
     -exitval => 1,
     -verbose => 1,

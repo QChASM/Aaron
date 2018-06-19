@@ -591,6 +591,8 @@ sub footer {
                     }
                 }
 
+                next unless @exit_atoms;
+
                 $return .= sprintf "%s " x @exit_atoms, @exit_atoms;
                 $return .= "0\n";
                 $return .= "$basis\n";
@@ -626,6 +628,8 @@ sub footer {
                     push (@exit_atoms, $atom);
                 }
             }
+
+            next unless @exit_atoms;
 
             $return .= sprintf "%s " x @exit_atoms, @exit_atoms;
             $return .= "0\n";
