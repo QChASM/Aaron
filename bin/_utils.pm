@@ -23,20 +23,27 @@ sub get_geom {
 sub get_cat {
     use AaronTools::Catalysis;
 
-	my %params;
-	my $file = shift;
-	$params{substituents} = shift;
-	($params{name}) = ( $file =~ /(.*)\..*?$/ );
+    my %params;
+    my $file = shift;
+    $params{substituents} = shift;
+    ( $params{name} ) = ( $file =~ /(.*)\..*?$/ );
 
-    my $cat = new AaronTools::Catalysis('name' => $params{name});
-	my $ligstart = $#{$cat->{coords}} - $#{$cat->{ligand_atoms}};
-	foreach my $sub ( keys %{ $params{substituents}{ligand} } ) {
-		$params{substituents}{ligand}{$sub-$ligstart} =
-			delete $params{substituents}{ligand}{$sub};
-	}
+    # creat Catalysis object
+    my $cat = new AaronTools::Catalysis( 'name' => $params{name} );
 
-	$cat = new AaronTools::Catalysis(%params) if $params{substituents};
+    # if substituent info provided, make provided ligand numbering relative
+    if ( $params{substituents} ) {
+        my $ligstart = $#{ $cat->{coords} } - $#{ $cat->{ligand_atoms} };
+        foreach my $sub ( keys %{ $params{substituents}{ligand} } ) {
+            $params{substituents}{ligand}{ $sub - $ligstart } =
+              delete $params{substituents}{ligand}{$sub};
+        }
 
+        # update catalysis object with substituent info
+        $cat = new AaronTools::Catalysis(%params);
+    }
+
+    # check for success
     unless ( @{ $cat->{elements} } ) {
         print {*STDERR} ("\nCouldn't read catalyst geometry: $file\n\n");
         return 0;

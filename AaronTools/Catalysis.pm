@@ -87,8 +87,7 @@ sub detect_component {
                 $self->{center_atom} = $TM;
                 $self->{substrate_atoms} = [0..$TM-1];
             }else {
-                print "You specify the catalysis to be a transition metal one. " .
-                      "But no any transition metal was found in the geometry. ".
+                print "No transition metal was found in the geometry. ".
                       "Catalysis is found to be a pure organic system. " .
                       "If this is a Si, P or other non-metal atom centered ".
                       "system, please specify that in the .xyz file.\n";
@@ -317,7 +316,7 @@ sub copy {
     $new->{constraints} = [ map { [ @$_ ] } @{ $self->{constraints} } ];
 
     $new->{ligand} = $self->{ligand}->copy();
-    $new->{center} = $self->{center}->copy();
+    $new->{center} = $self->{center}->copy() if $self->{center};
     $new->{substrate} = $self->{substrate}->copy();
 
     $new->{ligand_atoms} = [@{ $self->{ligand_atoms} }];
@@ -649,7 +648,8 @@ sub screen_subs {
         }
     }
 
-    my @cata = ($self->copy()) x @subs_final;
+    my @cata = map{$self->copy()} (0..$#subs_final);
+
     map {$cata[$_]->substitute($component, %{ $subs_final[$_] })} (0..$#subs_final);
 
     return @cata;
@@ -1787,8 +1787,8 @@ sub new {
     
     if (exists $params{name}) {
         $self->set_name($params{name});
-        if (-f "$AARON/Ligands/$self->{name}.xyz") {
-            $self->read_geometry("$AARON/Ligands/$self->{name}.xyz");
+        if (-f "$AARON/AaronTools/Ligands/$self->{name}.xyz") {
+            $self->read_geometry("$AARON/AaronTools/Ligands/$self->{name}.xyz");
         }
 
     }

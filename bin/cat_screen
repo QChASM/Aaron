@@ -7,6 +7,7 @@ use lib $ENV{'PERL_LIB'};
 use Getopt::Long;
 use Pod::Usage;
 use AaronTools::Catalysis;
+use Data::Dumper;
 
 unshift @INC, ("$ENV{'AARON'}/bin");
 require _utils;
@@ -15,31 +16,33 @@ sub main {
     my $file = shift;
     my %opt  = @_;
 
-    my $geom = _utils::get_cat($file) if -e $file;
-    return 1 unless $geom;
+    # if substituent is named, just go ahead and pass that to substitute()
+    # otherwise, we should pass substituent numbering to Catalysis class
+    # to preserve indexing when interacting with object on our side
+    my %numbered;
+    $numbered{ligand}    = {};
+    $numbered{substrate} = {};
+    my %named;
+    $named{ligand}    = {};
+    $named{substrate} = {};
 
-    # debugging
-    if (0) {
-        while ( my ( $key, $val ) = each %{ $opt{ligand} } ) {
-            print $key, " ", $val, "\n";
-        }
-        return;
+    # store command line options in the appropriate hash
+    foreach my $sub ( keys %{ $opt{ligand} } ) {
+		$numbered{ligand}{ $sub - 1 } = $opt{ligand}{$sub};
     }
+    foreach my $sub ( keys %{ $opt{substrate} } ) {
+		$numbered{substrate}{ $sub - 1 } = $opt{substrate}{$sub};
+    }
+
+    # create catalysis object with requested substituent indexing
+    my $geom = _utils::get_cat( $file, \%numbered ) if -e $file;
+    return 1 unless $geom;
 
    # Generate geometry for each ligand/substrate substitution combination
    # do ligand subsituents first, as these atoms are listed last in the xyz file
    # do substrate substitutions last so we don't mess up ligand atom numbering
     my %params;
-    while ( my ( $target, $subs ) = each %{ $opt{ligand} } ) {
-        # if we are using relative numbering, still need to 0-index
-        # otherwise, calculate atom position in ligand from absolute index
-        my $atom;
-        if ( $opt{relnum} ) {
-            $atom = $target - 1;
-        } else {
-            $atom = $target - $geom->{ligand_atoms}[0] - 1;
-        }
-
+    while ( my ( $atom, $subs ) = each %{ $numbered{ligand} } ) {
         # screen_subs takes %params in the form of
         # {'atom1,atom2,...' => [sub1, sub2, ...]}
         my @subs = split /,/, $subs;
@@ -51,15 +54,20 @@ sub main {
             $params{$atom} = \@subs;
         };
     }
-    my @sub_ligs = $geom->screen_subs( 'ligand', %params );
+	print Dumper(\%params);
 
-    # now do the substrate
+	# substitute at appropriate spots on ligand
+	my @sub_ligs;
+	if ( %params ) {
+		@sub_ligs = $geom->screen_subs( 'ligand', %params );
+	}
+	else {
+		@sub_ligs = ($geom);
+	}
+
+    # now do the substrate screen for each of the ligand-screened above
     %params = ();
-    while ( my ( $target, $subs ) = each %{ $opt{substrate} } ) {
-        # relative/absolute numbering is the same for substrate atoms
-        # since they come first
-        my $atom = $target - 1;
-
+    while ( my ( $atom, $subs ) = each %{ $numbered{substrate} } ) {
         my @subs = split /,/, $subs;
         eval {
             local $@;
@@ -70,6 +78,7 @@ sub main {
         };
     }
 
+	# perform screen on each of the newly generated geometries
     my @sub_geoms;
     foreach my $geom (@sub_ligs) {
         push @sub_geoms, $geom->screen_subs( 'substrate', %params );
@@ -84,23 +93,14 @@ sub main {
         my %lsubs = %{ $geom->{ligand}->{substituents} };
         while ( my ( $k, $v ) = each %lsubs ) {
             # $k = atom number, $v = substituent object
-            if ( $opt{relnum} ) {
-                push @appends, ( 'l' . ( $k + 1 ) . '-' . $v->{name} );
-            } else {
-                push @appends,
-                  ( ( $k + $geom->{ligand_atoms}[0] + 1 ) . '-' . $v->{name} );
-            }
+			push @appends, ( ( $k + $geom->{ligand_atoms}[0] + 1 ) . '-' . $v->{name} );
         }
 
         # add substrate info to @appends
         my %ssubs = %{ $geom->{substrate}->{substituents} };
         while ( my ( $k, $v ) = each %ssubs ) {
             # $k = atom number, $v = substituent object
-            if ( $opt{relnum} ) {
-                push @appends, ( 's' . ( $k + 1 ) . '-' . $v->{name} );
-            } else {
-                push @appends, ( ( $k + 1 ) . '-' . $v->{name} );
-            }
+			push @appends, ( ( $k + 1 ) . '-' . $v->{name} );
         }
 
         # generate filename (with appropriate directory)
@@ -123,7 +123,6 @@ $opt{ligand}    = \%liglist;
 $opt{write}     = '-';
 GetOptions(
     'help|h'            => \$opt{help},
-    'relnum|r'          => \$opt{relnum},
     'substrate|s=s%{,}' => \%sublist,
     'ligand|l=s%{,}'    => \%liglist,
     'write|w:s'         => \$opt{write} )
@@ -166,10 +165,6 @@ Run through substitution combinations, outputing a file for each. For example, -
 B<--substrate target=sub1[,sub2,... target2=sub3,sub4,...]>
 
 Same as ligand flag above, but for substrate substitutions
-
-=item B<-r>, B<--relnum>
-
-Use relative ligand-based numbering instead of absolute 1-indexed numbering
 
 =item B<-w [directory]> B<--write [directory]>
 
