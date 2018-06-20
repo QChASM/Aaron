@@ -365,7 +365,7 @@ sub get_all_connected {
     my @connected = @{$self->{connection}};
     my @connected_temp = map { [@$_] } @connected;
     #remove avoid_atom from list of atoms connected to $start_atom
-    if ($avoid_atom) {
+    if (defined $avoid_atom) {
         foreach my $atom (0..$#{$connected_temp[$start_atom]}) {
             if($connected_temp[$start_atom][$atom] == $avoid_atom) {
             $connected_temp[$start_atom][$atom] = -1;
@@ -390,7 +390,7 @@ sub get_all_connected {
 
     my @all_connected_atoms = keys %visited;
     #Check all_connected_atoms for avoid_atom
-    if ($avoid_atom) {
+    if (defined $avoid_atom) {
         foreach (@all_connected_atoms) {
             if($_ == $avoid_atom) {
                 return ();
@@ -426,7 +426,6 @@ sub detect_substituent {
     my %params = @_;
 
     my ($target, $end) = ($params{target}, $params{end});
-
     my $sub_atoms = $self->get_all_connected($target, $end);
 
     my $substituent = $self->subgeo($sub_atoms);

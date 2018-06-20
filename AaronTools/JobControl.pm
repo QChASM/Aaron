@@ -42,7 +42,7 @@ sub findJob {
 
         #parse each job looking for $Path
         foreach my $job (@jobs) {
-            if ($job =~ /Job<(\d+)>\S+CWD<.+$Path>/) {
+            if ($job =~ /Job<(\d+)>.+CWD\s<.+$Path>/) {
                 push(@jobIDs,$1);
             }
         }
