@@ -172,25 +172,25 @@ Returns a value to be subtracted from an atom index to switch from absolute to r
 
 # Used to determine AaronTools atom numbering from command-line provided numbering
 sub get_sub_numbers {
-	my $geom      = shift;
-	my $component = shift;
+    my $geom      = shift;
+    my $component = shift;
 
-	my %convert;
-	# determine requested target atom, in aaron's number scheme
-	foreach my $aaron_num ( keys %{ $geom->{$component}{substituents} } ) {
-		my $target;
-		if ( $geom->{$component}->{substituents}->{$aaron_num}->{sub} ) {
-			# only add to screen_sub convert if it was a substituent requested
-			$target =
-				$geom->{$component}->{substituents}->{$aaron_num}->{sub};
-		} else {
-			# but not ones that were simply auto-detected
-			next;
-		}
+    my %convert;
+    # determine requested target atom, in aaron's number scheme
+    foreach my $aaron_num ( keys %{ $geom->{$component}{substituents} } ) {
+        my $target;
+        if ( $geom->{$component}->{substituents}->{$aaron_num}->{sub} ) {
+            # only add to screen_sub convert if it was a substituent requested
+            $target =
+              $geom->{$component}->{substituents}->{$aaron_num}->{sub};
+        } else {
+            # but not ones that were simply auto-detected
+            next;
+        }
 
-		$convert{$target} = $aaron_num;
-	}
-	return %convert;
+        $convert{$target} = $aaron_num;
+    }
+    return %convert;
 }
 
 1;
