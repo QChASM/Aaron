@@ -3,11 +3,12 @@
 Provides utilities for common interactions with AaronTools
 =cut
 
-use strict;
 use lib $ENV{'AARON'};
 use lib $ENV{'PERL_LIB'};
 
 package _utils;
+use strict;
+use Data::Dumper;
 
 =item get_geom($file)
 Gets geometry object from file
@@ -30,7 +31,7 @@ sub get_geom {
 =item get_cat($file, \%substituents)
 Gets catalysis object from file. Optional substituent information can be provided.
 
-\%substituents = {'ligand'=>{ atom=>sub, ... }, 'substrate'=>{ atom=>sub, ... }}
+\%substituents = {'ligand'=>{ atom=>label, ... }, 'substrate'=>{ atom=>label, ... }}
 =cut
 sub get_cat {
     use AaronTools::Catalysis;

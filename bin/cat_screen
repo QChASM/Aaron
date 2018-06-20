@@ -22,39 +22,41 @@ sub main {
     my %numbered;
     $numbered{ligand}    = {};
     $numbered{substrate} = {};
-    my %named;
-    $named{ligand}    = {};
-    $named{substrate} = {};
 
     # store command line options in the appropriate hash
     foreach my $sub ( keys %{ $opt{ligand} } ) {
-		$numbered{ligand}{ $sub - 1 } = $opt{ligand}{$sub};
+		$numbered{ligand}{ $sub - 1 } = $sub;
     }
     foreach my $sub ( keys %{ $opt{substrate} } ) {
-		$numbered{substrate}{ $sub - 1 } = $opt{substrate}{$sub};
+		$numbered{substrate}{ $sub - 1 } = $sub;
     }
 
     # create catalysis object with requested substituent indexing
+	print Dumper(%numbered);
     my $geom = _utils::get_cat( $file, \%numbered ) if -e $file;
     return 1 unless $geom;
 
-   # Generate geometry for each ligand/substrate substitution combination
-   # do ligand subsituents first, as these atoms are listed last in the xyz file
-   # do substrate substitutions last so we don't mess up ligand atom numbering
-    my %params;
-    while ( my ( $atom, $subs ) = each %{ $numbered{ligand} } ) {
+	# Generate geometry for each ligand/substrate substitution combination
+	# do ligand subsituents first, as these atoms are listed last in the xyz file
+	# do substrate substitutions last so we don't mess up ligand atom numbering
+
+	my %params;
+	foreach my $aaron_num (keys %{$geom->{ligand}{substituents}}){
+		# print Dumper($aaron_num, $geom->{ligand}{substituents}{$aaron_num});
+		my $target = $geom->{ligand}{substituents}{$aaron_num}{sub};
+
         # screen_subs takes %params in the form of
         # {'atom1,atom2,...' => [sub1, sub2, ...]}
-        my @subs = split /,/, $subs;
+        my @subs = split /,/, $opt{ligand}{$target};
         eval {
             local $@;
-            push @{ $params{$atom} }, @subs;
+            push @{ $params{$aaron_num} }, @subs;
             1;
         } or do {
-            $params{$atom} = \@subs;
+            $params{$aaron_num} = \@subs;
         };
     }
-	print Dumper(\%params);
+	print Dumper(%params);
 
 	# substitute at appropriate spots on ligand
 	my @sub_ligs;
@@ -67,16 +69,19 @@ sub main {
 
     # now do the substrate screen for each of the ligand-screened above
     %params = ();
-    while ( my ( $atom, $subs ) = each %{ $numbered{substrate} } ) {
-        my @subs = split /,/, $subs;
+	foreach my $aaron_num (keys %{$geom->{substrate}{substituents}}){
+		my $target = $geom->{substrate}{substituents}{$aaron_num}{sub};
+
+        my @subs = split /,/, $opt{substrate}{$target};
         eval {
             local $@;
-            push @{ $params{$atom} }, @subs;
+            push @{ $params{$aaron_num} }, @subs;
             1;
         } or do {
-            $params{$atom} = \@subs;
+            $params{$aaron_num} = \@subs;
         };
     }
+	print Dumper(%params);
 
 	# perform screen on each of the newly generated geometries
     my @sub_geoms;
