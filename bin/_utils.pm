@@ -11,11 +11,12 @@ package _utils;
 use strict;
 use Data::Dumper;
 
+sub get_geom {
+
 =item get_geom($file)
 Gets geometry object from file
 =cut
 
-sub get_geom {
     use AaronTools::Geometry;
 
     my $file = shift;
@@ -29,13 +30,14 @@ sub get_geom {
     return $geom;
 }
 
+sub get_cat {
+
 =item get_cat($file, \%substituents)
 Gets catalysis object from file. Optional substituent information can be provided.
 
 \%substituents = {'ligand'=>{ atom=>label, ... }, 'substrate'=>{ atom=>label, ... }}
 =cut
 
-sub get_cat {
     use AaronTools::Catalysis;
 
     my $file = shift;
@@ -77,11 +79,12 @@ sub get_cat {
     return $cat;
 }
 
+sub get_lig {
+
 =item get_lig($file)
 Reads in ligand object from .xyz file or by built-in name
 =cut
 
-sub get_lig {
     use AaronTools::Catalysis;
 
     my $file = shift;
@@ -98,13 +101,14 @@ sub get_lig {
     return $lig;
 }
 
+sub get_outfile {
+
 =item get_outfile($filebase, $path, \@appends, $sep)
 Generates an outfile name for printXYZ() methods
 
 outfile = path/filebase_appends.xyz (sep defaults to _)
 =cut
 
-sub get_outfile {
     # prints to STDOUT if $path == ''
     # or saves to infile_append1_append2_etc.xyz
     # $path= '-', defaults to cwd
@@ -135,32 +139,58 @@ sub get_outfile {
     return $outfile;
 }
 
+sub strip_dir {
+
 =item strip_dir($fname)
 Removes the directory path and returns only the file name
 =cut
 
-sub strip_dir {
     my $fname = shift;
     $fname =~ s/.*\/(.*)/$1/;
     return $fname;
 }
 
+sub get_ligstart {
+
 =item get_ligstart($catalysis)
 Returns a value to be subtracted from an atom index to switch from absolute to relative indexing
 =cut
 
-sub get_ligstart {
     my $cat = shift;
     return ( sort { $a <=> $b } @{ $cat->{ligand_atoms} } )[0];
 }
+
+sub get_substart {
 
 =item get_substart($catalysis)
 Returns a value to be subtracted from an atom index to switch from absolute to relative indexing
 =cut
 
-sub get_substart {
     my $cat = shift;
     return ( sort { $a <=> $b } @{ $cat->{substrate_atoms} } )[0];
+}
+
+# Used to determine AaronTools atom numbering from command-line provided numbering
+sub get_sub_numbers {
+	my $geom      = shift;
+	my $component = shift;
+
+	my %convert;
+	# determine requested target atom, in aaron's number scheme
+	foreach my $aaron_num ( keys %{ $geom->{$component}{substituents} } ) {
+		my $target;
+		if ( $geom->{$component}->{substituents}->{$aaron_num}->{sub} ) {
+			# only add to screen_sub convert if it was a substituent requested
+			$target =
+				$geom->{$component}->{substituents}->{$aaron_num}->{sub};
+		} else {
+			# but not ones that were simply auto-detected
+			next;
+		}
+
+		$convert{$target} = $aaron_num;
+	}
+	return %convert;
 }
 
 1;

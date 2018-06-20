@@ -87,18 +87,10 @@ sub get_params {
     my $component = shift;
     my %opt       = @_;
 
-    my %params;
     # determine requested target atom, in aaron's number scheme
-    foreach my $aaron_num ( keys %{ $geom->{$component}{substituents} } ) {
-        my $target;
-        if ( $geom->{$component}->{substituents}->{$aaron_num}->{sub} ) {
-            # only add to screen_sub params if it was a substituent requested
-            $target = $geom->{$component}->{substituents}->{$aaron_num}->{sub};
-        } else {
-            # but not ones that were simply auto-detected
-            next;
-        }
-
+    my %params;
+    my %convert = _utils::get_sub_numbers( $geom, $component );
+    while ( my ( $target, $aaron_num ) = each %convert ) {
         # screen_subs takes %params in the form of
         # {'atom1,atom2,...' => [sub1, sub2, ...]}
         my @subs = split /,/, $opt{$component}{$target};
