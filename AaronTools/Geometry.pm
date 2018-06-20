@@ -468,10 +468,6 @@ sub examine_constraints {
 }
 
 
-
-
-
-
 sub distance {
     my $self = shift;
     my %param = @_;
@@ -1456,9 +1452,12 @@ sub XYZ {
             }
         }
 
-        if ($self->{ligand}->{active_centers}) {
+        if ($self->{ligand}->{active_centers} ||
+            $self->{active_centers}) {
+            my $centers = $self->{ligand}->{active_centers} ? $self->{ligand}->{active_centers} : 
+                          $self->{active_centers};
             $comment .= " K:";
-            for my $key_atoms (@{ $self->ligand()->{active_centers} }) {
+            for my $key_atoms (@{$centers}) {
                 my @key_atoms = map { $_ + 1 } @$key_atoms;
                 #$key_atoms = join(',', @key_atoms);
                 $comment .= join(',', @key_atoms) . ";";

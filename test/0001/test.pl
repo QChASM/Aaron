@@ -16,7 +16,7 @@ eval {
     my $original = new AaronTools::Catalysis( name=>'ref');
     
     my $ligand = new AaronTools::Ligand( name => 'SEGPHOS');
-    
+
     $cata->map_ligand($ligand);
     
     $rmsd = $cata->RMSD(ref_geo=>$original);

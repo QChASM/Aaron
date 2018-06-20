@@ -1706,7 +1706,7 @@ sub new {
 
     my $self = new AaronTools::Component( substituents => $params{substituents} );
     bless $self, $class;
-    
+
     if (exists $params{name}) {
         $self->set_name($params{name});
         if (-f "$AARON/AaronTools/Ligands/$self->{name}.xyz") {
