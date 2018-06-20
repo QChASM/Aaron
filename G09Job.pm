@@ -357,6 +357,7 @@ sub check_conformers {
         if ($self->{conformers}->{$cf[$i]}->_cf_alive) {
 
             my $job_i = $self->{conformers}->{$cf[$i]};
+
             my $energy_i = $job_i->{gout}->{energy};
             my $geometry_i = $job_i->{gout}->{geometry};
             $job_i->{catalysis}->conformer_geometry($geometry_i);

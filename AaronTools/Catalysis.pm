@@ -706,16 +706,16 @@ sub _replace_all {
     my $self = shift;
     for my $object ($self->ligand(), $self->substrate()) {
         for my $target ( sort { $a <=> $b } keys %{ $object->{substituents} } ) {
-            if ($object->{substituents}->{$target}->{sub}) {
-                $object->replace_substituent( 
-                    target => $target, 
-                       sub => $object->{substituents}->{$target}->{sub} );
-                $self->rebuild_coords();
-                $self->minimize_sub_torsion( object => $object,
-                                             target => $target );
-                delete $object->{substituents}->{$target}->{sub};
-                #mark as the user defined;
-            }
+            next unless $object->{substituents}->{$target}->{sub};
+            next if ($object->{substituents}->{$target}->{sub} =~ /^\d+$/);
+            $object->replace_substituent( 
+                target => $target, 
+                   sub => $object->{substituents}->{$target}->{sub} );
+            $self->rebuild_coords();
+            $self->minimize_sub_torsion( object => $object,
+                                         target => $target );
+            delete $object->{substituents}->{$target}->{sub};
+            #mark as the user defined;
         }
     }
 }
