@@ -32,7 +32,6 @@ sub main {
     }
 
     # create catalysis object with requested substituent indexing
-	print Dumper(%numbered);
     my $geom = _utils::get_cat( $file, \%numbered ) if -e $file;
     return 1 unless $geom;
 
@@ -43,7 +42,12 @@ sub main {
 	my %params;
 	foreach my $aaron_num (keys %{$geom->{ligand}{substituents}}){
 		# print Dumper($aaron_num, $geom->{ligand}{substituents}{$aaron_num});
-		my $target = $geom->{ligand}{substituents}{$aaron_num}{sub};
+        my $target;
+        if ($geom->{ligand}->{substituents}->{$aaron_num}->{sub}) {
+		    $target = $geom->{ligand}->{substituents}->{$aaron_num}->{sub};
+        }else {
+            next;
+        }
 
         # screen_subs takes %params in the form of
         # {'atom1,atom2,...' => [sub1, sub2, ...]}
@@ -56,8 +60,6 @@ sub main {
             $params{$aaron_num} = \@subs;
         };
     }
-	print Dumper(%params);
-
 	# substitute at appropriate spots on ligand
 	my @sub_ligs;
 	if ( %params ) {
@@ -70,7 +72,12 @@ sub main {
     # now do the substrate screen for each of the ligand-screened above
     %params = ();
 	foreach my $aaron_num (keys %{$geom->{substrate}{substituents}}){
-		my $target = $geom->{substrate}{substituents}{$aaron_num}{sub};
+        my $target;
+        if ($geom->{substrate}{substituents}{$aaron_num}{sub}) {
+		    $target = $geom->{substrate}{substituents}{$aaron_num}{sub};
+        }else {
+            next;
+        }
 
         my @subs = split /,/, $opt{substrate}{$target};
         eval {
@@ -81,7 +88,6 @@ sub main {
             $params{$aaron_num} = \@subs;
         };
     }
-	print Dumper(%params);
 
 	# perform screen on each of the newly generated geometries
     my @sub_geoms;
