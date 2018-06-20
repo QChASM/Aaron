@@ -602,7 +602,7 @@ sub update_lib {
     my $lib_file = $directory . "$tail" . ".xyz";
 
     if (! -e $lib_file && (! $repeated)) {
-        $self->{catalysis}->printXYZ($lib_file, '', 1);
+        $self->{catalysis}->printXYZ($lib_file);
     }
 }
 
@@ -1013,40 +1013,46 @@ sub check_reaction {
     my $filename = "$geometry/" . $self->file_name();
 
     my $catalysis = $self->{catalysis};
+    my $con = $catalysis->{constratins};
 
-    my ($failed, $con) = $catalysis->examine_constraints();
+    my @failed = $catalysis->examine_constraints();
+
+    my $failed;
+    if (grep {$_ != 0} @failed) {
+        $catalysis->update_geometry("$filename.2.log");
+        $self->kill_running();
+        $failed = 1;
+    }
+
+    for my $i (0..$#failed) {
+
+        next unless $failed[$i];
+
+        my $distance = $failed[$i] * 0.1;
+
+        $self->{catalysis}->change_distance( atom1 => $con->[$i]->[0]->[0],
+                                             atom2 => $con->[$i]->[0]->[1],
+                                       by_distance => $distance );
+        $self->{catalysis}->_update_geometry();
+
+        print_message("Changing the distance by $distance A\n");
+
+        $self->{status} = '2submit';
+        $self->{msg} = "reverted to step 2, now waiting in the queue ";
+    }
 
     if ($failed) {
-        $self->kill_running();
-
-        $self->{cycle} ++;
-
+        $self->{cycle}++;
         if ($self->{cycle} > $MAXCYCLE) {
             $self->{status} = 'killed';
             $self->{msg} = "killed because of too many cycles. ";
             return;
         }
 
-        $self->{catalysis}->update_geometry("$filename.2.log");
-
         $self->remove_later_than2(); 
-
         $self->{step} = 2;
         $self->{attempt} = 1;
-
-        my $distance = $failed * 0.1;
-
-        $self->{catalysis}->change_distance( atom1 => $con->[0]->[0],
-                                             atom2 => $con->[0]->[1],
-                                       by_distance => $distance );
-        $self->{catalysis}->_update_geometry();
-
-        print_message("Changing the distance by $distance A\n");
-
         $self->build_com();
-
-        $self->{status} = '2submit';
-        $self->{msg} = "reverted to step 2, now waiting in the queue ";
     }
 }
 
@@ -1152,13 +1158,18 @@ sub com_route_footer {
     my $footer;
     my $catalysis = $self->{catalysis};
 
+    if ($self->{Wkey}->{debug}) {
+        $method = $high_method = "B3LYP/3-21G";
+        $low_method = "PM6";
+    }
+
     my $print_flag;
 
     SWITCH: {
         if ($step == 1) { $route .= "#$low_method opt nosym";
                           #add constrats to substrate and old part of catalyst
                           $print_flag = 1;
-                          $footer = $self->{Gkey}->{low_level}->footer($catalysis);
+                          $footer = $self->{Gkey}->{low_level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
 
         if ($step == 2) { $route .= "#$method opt=(modredundant,maxcyc=1000)";
@@ -1168,7 +1179,7 @@ sub com_route_footer {
                               $footer .= "B $bond[0] $bond[1] F\n";
                           }
                           $footer .= "\n";
-                          $footer .= $self->{Gkey}->{level}->footer($catalysis);
+                          $footer .= $self->{Gkey}->{level}->footer($catalysis) unless $self->{Wkey}->{debug};
 
                           last SWITCH; }
 
@@ -1178,17 +1189,17 @@ sub com_route_footer {
                           }else {
                             $route .= "#$method opt=(calcfc,ts,maxcyc=1000)";
                           }
-                          $footer .= $self->{Gkey}->{level}->footer($catalysis);
+                          $footer .= $self->{Gkey}->{level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
 
         if ($step == 4) { $route = "\%chk=$filename.chk\n";
                           $route .= "#$method freq=(hpmodes,noraman,temperature=$self->{Gkey}->{temperature})";
-                          $footer .= $self->{Gkey}->{level}->footer($catalysis);
+                          $footer .= $self->{Gkey}->{level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
 
         if ($step == 5) { $route = "\%chk=$filename.chk\n";
                           $route .= "#$high_method";
-                          $footer .= $self->{Gkey}->{high_level}->footer($catalysis);
+                          $footer .= $self->{Gkey}->{high_level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
     }
 
@@ -1337,6 +1348,10 @@ sub com_route_footer {
     my $footer;
     my $route;
 
+    if ($self->{Wkey}->{debug}) {
+        $method = $high_method = "B3LYP/3-21G";
+        $low_method = "PM6";
+    }
     my $catalysis = $self->{catalysis};
 
     my $print_flag;
@@ -1345,7 +1360,7 @@ sub com_route_footer {
         if ($step == 1) { $route .= "#$low_method opt nosym";
                           #add constrats to substrate and old part of catalyst
                           $print_flag = 1;
-                          $footer = $self->{Gkey}->{low_level}->footer($catalysis);
+                          $footer = $self->{Gkey}->{low_level}->footer($catalysis) unless $self->{Wkey}->{debug}; 
                           last SWITCH; }
 
         if ($step == 2) { $route = "\%chk=$filename.chk\n";
@@ -1354,17 +1369,17 @@ sub com_route_footer {
                           }else {
                             $route .= "#$method opt=(calcfc,maxcyc=1000)";
                           }
-                          $footer .= $self->{Gkey}->{level}->footer($catalysis);
+                          $footer .= $self->{Gkey}->{level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
 
         if ($step == 3) { $route = "\%chk=$filename.chk\n";
                           $route .= "#$method freq=(hpmodes,noraman,temperature=$self->{Gkey}->{temperature})";
-                          $footer .= $self->{Gkey}->{level}->footer($catalysis);
+                          $footer .= $self->{Gkey}->{level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
 
         if ($step == 4) { $route = "\%chk=$filename.chk\n";
                           $route .= "#$high_method";
-                          $footer .= $self->{Gkey}->{high_level}->footer($catalysis);
+                          $footer .= $self->{Gkey}->{high_level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
     }
 
@@ -1485,16 +1500,12 @@ sub com_route_footer {
 
     my $footer;
     my $route;
-
+    if ($self->{Wkey}->{debug}) {
+        $method = $high_method = "B3LYP/3-21G";
+    }
     my $catalysis = $self->{catalysis};
 
     my $print_flag;
-
-    if ($self->{Wkey}->{debug}) {
-        $method = "B97D/3-21G";
-    }
-
-    my $footer_theory = $self->{Wkey}->{debug} ? '' : $self->{Gkey}->{level}->footer($catalysis);
 
     SWITCH: {
         if ($step == 1) { $route = "\%chk=$filename.chk\n";
@@ -1505,7 +1516,7 @@ sub com_route_footer {
                               $footer .= "B $bond[0] $bond[1] F\n";
                           }
                           $footer .= "\n";
-                          $footer .= $footer_theory;
+                          $footer .= $self->{Gkey}->{level}->footer($catalysis) unless $self->{Wkey}->{debug};
 
                           last SWITCH; }
 
@@ -1515,12 +1526,12 @@ sub com_route_footer {
                           }else {
                             $route .= "#$method opt=(calcfc,ts,maxcyc=1000)";
                           }
-                          $footer .= $footer_theory;
+                          $footer .= $self->{Gkey}->{level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
 
         if ($step == 3) { $route = "\%chk=$filename.chk\n";
                           $route .= "#$method freq=(hpmodes,noraman,temperature=$self->{Gkey}->{temperature})";
-                          $footer .= $footer_theory;
+                          $footer .= $self->{Gkey}->{level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
     }
 
@@ -1656,174 +1667,51 @@ sub check_reaction {
 
     my $geometry = $self->{name};
 
-    my $filename = $self->file_name();
+    my $filename = "$geometry/" . $self->file_name();
 
     my $catalysis = $self->{catalysis};
-    my @molecules = @{ $catalysis->separate() };
-    my ($origin_d, $TS_d) = $catalysis->examine_constraints();
-    my $con = $catalysis->{constraints};
-    my @origin_d = @{$origin_d};
-    my @TS_d = @{$TS_d};
-    my %origin_d;
-    my %TS_d;
+    my $con = $catalysis->{constratins};
 
+    my @failed = $catalysis->examine_constraints();
 
-    my @suspects = grep {$origin_d[$_] != 0 || ($TS_d[$_] != 0)} (0..$#origin_d); 
+    my $failed;
+    if (grep {$_ != 0} @failed) {
+        $catalysis->update_geometry("$filename.1.log");
+        $self->kill_running();
+        $failed = 1;
+    }
 
-    if (@suspects) {
-        unless(@suspects == 1 && (@origin_d == 0)) {
-            $catalysis->read_geometry("$filename.1.log");
-            my @con_mol_atoms;
-            for (@molecules) {push (@con_mol_atoms, {})};
-            for my $i (@suspects) {
-                my $atom1 = $con->[$i]->[0]->[0];
-                my $atom2 = $con->[$i]->[0]->[1];
+    for my $i (0..$#failed) {
 
-                $origin_d{"$atom1-$atom2"} = $origin_d[$i];
-                $TS_d{"$atom1-$atom2"} = $TS_d[$i];
+        next unless $failed[$i];
 
-                my ($atom1_molecule, $atom2_molecule);
-                for my $n (0..$#molecules) {
-                    $atom1_molecule = $n if (grep {$_ == $atom1} @{$molecules[$n]});
-                    $atom2_molecule = $n if (grep {$_ == $atom2} @{$molecules[$n]});
-                }
+        my $distance = $failed[$i] * 0.1;
 
-                my $distance = $origin_d[$i] * 0.15;
-                if ($atom1_molecule == $atom2_molecule) {
-                    $catalysis->change_distance( atom1 => $atom1,
-                                                 atom2 => $atom2,
-                                                 by_distance => $distance,
-                                                 translate_group => 0 );
-                    next;
-                }
+        $self->{catalysis}->change_distance( atom1 => $con->[$i]->[0]->[0],
+                                             atom2 => $con->[$i]->[0]->[1],
+                                       by_distance => $distance );
+        $self->{catalysis}->_update_geometry();
 
-                $con_mol_atoms[$atom1_molecule]->{$atom1} = $atom2;
-                $con_mol_atoms[$atom2_molecule]->{$atom2} = $atom1;
-            }
+        print_message("Changing the distance by $distance A\n");
 
-            @con_mol_atoms = grep { keys %{$_} } @con_mol_atoms;
+        $self->{status} = '2submit';
+        $self->{msg} = "reverted to step 1, now waiting in the queue ";
+    }
 
-            my @single_con_mol_atoms = grep { keys %{$_} == 1 } @con_mol_atoms;
-
-            for my $single_con_mol_atom (@single_con_mol_atoms) {
-                my ($atom1) = keys %{ $single_con_mol_atom };
-
-                next unless $atom1;
-
-                my $atom2 = $single_con_mol_atom->{$atom1};
-
-                my $pattern1 = "$atom1-$atom2";
-                my $pattern2 = "$atom2-$atom1";
-
-                unless ($origin_d{$pattern1} || $origin_d{$pattern2}) {
-                    my $fail = $origin_d{$pattern1} || $origin_d{$pattern2};
-                    my $distance = $fail * 0.1;
-                    $catalysis->change_distance( atom1 => $atom2,
-                                                 atom2 => $atom1,
-                                                 fix_atom1 => 1,
-                                                 by_distance => $distance );
-                }
-
-                for my $con_mol_atom (@con_mol_atoms) {
-                    for my $key (%{$con_mol_atom}) {
-                        if ($con_mol_atom->{$key} == $atom1) {
-                            delete $con_mol_atom->{$key};
-                        }
-                    }
-                }
-            }
-
-            my @double_con_mol_atoms = grep { keys %{$_} == 2 } @con_mol_atoms;
-
-            for my $double_con_mol_atom (@double_con_mol_atoms) {
-                my ($atom11, $atom12) = keys %{ $double_con_mol_atom };
-                next unless ($atom11 && $atom12);
-
-                my $atom21 = $double_con_mol_atom->{$atom11};
-                my $atom22 = $double_con_mol_atom->{$atom12};
-
-                my $pattern11 = "$atom11-$atom21";
-                my $pattern12 = "$atom21-$atom11";
-
-                my $origin_d_1 = exists $origin_d{$pattern11} ? $origin_d{$pattern11} : $origin_d{$pattern12};
-                my $TS_d_1 = exists $TS_d{$pattern11} ? $TS_d{$pattern11} : $TS_d{$pattern12};
-
-                my $pattern21 = "$atom12-$atom22";
-                my $pattern22 = "$atom22-$atom12";
-                my $origin_d_2 = exists $origin_d{$pattern21} ? $origin_d{$pattern21} : $origin_d{$pattern22};
-                my $TS_d_2 = exists $TS_d{$pattern21} ? $TS_d{$pattern21} : $TS_d{$pattern22};
-
-                if ($origin_d_1 * $origin_d_2 != 0) {
-                    my $bond1 = $catalysis->get_bond($atom11, $atom21);
-                    my $bond2 = $catalysis->get_bond($atom12, $atom22);
-
-                    if ($bond1 * $bond2 > 0 && ($origin_d_1 * $origin_d_2 > 0)) {
-
-                        my $v = ($bond1 + $bond2) * $origin_d_1 * (0.15/abs($bond1 + $bond2));
-
-                        for my $molecule (@molecules) {
-                            if (grep { $atom11 == $_ } @$molecule) {
-                                $catalysis->coord_shift($v, $molecule);
-                                last;
-                            }
-                        }
-                    }else {
-                        my $d1 = 0.1*$origin_d_1;
-                        my $d2 = 0.1*$origin_d_2;
-
-                        $catalysis->change_distance( atom1 => $atom21,
-                                                     atom2 => $atom11,
-                                                     fix_atom1 => 1,
-                                                     by_distance => $d1 );
-                        $catalysis->change_distance( atom1 => $atom22,
-                                                     atom2 => $atom12,
-                                                     fix_atom1 => 1,
-                                                     by_distance => $d2 );
-                    }
-                }elsif ($origin_d_1 == 0) {
-                    my $distance = 0.2 * $TS_d_1;
-                    $catalysis->change_distance( atom1 => $atom21,
-                                                 atom2 => $atom11,
-                                                 fix_atom1 => 1,
-                                                 by_distance => $distance,
-                                                 translate_group => 0 );
-                }else {
-                    my $distance = 0.2 * $TS_d_2;
-                    $catalysis->change_distance( atom1 => $atom22,
-                                                 atom2 => $atom12,
-                                                 fix_atom1 => 1,
-                                                 by_distance => $distance,
-                                                 translate_group => 0 );
-                }
-
-                for my $con_mol_atom (@con_mol_atoms) {
-                    for my $key (keys %{$con_mol_atom}) {
-                        if ($con_mol_atom->{$key} == $atom11 || ($con_mol_atom->{$key} == $atom12)) {
-                            delete $con_mol_atom->{$key};
-                        }
-                    }
-                }
-            }
-
-            for my $constraint (@$con) {
-                $constraint->[1] = $catalysis->distance(atom1 => $constraint->[0]->[0],
-                                                        atom2 => $constraint->[0]->[1]);
-            }
-            $self->remove_later_than1();
-            $catalysis->printXYZ("check.xyz", '', 1);
-
-            $self->{step} = 1;
-            $self->{attempt} = 1;
-            $self->{cycle}++;
-            
-            $self->build_com( directory => '.' );
-
-            $self->{status} = '2submit';
-            $self->{msg} = "reverted to step 2, now waiting in the queue ";
+    if ($failed) {
+        $self->{cycle}++;
+        if ($self->{cycle} > $MAXCYCLE) {
+            $self->{status} = 'killed';
+            $self->{msg} = "killed because of too many cycles. ";
+            return;
         }
+
+        $self->remove_later_than1(); 
+        $self->{step} = 1;
+        $self->{attempt} = 1;
+        $self->build_com();
     }
 }
-
 
 sub remove_later_than1 {
 

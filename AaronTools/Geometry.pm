@@ -522,40 +522,28 @@ sub detect_substituent {
 sub examine_constraints {
     my $self = shift;
 
-    my @diverge_origin;
-    my @diverge_TS;
-    my $constraints = $self->{constraints};
-
-    for my $constraint (@{ $constraints }) {
-        unless ($constraint->[1]) {
-            push (@diverge_origin, 0);
-            push (@diverge_TS, 0);
+    my @failed;
+    for my $con (@{ $self->{constraints} }) {
+        unless ($con->[1]) {
+            push (@failed, 0);
             next;
         }
 
-        my $bond = $constraint->[0];
-        my $d_con = $constraint->[1];
+        my $bond = $con->[0];
+        my $d_con = $con->[1];
 
         my $d = $self->distance( atom1 => $bond->[0],
                                  atom2 => $bond->[1] );
         if ($d - $d_con > $CUTOFF->{D_CUTOFF}) {
-            push(@diverge_origin, -1);
+            push (@failed, -1);
+            last;
         }elsif ($d_con - $d > $CUTOFF->{D_CUTOFF}) {
-            push(@diverge_origin, 1);
-        }else {
-            push(@diverge_origin, 0);
-        }
-
-        if ($d - $CUTOFF->{TS_D} > $CUTOFF->{TS_CUTOFF}) {
-            push(@diverge_TS, -1);
-        }elsif ($CUTOFF->{TS_D} - $d > $CUTOFF->{TS_CUTOFF}) {
-            push(@diverge_TS, 1);
-        }else {
-            push(@diverge_TS, 0);
+            push (@failed, 1);
+            last;
         }
     }
 
-    return (\@diverge_origin, \@diverge_TS);
+    return @failed;
 }
 
 
