@@ -160,6 +160,7 @@ sub conformer_geometry {
 
     $self->update_coords( targets => [0..$#{$self->{coords}}],
                           coords => $geo->{coords} );
+    $self->refresh_connected();
 }
 
 
@@ -219,6 +220,25 @@ sub delete_atom {
     for my $atom (sort { $b <=> $a } @$groups) {
         $self->splice_atom($atom, 1);
     }
+}
+
+
+sub separate {
+    my $self = shift;
+
+    my @atoms = (0..$#{ $self->{elements} });
+
+    my @molecules;
+    while(@atoms) {
+        my $start = $atoms[0];
+        my @molecule = @{ $self->get_all_connected($start) };
+        
+        my %atoms = map { $_ => 1 } @atoms;
+        map {delete $atoms{$_} } @molecule;
+        @atoms = keys %atoms;
+        push (@molecules, \@molecule);
+    }
+    return \@molecules;
 }
 
 
@@ -351,49 +371,50 @@ sub refresh_connected {
 } #end of get_connected
 
 
-
 sub get_all_connected {
-  my ($self, $start_atom, $avoid_atom) = @_;
-  my @connected = @{$self->{connection}};
-  my @connected_temp = map { [@$_] } @connected;
-  #remove avoid_atom from list of atoms connected to $start_atom
-  my $avoid_atom_found = 0;
-  foreach my $atom (0..$#{$connected_temp[$start_atom]}) {
-    if($connected_temp[$start_atom][$atom] == $avoid_atom) {
-      $connected_temp[$start_atom][$atom] = -1;
-      $avoid_atom_found = 1;
+    my ($self, $start_atom, $avoid_atom) = @_;
+    my @connected = @{$self->{connection}};
+    my @connected_temp = map { [@$_] } @connected;
+    #remove avoid_atom from list of atoms connected to $start_atom
+    if ($avoid_atom) {
+        foreach my $atom (0..$#{$connected_temp[$start_atom]}) {
+            if($connected_temp[$start_atom][$atom] == $avoid_atom) {
+            $connected_temp[$start_atom][$atom] = -1;
+            }
+        }
     }
-  }
 
-  my @positions = ($start_atom);
-  #I can probably use something simpler than a hash here (since I'm not really using the values)
-  my %visited = ( $start_atom => '0') ;	#keys are numbers of the visited atoms, values are not used
+    my @positions = ($start_atom);
+    #I can probably use something simpler than a hash here (since I'm not really using the values)
+    my %visited = ( $start_atom => '0') ;	#keys are numbers of the visited atoms, values are not used
 
-  #loop until @positions is empty
-  while(@positions) {
-    my $position = shift(@positions);
-    foreach my $atom (@{$connected_temp[$position]}) { 	#grab all atoms connected to current atom and add to queue (unless already visited)
-      if($atom >= 0 && !exists $visited{$atom}) {
-        push(@positions, $atom);
-        $visited{$atom} = 0;
+    #loop until @positions is empty
+    while(@positions) {
+      my $position = shift(@positions);
+      foreach my $atom (@{$connected_temp[$position]}) { 	#grab all atoms connected to current atom and add to queue (unless already visited)
+        if($atom >= 0 && !exists $visited{$atom}) {
+          push(@positions, $atom);
+          $visited{$atom} = 0;
+        }
       }
     }
-  }
 
-  my @all_connected_atoms = keys %visited;
-  #Check all_connected_atoms for avoid_atom
-  foreach (@all_connected_atoms) {
-    if($_ == $avoid_atom) {
-      return ();
+    my @all_connected_atoms = keys %visited;
+    #Check all_connected_atoms for avoid_atom
+    if ($avoid_atom) {
+        foreach (@all_connected_atoms) {
+            if($_ == $avoid_atom) {
+                return ();
+            }
+        }
     }
-  }
-  #change the start_atom in the @all_connected_atoms to the first element
-  if ($all_connected_atoms[1]) {
-    @all_connected_atoms = grep {$_ != $start_atom} @all_connected_atoms;
-    @all_connected_atoms = sort {$a <=> $b} @all_connected_atoms;
-    unshift @all_connected_atoms, $start_atom;
-  }
-  return [@all_connected_atoms];
+    #change the start_atom in the @all_connected_atoms to the first element
+    if ($all_connected_atoms[1]) {
+        @all_connected_atoms = grep {$_ != $start_atom} @all_connected_atoms;
+        @all_connected_atoms = sort {$a <=> $b} @all_connected_atoms;
+        unshift @all_connected_atoms, $start_atom;
+    }
+    return [@all_connected_atoms];
 } #End sub get_all_connected
 
 
@@ -501,10 +522,16 @@ sub detect_substituent {
 sub examine_constraints {
     my $self = shift;
 
-    my $return = 0;
-    my $con_return;
-    for my $constraint (@{ $self->{constraints} }) {
-        next unless $constraint->[1];
+    my @diverge_origin;
+    my @diverge_TS;
+    my $constraints = $self->{constraints};
+
+    for my $constraint (@{ $constraints }) {
+        unless ($constraint->[1]) {
+            push (@diverge_origin, 0);
+            push (@diverge_TS, 0);
+            next;
+        }
 
         my $bond = $constraint->[0];
         my $d_con = $constraint->[1];
@@ -512,17 +539,23 @@ sub examine_constraints {
         my $d = $self->distance( atom1 => $bond->[0],
                                  atom2 => $bond->[1] );
         if ($d - $d_con > $CUTOFF->{D_CUTOFF}) {
-            $return = -1;
-            $con_return = $constraint;
-            last;
+            push(@diverge_origin, -1);
         }elsif ($d_con - $d > $CUTOFF->{D_CUTOFF}) {
-            $return = 1;
-            $con_return = $constraint;
-            last;
+            push(@diverge_origin, 1);
+        }else {
+            push(@diverge_origin, 0);
+        }
+
+        if ($d - $CUTOFF->{TS_D} > $CUTOFF->{TS_CUTOFF}) {
+            push(@diverge_TS, -1);
+        }elsif ($CUTOFF->{TS_D} - $d > $CUTOFF->{TS_CUTOFF}) {
+            push(@diverge_TS, 1);
+        }else {
+            push(@diverge_TS, 0);
         }
     }
 
-    return ($return, $con_return);
+    return (\@diverge_origin, \@diverge_TS);
 }
 
 
@@ -599,16 +632,16 @@ sub _change_distance {
     my $v12 = $self->get_bond($atom2, $atom1);
 
     my ($v1, $v2);
-    if($all_atoms1) {
+    unless($all_atoms1) {
         $v2 = $v12 * $difference / $current_distance;
         $v1 = V(0, 0, 0);
     }else {
         $v2 = $v12 * $difference / (2*$current_distance);
         $v1 = -$v12 * $difference / (2*$current_distance);
     }
-
-    $self->coord_shift($v1, $all_atoms1);
-    $self->coord_shift($v2, $all_atoms2);
+    
+    $self->coord_shift($v1, $all_atoms1) if $all_atoms1;
+    $self->coord_shift($v2, $all_atoms2) if $all_atoms2;
 }
 
 
@@ -1472,22 +1505,92 @@ sub bare_backbone {
 
 
 sub printXYZ {
-    my ($self, $filename, $comment) = @_;
-    $comment //= $self->{name};
-    my $num_atoms = $#{ $self->{elements} } + 1;
+    my $self = shift;
+
+    my ($filename, $comment, $overwrite) = @_;
+
+    my $content = $self->XYZ($comment);
 
     my $handle;
     if($filename) {
-        open $handle, ">>$filename" or die "Can't open $filename\n";
+        if ($overwrite) {
+            open $handle, ">$filename" or die "Can't open $filename\n";
+        } else {
+            open $handle, ">>$filename" or die "Can't open $filename\n";
+        }
     }else {
         $handle = *STDOUT;
     }
-    print $handle "$num_atoms\n$comment\n";
-    foreach my $atom (0..$#{ $self->{elements} }) {
-        printf $handle "%2s%14.6f%14.6f%14.6f\n", ($self->{elements}->[$atom], @{ $self->{coords}->[$atom] });
-    }
+
+    print $handle $content;
     close $handle if $filename;
 }
+
+
+sub XYZ {
+
+    my $self = shift;
+
+    my ($comment) = @_;
+    $comment //= '';
+
+    unless($comment) {
+
+        if ($self->{constraints}) {
+            $comment .= " F:";
+            for my $constraint (@{$self->{constraints}}) {
+                my @bond = map { $_ + 1 } @{ $constraint->[0] };
+                $comment .= "$bond[0]-$bond[1];";
+            }
+        }
+
+        if ($self->{ligand}->{active_centers}) {
+            $comment .= " K:";
+            for my $key_atoms (@{ $self->ligand()->{active_centers} }) {
+                my @key_atoms = map { $_ + 1 } @$key_atoms;
+                #$key_atoms = join(',', @key_atoms);
+                $comment .= join(',', @key_atoms) . ";";
+            }
+        }
+
+        if ($self->{center_atom}) {
+            $comment .= " C:";
+            my $center_atom = $self->{center_atom} + 1;
+            $comment .= $center_atom;
+        }
+
+        if ($self->{RMSD_bonds}) {
+            $comment .= " B:";
+            for my $bonds (@{ $self->{RMSD_bonds} }) {
+                for my $bond (@$bonds) {
+                    my $bond_temp = join('-', map {$_ + 1} @$bond);
+                    $comment .= "$bond_temp,";
+                }
+                $comment =~ s/,^/;/;
+            }
+        }
+
+        if ($self->{ligand_atoms}) {
+            $comment .= " L:";
+            my $start = $self->{ligand_atoms}->[0] + 1;
+            my $end = $self->{ligand_atoms}->[-1] + 1;
+
+            $comment .= "$start-$end";
+        }
+    }
+
+    $comment //= $self->{name};
+
+    my $num_atoms = $#{ $self->{elements} } + 1;
+
+    my $return = '';
+    $return = sprintf "$num_atoms\n$comment\n";
+    foreach my $atom (0..$#{ $self->{elements} }) {
+       $return .= sprintf "%2s%14.6f%14.6f%14.6f\n", ($self->{elements}->[$atom], @{ $self->{coords}->[$atom] });
+    }
+    return $return;
+}
+
 
 
 #Writes com file

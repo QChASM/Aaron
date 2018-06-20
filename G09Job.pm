@@ -602,7 +602,7 @@ sub update_lib {
     my $lib_file = $directory . "$tail" . ".xyz";
 
     if (! -e $lib_file && (! $repeated)) {
-        $self->{catalysis}->printXYZ($lib_file);
+        $self->{catalysis}->printXYZ($lib_file, '', 1);
     }
 }
 
@@ -1659,42 +1659,168 @@ sub check_reaction {
     my $filename = $self->file_name();
 
     my $catalysis = $self->{catalysis};
+    my @molecules = @{ $catalysis->separate() };
+    my ($origin_d, $TS_d) = $catalysis->examine_constraints();
+    my $con = $catalysis->{constraints};
+    my @origin_d = @{$origin_d};
+    my @TS_d = @{$TS_d};
+    my %origin_d;
+    my %TS_d;
 
-    my ($failed, $con) = $catalysis->examine_constraints();
 
-    if ($failed) {
+    my @suspects = grep {$origin_d[$_] != 0 || ($TS_d[$_] != 0)} (0..$#origin_d); 
 
-        $self->{catalysis}->read_geometry("$filename.1.log");
+    if (@suspects) {
+        unless(@suspects == 1 && (@origin_d == 0)) {
+            $catalysis->read_geometry("$filename.1.log");
+            my @con_mol_atoms;
+            for (@molecules) {push (@con_mol_atoms, {})};
+            for my $i (@suspects) {
+                my $atom1 = $con->[$i]->[0]->[0];
+                my $atom2 = $con->[$i]->[0]->[1];
 
-        $self->remove_later_than1(); 
+                $origin_d{"$atom1-$atom2"} = $origin_d[$i];
+                $TS_d{"$atom1-$atom2"} = $TS_d[$i];
 
-        $self->{cycle} ++;
+                my ($atom1_molecule, $atom2_molecule);
+                for my $n (0..$#molecules) {
+                    $atom1_molecule = $n if (grep {$_ == $atom1} @{$molecules[$n]});
+                    $atom2_molecule = $n if (grep {$_ == $atom2} @{$molecules[$n]});
+                }
 
-        if ($self->{cycle} > $MAXCYCLE) {
-            $self->{status} = 'killed';
-            $self->{msg} = "killed because of too many cycles. ";
-            return;
+                my $distance = $origin_d[$i] * 0.15;
+                if ($atom1_molecule == $atom2_molecule) {
+                    $catalysis->change_distance( atom1 => $atom1,
+                                                 atom2 => $atom2,
+                                                 by_distance => $distance,
+                                                 translate_group => 0 );
+                    next;
+                }
+
+                $con_mol_atoms[$atom1_molecule]->{$atom1} = $atom2;
+                $con_mol_atoms[$atom2_molecule]->{$atom2} = $atom1;
+            }
+
+            @con_mol_atoms = grep { keys %{$_} } @con_mol_atoms;
+
+            my @single_con_mol_atoms = grep { keys %{$_} == 1 } @con_mol_atoms;
+
+            for my $single_con_mol_atom (@single_con_mol_atoms) {
+                my ($atom1) = keys %{ $single_con_mol_atom };
+
+                next unless $atom1;
+
+                my $atom2 = $single_con_mol_atom->{$atom1};
+
+                my $pattern1 = "$atom1-$atom2";
+                my $pattern2 = "$atom2-$atom1";
+
+                unless ($origin_d{$pattern1} || $origin_d{$pattern2}) {
+                    my $fail = $origin_d{$pattern1} || $origin_d{$pattern2};
+                    my $distance = $fail * 0.1;
+                    $catalysis->change_distance( atom1 => $atom2,
+                                                 atom2 => $atom1,
+                                                 fix_atom1 => 1,
+                                                 by_distance => $distance );
+                }
+
+                for my $con_mol_atom (@con_mol_atoms) {
+                    for my $key (%{$con_mol_atom}) {
+                        if ($con_mol_atom->{$key} == $atom1) {
+                            delete $con_mol_atom->{$key};
+                        }
+                    }
+                }
+            }
+
+            my @double_con_mol_atoms = grep { keys %{$_} == 2 } @con_mol_atoms;
+
+            for my $double_con_mol_atom (@double_con_mol_atoms) {
+                my ($atom11, $atom12) = keys %{ $double_con_mol_atom };
+                next unless ($atom11 && $atom12);
+
+                my $atom21 = $double_con_mol_atom->{$atom11};
+                my $atom22 = $double_con_mol_atom->{$atom12};
+
+                my $pattern11 = "$atom11-$atom21";
+                my $pattern12 = "$atom21-$atom11";
+
+                my $origin_d_1 = exists $origin_d{$pattern11} ? $origin_d{$pattern11} : $origin_d{$pattern12};
+                my $TS_d_1 = exists $TS_d{$pattern11} ? $TS_d{$pattern11} : $TS_d{$pattern12};
+
+                my $pattern21 = "$atom12-$atom22";
+                my $pattern22 = "$atom22-$atom12";
+                my $origin_d_2 = exists $origin_d{$pattern21} ? $origin_d{$pattern21} : $origin_d{$pattern22};
+                my $TS_d_2 = exists $TS_d{$pattern21} ? $TS_d{$pattern21} : $TS_d{$pattern22};
+
+                if ($origin_d_1 * $origin_d_2 != 0) {
+                    my $bond1 = $catalysis->get_bond($atom11, $atom21);
+                    my $bond2 = $catalysis->get_bond($atom12, $atom22);
+
+                    if ($bond1 * $bond2 > 0 && ($origin_d_1 * $origin_d_2 > 0)) {
+
+                        my $v = ($bond1 + $bond2) * $origin_d_1 * (0.15/abs($bond1 + $bond2));
+
+                        for my $molecule (@molecules) {
+                            if (grep { $atom11 == $_ } @$molecule) {
+                                $catalysis->coord_shift($v, $molecule);
+                                last;
+                            }
+                        }
+                    }else {
+                        my $d1 = 0.1*$origin_d_1;
+                        my $d2 = 0.1*$origin_d_2;
+
+                        $catalysis->change_distance( atom1 => $atom21,
+                                                     atom2 => $atom11,
+                                                     fix_atom1 => 1,
+                                                     by_distance => $d1 );
+                        $catalysis->change_distance( atom1 => $atom22,
+                                                     atom2 => $atom12,
+                                                     fix_atom1 => 1,
+                                                     by_distance => $d2 );
+                    }
+                }elsif ($origin_d_1 == 0) {
+                    my $distance = 0.2 * $TS_d_1;
+                    $catalysis->change_distance( atom1 => $atom21,
+                                                 atom2 => $atom11,
+                                                 fix_atom1 => 1,
+                                                 by_distance => $distance,
+                                                 translate_group => 0 );
+                }else {
+                    my $distance = 0.2 * $TS_d_2;
+                    $catalysis->change_distance( atom1 => $atom22,
+                                                 atom2 => $atom12,
+                                                 fix_atom1 => 1,
+                                                 by_distance => $distance,
+                                                 translate_group => 0 );
+                }
+
+                for my $con_mol_atom (@con_mol_atoms) {
+                    for my $key (keys %{$con_mol_atom}) {
+                        if ($con_mol_atom->{$key} == $atom11 || ($con_mol_atom->{$key} == $atom12)) {
+                            delete $con_mol_atom->{$key};
+                        }
+                    }
+                }
+            }
+
+            for my $constraint (@$con) {
+                $constraint->[1] = $catalysis->distance(atom1 => $constraint->[0]->[0],
+                                                        atom2 => $constraint->[0]->[1]);
+            }
+            $self->remove_later_than1();
+            $catalysis->printXYZ("check.xyz", '', 1);
+
+            $self->{step} = 1;
+            $self->{attempt} = 1;
+            $self->{cycle}++;
+            
+            $self->build_com( directory => '.' );
+
+            $self->{status} = '2submit';
+            $self->{msg} = "reverted to step 2, now waiting in the queue ";
         }
-
-        $self->{step} = 1;
-        $self->{attempt} = 1;
-
-        my $distance = $failed * 0.2;
-
-        $self->{catalysis}->change_distance( atom1 => $con->[0]->[0],
-                                             atom2 => $con->[0]->[1],
-                                       by_distance => $distance );
-
-        $con->[1] += $distance;
-
-        $self->{catalysis}->printXYZ("$geometry.xyz");
-
-        print_message("Changing the distance by $distance A\n");
-
-        $self->build_com( directory => '.' );
-
-        $self->{status} = '2submit';
-        $self->{msg} = "reverted to step 2, now waiting in the queue ";
     }
 }
 
