@@ -126,7 +126,18 @@ sub copy {
                                          coords => [ map { [ @$_ ] } @{ $self->{coords} } ],
                                          connection => [ map { [ @$_ ] } @{ $self->{connection} } ],
                                          constraints => [ map { [ @$_ ] } @{ $self->{constraints} } ] );
-};
+}
+
+
+sub geometry_read {
+    my $self = shift;
+
+    if (@{$self->{elements}}) {
+        return 1;
+    }
+
+    return 0;
+}
 
 
 sub update_coords {
@@ -136,6 +147,19 @@ sub update_coords {
     for my $i (0..$#{ $param{targets} }) {
         $self->{coords}->[$param{targets}->[$i]] = $param{coords}->[$i];
     }
+}
+
+
+sub conformer_geometry {
+    my $self = shift;
+    my ($geo) = @_;
+
+    unless (@{ $self->{coords} } == @{ $geo->{coords} }) {
+        warn("number of atoms are not equal");
+    }
+
+    $self->update_coords( targets => [0..$#{$self->{coords}}],
+                          coords => $geo->{coords} );
 }
 
 
@@ -376,12 +400,80 @@ sub get_all_connected {
 sub check_connectivity {
     my ($self) = @_;
 
+    my @wrong_connectivity;
+
     for my $atom (0..$#{ $self->{elements} }) {
         if ($#{ $self->{connection}->[$atom] } + 1 > 
-            $CONNECTIVITY->{$self->{elements}->[$atom]}) {return $atom;}
+            $CONNECTIVITY->{$self->{elements}->[$atom]}) {
+            push (@wrong_connectivity, $atom);
+        }
     }
-    return -1;
+    return [@wrong_connectivity];
 }
+
+
+#THIS is to check if the connectivity of the structure changed
+sub examine_connectivity {
+    my ($self) = shift;
+
+    my %params = @_;
+
+    my ($file, $thres) = ($params{file}, $params{thres});
+
+    $self->refresh_connected();
+
+    my $geo_ref = new AaronTools::Geometry();
+    $geo_ref->read_geometry($file);
+
+    my ($broken, $formed) = $self->compare_connectivity(geo_ref=>$geo_ref, thres=>$thres);
+
+    $broken = [map {[split('-', $_)]} keys %{$broken}];
+    $formed = [map {[split('-', $_)]} keys %{$formed}];
+
+    return ($broken, $formed);
+}
+
+
+sub compare_connectivity {
+    my ($self) = shift;
+
+    my %params = @_;
+
+    my ($geo_ref, $thres) = ($params{geo_ref}, $params{thres});
+
+    if ($#{ $self->{connection} } != $#{ $geo_ref->{connection} }) {
+        warn "Number of atoms are not equal";
+    }
+
+    my %broken;
+    my %formed;
+
+    for my $atom (0..$#{$self->{connection}}) {
+        if ($self->{elements}->[$atom] ne $geo_ref->{elements}->[$atom]) {
+            my $atom_warn = $atom + 1;
+            warn "Atom $atom_warn are not same element in two structures";
+         }
+
+         my %con1 = map {$_ => 1} @{ $self->{connection}->[$atom] };
+         my %con2 = map {$_ => 1} @{ $geo_ref->{connection}->[$atom] };
+
+         my @broken_atoms = grep { !$con1{$_} && 
+            (abs($self->distance(atom1=>$atom, atom2=>$_) - 
+                $geo_ref->distance(atom1=>$atom, atom2=>$_)) > $thres) } keys %con2;
+         my @formed_atoms = grep { !$con2{$_} &&
+            (abs($self->distance(atom1=>$atom, atom2=>$_) - 
+                $geo_ref->distance(atom1=>$atom, atom2=>$_)) > $thres)} keys %con1;
+
+         my @broken_bonds = map { join('-', sort($atom, $_)) } @broken_atoms;
+         my @formed_bonds = map { join('-', sort($atom, $_)) } @formed_atoms;
+
+         @broken{@broken_bonds} = ();
+         @formed{@formed_bonds} = ();
+     }
+     return(\%broken, \%formed);
+}
+
+
 
 
 #put in the start and end atom, return what a substituent object.
@@ -412,28 +504,26 @@ sub examine_constraints {
     my $return = 0;
     my $con_return;
     for my $constraint (@{ $self->{constraints} }) {
+        next unless $constraint->[1];
+
         my $bond = $constraint->[0];
         my $d_con = $constraint->[1];
 
         my $d = $self->distance( atom1 => $bond->[0],
                                  atom2 => $bond->[1] );
         if ($d - $d_con > $CUTOFF->{D_CUTOFF}) {
-            $return = 1;
-            $con_return = $bond;
+            $return = -1;
+            $con_return = $constraint;
             last;
         }elsif ($d_con - $d > $CUTOFF->{D_CUTOFF}) {
-            $return = -1;
-            $con_return = $bond;
+            $return = 1;
+            $con_return = $constraint;
             last;
         }
     }
 
     return ($return, $con_return);
 }
-
-
-
-
 
 
 sub distance {
@@ -455,25 +545,26 @@ sub change_distance {
 
     my ($atom1, $atom2, $distance, 
         $by_distance,
-        $move_atom2, $move_frag) = ( $params{atom1},
+        $fix_atom1, $move_frag) = ( $params{atom1},
+
                                      $params{atom2},
                                      $params{distance},
                                      $params{by_distance},
                                      $params{fix_atom1},
                                      $params{translate_group} );
 
-    $move_atom2 //= 0;
+    $fix_atom1 //= 0;
     $move_frag //= 1;
 
     my ($all_connected_atoms1, $all_connected_atoms2);
     if ($move_frag) {
         $all_connected_atoms2 = $self->get_all_connected($atom2, $atom1);
-        if ($move_atom2) {
+        unless ($fix_atom1) {
             $all_connected_atoms1 = $self->get_all_connected($atom1, $atom2);
         }
     }else {
         $all_connected_atoms2 = [$atom2];
-        if ($move_atom2) {
+        unless ($fix_atom1) {
             $all_connected_atoms1 = [$atom1];
         }
     }
@@ -756,7 +847,7 @@ sub substitute {
 
     my ($end, $old_sub_atoms) = $self->get_sub($target);  
 
-    my $sub_object = new AaronTools::Substituent( name => $sub, end => $end );
+    my $sub_object = AaronTools::Substituent->new( name => $sub, end => $end );
 
     $self->_substitute( old_sub_atoms => $old_sub_atoms,
                                   sub => $sub_object,
@@ -794,7 +885,7 @@ sub _substitute {
     $end -= grep { $_ < $end } @$delete_atoms;
 
     #modify the constraint, since the deleted atoms can change atom numbers
-    $self->_rearrange_con_sub( delete_atoms => $delete_atoms);
+    $self->_rearrange_con_sub($delete_atoms);
 
     $self->delete_atom($delete_atoms);
     $self->refresh_connected();
@@ -810,6 +901,17 @@ sub _substitute {
     if ($minimize_torsion) {
         $self->minimize_torsion(start_atom => $target, 
                                   end_atom => $end);
+    }
+}
+
+
+sub _rearrange_con_sub {
+    my ($self, $delete_atoms) = @_;
+    for my $constraint (@{$self->{constraints}}) {
+        for my $i (0,1) {
+            my $removed = grep { $_ < $constraint->[0]->[$i] } @$delete_atoms;
+            $constraint->[0]->[$i] -= $removed;
+        }
     }
 }
 
@@ -1635,7 +1737,7 @@ sub copy {
                                          coords => [ map { [ @$_ ] } @{ $self->{coords} } ],
                                          connection => [ map { [ @$_ ] } @{ $self->{connection} } ],
                                          constraints => [ map { [ @$_ ] } @{ $self->{constraints} } ] );
-    for my $key qw(width length radius angular_offset) {
+    for my $key ("width", "length", "radius", "angular_offset") {
         $new->{$key} = $self->{$key};
     }
     bless $new, "AaronTools::NanoTube";

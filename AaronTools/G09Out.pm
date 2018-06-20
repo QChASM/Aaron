@@ -8,6 +8,7 @@ use Constants qw(:PHYSICAL);
 use AaronTools::Atoms qw(:BASIC);
 
 my $elements = ELEMENTS;
+my $radii = RADII;
 
 my $h = PLANK;
 my $kb = KB;
@@ -42,6 +43,7 @@ sub new {
 
     my $self = {
         file => $params{file},
+        read_opt => $params{read_opt},
     };
 
     bless $self, $class;
@@ -69,6 +71,7 @@ sub new {
     my $mult;
     my $charge;
     my @rottemps;
+    my @opts;
 
     while (<INFILE>) {
         my $line = $_;
@@ -88,6 +91,9 @@ sub new {
                 }
                 $line = <INFILE>;
             } while(!($line =~ /--/));
+            if ($self->{read_opt}) {
+                push (@opts, [@coords]);
+            }
             next;
         };
 
@@ -216,6 +222,18 @@ sub new {
     $self->{geometry} = new AaronTools::Geometry( name => $self->{file},
                                                coords => [@coords],
                                              elements => [@atoms] );
+    if (@opts) {
+        my $i = 1;
+        my @opts_geo;
+        for my $coords (@opts) {
+            my $new_geo = new AaronTools::Geometry( name => "$self->{file}_$i",
+                                                    coords => $coords,
+                                                    elements => [@atoms], );
+            push (@opts_geo, $new_geo);
+        }
+        $self->{opts} = [@opts_geo];
+    }
+
     $self->{energy} = $energy;
     $self->{error} = $error;
     $self->{error_msg} = $error_msg;
@@ -247,6 +265,16 @@ sub geometry {
     my $self = shift;
 
     return $self->{geometry};
+}
+
+sub opts {
+    my $self = shift;
+
+    if ($self->{opts}) {
+        return @{$self->{opts}};
+    }else {
+        return ($self->{geometry});
+    }
 }
 
 
@@ -392,6 +420,25 @@ sub Grimme_G {
     my $Grimme_G = $self->{energy} + $Gcorr_quasiRRHO;
 
     return $Grimme_G;
+}
+
+sub bond_change {
+    my $self = shift;
+    my ($bond) = @_;
+
+    my $d_ref = $self->{opts}->[0]->distance( atom1=>$bond->[0], atom2=>$bond->[1] );
+
+    my $n=$#{$self->{opts}};
+    for (my $i=$#{$self->{opts}}; $i>=0; $i--) {
+        my $d = $d_ref - 
+            $self->{opts}->[$i]->distance(atom1=>$bond->[0], atom2=>$bond->[1]);
+        if (abs($d) < 0.25) {
+            $n = $i;
+            last;
+        }
+    }
+
+    return $n;
 }
 
 
@@ -581,6 +628,9 @@ sub is_TS {
         return 1;
     }else { return 0;}
 }
+
+
+
 
 
 
