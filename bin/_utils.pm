@@ -1,7 +1,9 @@
 #!/usr/bin/perl -w
 
 =head1 SYNOPSIS
+
 Provides utilities for common interactions with AaronTools
+
 =cut
 
 use lib $ENV{'AARON'};
@@ -13,8 +15,10 @@ use Data::Dumper;
 
 sub get_geom {
 
-=item get_geom($file)
+=head2 get_geom($file)
+
 Gets geometry object from file
+
 =cut
 
     use AaronTools::Geometry;
@@ -32,10 +36,12 @@ Gets geometry object from file
 
 sub get_cat {
 
-=item get_cat($file, \%substituents)
+=head2 get_cat($file, \%substituents)
+
 Gets catalysis object from file. Optional substituent information can be provided.
 
 \%substituents = {'ligand'=>{ atom=>label, ... }, 'substrate'=>{ atom=>label, ... }}
+
 =cut
 
     use AaronTools::Catalysis;
@@ -81,8 +87,10 @@ Gets catalysis object from file. Optional substituent information can be provide
 
 sub get_lig {
 
-=item get_lig($file)
+=head2 get_lig($file)
+
 Reads in ligand object from .xyz file or by built-in name
+
 =cut
 
     use AaronTools::Catalysis;
@@ -103,10 +111,12 @@ Reads in ligand object from .xyz file or by built-in name
 
 sub get_outfile {
 
-=item get_outfile($filebase, $path, \@appends, $sep)
+=head2 get_outfile($filebase, $path, \@appends, $sep)
+
 Generates an outfile name for printXYZ() methods
 
 outfile = path/filebase_appends.xyz (sep defaults to _)
+
 =cut
 
     # prints to STDOUT if $path == ''
@@ -141,8 +151,10 @@ outfile = path/filebase_appends.xyz (sep defaults to _)
 
 sub strip_dir {
 
-=item strip_dir($fname)
+=head2 strip_dir($fname)
+
 Removes the directory path and returns only the file name
+
 =cut
 
     my $fname = shift;
@@ -152,8 +164,10 @@ Removes the directory path and returns only the file name
 
 sub get_ligstart {
 
-=item get_ligstart($catalysis)
+=head2 get_ligstart($catalysis)
+
 Returns a value to be subtracted from an atom index to switch from absolute to relative indexing
+
 =cut
 
     my $cat = shift;
@@ -162,16 +176,24 @@ Returns a value to be subtracted from an atom index to switch from absolute to r
 
 sub get_substart {
 
-=item get_substart($catalysis)
+=head2 get_substart($catalysis)
+
 Returns a value to be subtracted from an atom index to switch from absolute to relative indexing
+
 =cut
 
     my $cat = shift;
     return ( sort { $a <=> $b } @{ $cat->{substrate_atoms} } )[0];
 }
 
-# Used to determine AaronTools atom numbering from command-line provided numbering
 sub get_sub_numbers {
+
+=head2 get_sub_numbers($catalysis_object, $component_name)
+
+Returns a hash, keyed by substituent labels provided during catalyst object generation, with values corresponding to AaronTools' atom numbering for the substituent.
+
+=cut
+
     my $geom      = shift;
     my $component = shift;
 
