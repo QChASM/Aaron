@@ -87,8 +87,7 @@ sub detect_component {
                 $self->{center_atom} = $TM;
                 $self->{substrate_atoms} = [0..$TM-1];
             }else {
-                print "You specify the catalysis to be a transition metal one. " .
-                      "But no any transition metal was found in the geometry. ".
+                print "No transition metal was found in the geometry. ".
                       "Catalysis is found to be a pure organic system. " .
                       "If this is a Si, P or other non-metal atom centered ".
                       "system, please specify that in the .xyz file.\n";
@@ -317,7 +316,7 @@ sub copy {
     $new->{constraints} = [ map { [ @$_ ] } @{ $self->{constraints} } ];
 
     $new->{ligand} = $self->{ligand}->copy();
-    $new->{center} = $self->{center}->copy();
+    $new->{center} = $self->{center}->copy() if $self->{center};
     $new->{substrate} = $self->{substrate}->copy();
 
     $new->{ligand_atoms} = [@{ $self->{ligand_atoms} }];
@@ -649,7 +648,8 @@ sub screen_subs {
         }
     }
 
-    my @cata = ($self->copy()) x @subs_final;
+    my @cata = map{$self->copy()} (0..$#subs_final);
+
     map {$cata[$_]->substitute($component, %{ $subs_final[$_] })} (0..$#subs_final);
 
     return @cata;
@@ -706,16 +706,16 @@ sub _replace_all {
     my $self = shift;
     for my $object ($self->ligand(), $self->substrate()) {
         for my $target ( sort { $a <=> $b } keys %{ $object->{substituents} } ) {
-            if ($object->{substituents}->{$target}->{sub}) {
-                $object->replace_substituent( 
-                    target => $target, 
-                       sub => $object->{substituents}->{$target}->{sub} );
-                $self->rebuild_coords();
-                $self->minimize_sub_torsion( object => $object,
-                                             target => $target );
-                delete $object->{substituents}->{$target}->{sub};
-                #mark as the user defined;
-            }
+            next unless $object->{substituents}->{$target}->{sub};
+            next if ($object->{substituents}->{$target}->{sub} =~ /^\d+$/);
+            $object->replace_substituent( 
+                target => $target, 
+                   sub => $object->{substituents}->{$target}->{sub} );
+            $self->rebuild_coords();
+            $self->minimize_sub_torsion( object => $object,
+                                         target => $target );
+            delete $object->{substituents}->{$target}->{sub};
+            #mark as the user defined;
         }
     }
 }
@@ -1787,8 +1787,8 @@ sub new {
     
     if (exists $params{name}) {
         $self->set_name($params{name});
-        if (-f "$AARON/Ligands/$self->{name}.xyz") {
-            $self->read_geometry("$AARON/Ligands/$self->{name}.xyz");
+        if (-f "$AARON/AaronTools/Ligands/$self->{name}.xyz") {
+            $self->read_geometry("$AARON/AaronTools/Ligands/$self->{name}.xyz");
         }
 
     }
