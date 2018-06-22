@@ -1,0 +1,73 @@
+#!/usr/bin/perl -w
+
+#This is a test script go through all cases provided in the test directory.
+
+use strict; use warnings;
+use Cwd qw(cwd);
+
+my $AARON = $ENV{'AARON'};
+
+my $TESTDIR = "$AARON/test";
+
+opendir(CAS, $TESTDIR) or die "Cannot open test directory $TESTDIR: $!";
+my @cases = readdir(CAS);
+closedir(CAS);
+
+chdir($TESTDIR);
+
+@cases = grep {-d $_} @cases;
+@cases = grep {$_ =~ /^\d{4}$/} @cases;
+@cases = sort { $a <=> $b } @cases;
+@cases = map { sprintf("%04d", $_) } @cases;
+
+my $current_dir = cwd;
+
+my $case_num = @cases;
+print "$case_num cases found...\n";
+print "=" x 88 . "\n";
+sleep (1);
+
+my $success = 0;
+my @fail;
+
+for my $case (@cases) {
+    print "Testing $case...\n";
+    my $case_dir = $TESTDIR . "/$case";
+    chdir($case_dir) or do {
+        warn "Cannot change into directory $case_dir:$!\n";
+        push (@fail, $case);
+        print '-' x 88 . "\n";
+        next;
+    };
+
+    unless (-e "test.pl") {
+        warn "Cannot find test file for case $case\n";
+        push (@fail, $case);
+        print '-' x 88 . "\n";
+        next;
+    }
+
+    if (system('./test.pl')) {
+        print "Case $case didn't pass the test, find error message above.\n";
+        push (@fail, $case);
+        print '-' x 88 . "\n";
+        next;
+    }
+
+    $success++;
+    print "Case $case passed test!\n";
+    print '-' x 88 . "\n";
+}
+
+print "$success out of $case_num cases passed test.\n";
+if (@fail) {
+    print "The following cases are failed:\n";
+    print "@fail\n";
+}
+    
+        
+
+
+
+    
+

@@ -886,7 +886,7 @@ sub build_com {
                 system("rm -fr $file_name.chk");
             }
             if ($self->{attempt} > 4) {
-                my $fc_change = (($route =~ s/readfc/calcfcall/) || ($route =~ s/calcfc/calcfcall/));
+                my $fc_change = (($route =~ s/readfc/calcall/) || ($route =~ s/calcfc/calcall/));
                 if ($fc_change) {
                     $self->{msg} .= "calculate fc before each optimization step, ".
                                     "this can take long time.\n";
@@ -1014,40 +1014,46 @@ sub check_reaction {
     my $filename = "$geometry/" . $self->file_name();
 
     my $catalysis = $self->{catalysis};
+    my $con = $catalysis->{constratins};
 
-    my ($failed, $con) = $catalysis->examine_constraints();
+    my @failed = $catalysis->examine_constraints();
+
+    my $failed;
+    if (grep {$_ != 0} @failed) {
+        $catalysis->update_geometry("$filename.2.log");
+        $self->kill_running();
+        $failed = 1;
+    }
+
+    for my $i (0..$#failed) {
+
+        next unless $failed[$i];
+
+        my $distance = $failed[$i] * 0.1;
+
+        $self->{catalysis}->change_distance( atom1 => $con->[$i]->[0]->[0],
+                                             atom2 => $con->[$i]->[0]->[1],
+                                       by_distance => $distance );
+        $self->{catalysis}->_update_geometry();
+
+        print_message("Changing the distance by $distance A\n");
+
+        $self->{status} = '2submit';
+        $self->{msg} = "reverted to step 2, now waiting in the queue ";
+    }
 
     if ($failed) {
-        $self->kill_running();
-
-        $self->{cycle} ++;
-
+        $self->{cycle}++;
         if ($self->{cycle} > $MAXCYCLE) {
             $self->{status} = 'killed';
             $self->{msg} = "killed because of too many cycles. ";
             return;
         }
 
-        $self->{catalysis}->update_geometry("$filename.2.log");
-
         $self->remove_later_than2(); 
-
         $self->{step} = 2;
         $self->{attempt} = 1;
-
-        my $distance = $failed * 0.1;
-
-        $self->{catalysis}->change_distance( atom1 => $con->[0]->[0],
-                                             atom2 => $con->[0]->[1],
-                                       by_distance => $distance );
-        $self->{catalysis}->_update_geometry();
-
-        print_message("Changing the distance by $distance A\n");
-
         $self->build_com();
-
-        $self->{status} = '2submit';
-        $self->{msg} = "reverted to step 2, now waiting in the queue ";
     }
 }
 
@@ -1153,13 +1159,18 @@ sub com_route_footer {
     my $footer;
     my $catalysis = $self->{catalysis};
 
+    if ($self->{Wkey}->{debug}) {
+        $method = $high_method = "B3LYP/3-21G";
+        $low_method = "PM6";
+    }
+
     my $print_flag;
 
     SWITCH: {
         if ($step == 1) { $route .= "#$low_method opt nosym";
                           #add constrats to substrate and old part of catalyst
                           $print_flag = 1;
-                          $footer = $self->{Gkey}->{low_level}->footer($catalysis);
+                          $footer = $self->{Gkey}->{low_level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
 
         if ($step == 2) { $route .= "#$method opt=(modredundant,maxcyc=1000)";
@@ -1169,7 +1180,7 @@ sub com_route_footer {
                               $footer .= "B $bond[0] $bond[1] F\n";
                           }
                           $footer .= "\n";
-                          $footer .= $self->{Gkey}->{level}->footer($catalysis);
+                          $footer .= $self->{Gkey}->{level}->footer($catalysis) unless $self->{Wkey}->{debug};
 
                           last SWITCH; }
 
@@ -1179,17 +1190,17 @@ sub com_route_footer {
                           }else {
                             $route .= "#$method opt=(calcfc,ts,maxcyc=1000)";
                           }
-                          $footer .= $self->{Gkey}->{level}->footer($catalysis);
+                          $footer .= $self->{Gkey}->{level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
 
         if ($step == 4) { $route = "\%chk=$filename.chk\n";
                           $route .= "#$method freq=(hpmodes,noraman,temperature=$self->{Gkey}->{temperature})";
-                          $footer .= $self->{Gkey}->{level}->footer($catalysis);
+                          $footer .= $self->{Gkey}->{level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
 
         if ($step == 5) { $route = "\%chk=$filename.chk\n";
                           $route .= "#$high_method";
-                          $footer .= $self->{Gkey}->{high_level}->footer($catalysis);
+                          $footer .= $self->{Gkey}->{high_level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
     }
 
@@ -1338,6 +1349,10 @@ sub com_route_footer {
     my $footer;
     my $route;
 
+    if ($self->{Wkey}->{debug}) {
+        $method = $high_method = "B3LYP/3-21G";
+        $low_method = "PM6";
+    }
     my $catalysis = $self->{catalysis};
 
     my $print_flag;
@@ -1346,7 +1361,7 @@ sub com_route_footer {
         if ($step == 1) { $route .= "#$low_method opt nosym";
                           #add constrats to substrate and old part of catalyst
                           $print_flag = 1;
-                          $footer = $self->{Gkey}->{low_level}->footer($catalysis);
+                          $footer = $self->{Gkey}->{low_level}->footer($catalysis) unless $self->{Wkey}->{debug}; 
                           last SWITCH; }
 
         if ($step == 2) { $route = "\%chk=$filename.chk\n";
@@ -1355,17 +1370,17 @@ sub com_route_footer {
                           }else {
                             $route .= "#$method opt=(calcfc,maxcyc=1000)";
                           }
-                          $footer .= $self->{Gkey}->{level}->footer($catalysis);
+                          $footer .= $self->{Gkey}->{level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
 
         if ($step == 3) { $route = "\%chk=$filename.chk\n";
                           $route .= "#$method freq=(hpmodes,noraman,temperature=$self->{Gkey}->{temperature})";
-                          $footer .= $self->{Gkey}->{level}->footer($catalysis);
+                          $footer .= $self->{Gkey}->{level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
 
         if ($step == 4) { $route = "\%chk=$filename.chk\n";
                           $route .= "#$high_method";
-                          $footer .= $self->{Gkey}->{high_level}->footer($catalysis);
+                          $footer .= $self->{Gkey}->{high_level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
     }
 
@@ -1486,7 +1501,9 @@ sub com_route_footer {
 
     my $footer;
     my $route;
-
+    if ($self->{Wkey}->{debug}) {
+        $method = $high_method = "B3LYP/3-21G";
+    }
     my $catalysis = $self->{catalysis};
 
     my $print_flag;
@@ -1500,7 +1517,7 @@ sub com_route_footer {
                               $footer .= "B $bond[0] $bond[1] F\n";
                           }
                           $footer .= "\n";
-                          $footer .= $self->{Gkey}->{level}->footer($catalysis);
+                          $footer .= $self->{Gkey}->{level}->footer($catalysis) unless $self->{Wkey}->{debug};
 
                           last SWITCH; }
 
@@ -1510,12 +1527,12 @@ sub com_route_footer {
                           }else {
                             $route .= "#$method opt=(calcfc,ts,maxcyc=1000)";
                           }
-                          $footer .= $self->{Gkey}->{level}->footer($catalysis);
+                          $footer .= $self->{Gkey}->{level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
 
         if ($step == 3) { $route = "\%chk=$filename.chk\n";
                           $route .= "#$method freq=(hpmodes,noraman,temperature=$self->{Gkey}->{temperature})";
-                          $footer .= $self->{Gkey}->{level}->footer($catalysis);
+                          $footer .= $self->{Gkey}->{level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
     }
 
@@ -1651,48 +1668,51 @@ sub check_reaction {
 
     my $geometry = $self->{name};
 
-    my $filename = $self->file_name();
+    my $filename = "$geometry/" . $self->file_name();
 
     my $catalysis = $self->{catalysis};
+    my $con = $catalysis->{constratins};
 
-    my ($failed, $con) = $catalysis->examine_constraints();
+    my @failed = $catalysis->examine_constraints();
+
+    my $failed;
+    if (grep {$_ != 0} @failed) {
+        $catalysis->update_geometry("$filename.1.log");
+        $self->kill_running();
+        $failed = 1;
+    }
+
+    for my $i (0..$#failed) {
+
+        next unless $failed[$i];
+
+        my $distance = $failed[$i] * 0.1;
+
+        $self->{catalysis}->change_distance( atom1 => $con->[$i]->[0]->[0],
+                                             atom2 => $con->[$i]->[0]->[1],
+                                       by_distance => $distance );
+        $self->{catalysis}->_update_geometry();
+
+        print_message("Changing the distance by $distance A\n");
+
+        $self->{status} = '2submit';
+        $self->{msg} = "reverted to step 1, now waiting in the queue ";
+    }
 
     if ($failed) {
-
-        $self->{catalysis}->read_geometry("$filename.1.log");
-
-        $self->remove_later_than1(); 
-
-        $self->{cycle} ++;
-
+        $self->{cycle}++;
         if ($self->{cycle} > $MAXCYCLE) {
             $self->{status} = 'killed';
             $self->{msg} = "killed because of too many cycles. ";
             return;
         }
 
+        $self->remove_later_than1(); 
         $self->{step} = 1;
         $self->{attempt} = 1;
-
-        my $distance = $failed * 0.2;
-
-        $self->{catalysis}->change_distance( atom1 => $con->[0]->[0],
-                                             atom2 => $con->[0]->[1],
-                                       by_distance => $distance );
-
-        $con->[1] += $distance;
-
-        $self->{catalysis}->printXYZ("$geometry.xyz");
-
-        print_message("Changing the distance by $distance A\n");
-
-        $self->build_com( directory => '.' );
-
-        $self->{status} = '2submit';
-        $self->{msg} = "reverted to step 2, now waiting in the queue ";
+        $self->build_com();
     }
 }
-
 
 sub remove_later_than1 {
 

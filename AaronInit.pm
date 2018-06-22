@@ -8,6 +8,7 @@ my $HOME = $ENV{'HOME'};
 my $AARON = $ENV{'AARON'};
 
 use Constants qw(:INFORMATION :THEORY :PHYSICAL :SYSTEM :JOB_FILE :OTHER_USEFUL);
+use AaronTools::JobControl qw(get_job_template);
 use Pod::Usage;
 
 my @authors = @{ INFO->{AUTHORS} };
@@ -49,15 +50,14 @@ our $W_Key = new AaronTools::Workflow_Key();
 my $input_file;
 
 #content of template job file
-our $template_job = {};
-&get_job_template();
+our $template_job = get_job_template();
 
 #ligand and substituent information
 our $ligs_subs = {};
 
 #read command line arguments
 sub check_modules {
-    print "Checking required modules...\n";
+    print "Checking for required Perl modules...\n";
 
     eval {
         require Math::Vector::Real;
@@ -94,7 +94,7 @@ sub check_modules {
 
     exit (1) if $quit;
     
-    print "Necessary modules found, Aaron will start in a second\n"; 
+    print "Necessary Perl modules found. Starting AARON...\n"; 
 }
 
 
@@ -136,7 +136,7 @@ sub read_args{
 
 #read arguments from input file
 sub read_params {
-    
+   
     open my $in_h, "< $input_file" or die "Can't open $input_file:$!\n";
 
     ($jobname) = $input_file =~ /(\S+)\.in/; 
@@ -191,8 +191,8 @@ sub read_params {
         };
     }
     close $in_h;
-
-    $G_Key->read_key_from_input(input => $input_file);
+    
+    $G_Key->read_key_from_input($input_file);
     $W_Key->read_input($input_file);
 
     #combine ligand and sub information;
@@ -208,7 +208,7 @@ sub read_params {
                                 @inexplicit_sub;
 
         #examine the inexplicit sub
-        open (my $fh, "<$AARON/Subs/subs") or die "Cannot open AARON/Subs/subs";
+        open (my $fh, "<$AARON/AaronTools/Subs/subs") or die "Cannot open $AARON/AaronTools/Subs/subs";
         my %subs_record;
 
         while (<$fh>) {
@@ -222,8 +222,8 @@ sub read_params {
 
         for my $key (keys %inexplicit_sub) {
             unless (exists $subs_record{$key}) {
-                print "The inexplicit substituent on the ligand $key " .
-                      "Cannot found in our database " .
+                print "The substituent on the ligand $key " .
+                      "Cannot be found in our database " .
                       "This substituent is skipped.\n";
                 delete $inexplicit_sub{$key};
             }
@@ -243,50 +243,6 @@ sub read_params {
     }
 }
 
-
-sub get_job_template {
-    if ( -e "$AARON/template.job") {
-        my $job_invalid;
-        my $template_pattern = TEMPLATE_JOB;
-
-        $template_job->{job} = "$AARON/template.job";
-        $template_job->{formula} = {};
-        $template_job->{env} = '';
-        $template_job->{command} = [];
-
-        open JOB, "<$AARON/template.job";
-        #get formulas
-        JOB:
-        while (<JOB>) {
-            /^\s*\#/ && do {$template_job->{env} .= $_; next;};
-
-            /&formula&/ && do { 
-                while (<JOB>) {
-                    /&formula&/ && last JOB;
-                    /^(\S+)=(\S+)$/ && do {  
-                        my $formula = $2;
-                        my @pattern = grep {$formula =~ 
-                               /\Q$_\E/} values %$template_pattern;
-
-                        unless (@pattern) {
-                           print "template.job in $AARON is invalid. " .
-                                 "Formula expression is wrong. " .
-                                 "Please see manual.\n";
-                           $job_invalid = 1;
-                           last;
-                        }
-                        $template_job->{formula}->{$1} = $2;
-                    };
-                }
-                last if $job_invalid;
-            };
-            chomp( my $command = $_ );
-            push (@{$template_job->{command}}, $command) unless ($command =~ /^$/);
-        }
-        chomp($template_job->{env});
-        chomp($template_job->{command});
-    }
-}
 
 sub write_status {
     my %status;
@@ -323,12 +279,13 @@ sub read_status {
             ($head) = split(/\-/, $head);
 
             $ligs_subs->{$head}->{jobs}->{$key} = $STATUS->{$key};
+    
             $ligs_subs->{$head}->{jobs}->{$key}->{Gkey} = $G_Key;
             $ligs_subs->{$head}->{jobs}->{$key}->{Wkey} = $W_Key;
             $ligs_subs->{$head}->{jobs}->{$key}->{template_job} = $template_job;
             
             if ($ligs_subs->{$head}->{jobs}->{$key}->{conformers}) {
-                for my $cf (%{ $ligs_subs->{$head}->{jobs}->{$key}->{conformers} }) {
+                for my $cf (sort keys %{ $ligs_subs->{$head}->{jobs}->{$key}->{conformers} }) {
                     $ligs_subs->{$head}->{jobs}->{$key}->{conformers}->{$cf}->{Gkey} = $G_Key;
                     $ligs_subs->{$head}->{jobs}->{$key}->{conformers}->{$cf}->{Wkey} = $W_Key;
                     $ligs_subs->{$head}->{jobs}->{$key}->{conformers}->{$cf}->{template_job} = $template_job;
@@ -344,7 +301,6 @@ sub init_main {
     &read_args();
     &check_modules();
     print "Preparing to run transition state searches...\n";
-    sleep(2);
     &read_params();
     &read_status();
     sleep(10);

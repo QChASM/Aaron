@@ -1014,84 +1014,6 @@ sub init_conf_num {
 }
 
 
-sub XYZ {
-
-    my $self = shift;
-
-    my $comment = '';
-
-    if ($self->{constraints}) {
-        $comment .= " F:";
-        for my $constraint (@{$self->{constraints}}) {
-            my @bond = map { $_ + 1 } @{ $constraint->[0] };
-            $comment .= "$bond[0]-$bond[1];";
-        }
-    }
-
-    if ($self->ligand()->{active_centers}) {
-        $comment .= " K:";
-        for my $key_atoms (@{ $self->ligand()->{active_centers} }) {
-            my @key_atoms = map { $_ + 1 } @$key_atoms;
-            #$key_atoms = join(',', @key_atoms);
-            $comment .= join(',', @key_atoms) . ";";
-        }
-    }
-
-    if ($self->{center_atom}) {
-        $comment .= " C:";
-        my $center_atom = $self->{center_atom} + 1;
-        $comment .= $center_atom;
-    }
-
-    if ($self->{RMSD_bonds}) {
-        $comment .= " B:";
-        for my $bonds (@{ $self->{RMSD_bonds} }) {
-            for my $bond (@$bonds) {
-                my $bond_temp = join('-', map {$_ + 1} @$bond);
-                $comment .= "$bond_temp,";
-            }
-            $comment =~ s/,^/;/;
-        }
-    }
-
-    if ($self->{ligand_atoms}) {
-        $comment .= " L:";
-        my $start = $self->{ligand_atoms}->[0] + 1;
-        my $end = $self->{ligand_atoms}->[-1] + 1;
-
-        $comment .= "$start-$end";
-    }
-
-    my $num_atoms = $#{ $self->{elements} } + 1;
-
-    my $return = '';
-    $return = sprintf "$num_atoms\n$comment\n";
-    foreach my $atom (0..$#{ $self->{elements} }) {
-       $return .= sprintf "%2s%14.6f%14.6f%14.6f\n", ($self->{elements}->[$atom], @{ $self->{coords}->[$atom] });
-    }
-    return $return;
-}
-
-
-sub printXYZ {
-    my $self = shift;
-
-    my ($filename) = @_;
-
-    my $content = $self->XYZ();
-
-    my $handle;
-    if($filename) {
-        open $handle, ">$filename" or die "Can't open $filename\n";
-    }else {
-        $handle = *STDOUT;
-    }
-
-    print $handle $content;
-    close $handle if $filename;
-}
-
-
 sub conformer_rmsd {
     my $self = shift;
 
@@ -1784,7 +1706,7 @@ sub new {
 
     my $self = new AaronTools::Component( substituents => $params{substituents} );
     bless $self, $class;
-    
+
     if (exists $params{name}) {
         $self->set_name($params{name});
         if (-f "$AARON/AaronTools/Ligands/$self->{name}.xyz") {

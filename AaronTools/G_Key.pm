@@ -7,7 +7,6 @@ my $TS_lib = NAMES->{TS_LIB};
 package AaronTools::G_Key;
 use strict; use warnings;
 use Constants qw(:PHYSICAL);
-use Data::Dumper;
 
 my $HOME = $ENV{'HOME'};
 my $AARON = $ENV{'AARON'};
@@ -198,7 +197,7 @@ sub _read_key_from_input {
 sub read_key_from_input {
     my $self = shift;
 
-    my ($input) = @_; ;
+    my ($input) = @_;
  
     $self->_read_key_from_input($input) if $input;
 
@@ -321,6 +320,7 @@ package AaronTools::Theory_level;
 use strict; use warnings;
 use lib $ENV{'AARON'};
 use lib $ENV{'PERL_LIB'};
+use Data::Dumper;
 
 use AaronTools::Atoms qw(:BASIC);
 
@@ -366,9 +366,7 @@ sub read_basis {
             push (@atoms, $entry);
         }elsif ($entry =~ /^tm$/i) {
             for my $element (keys %{ $tmetal }) {
-                unless (exists $self->{basis}->{$element}) {
-                    push (@atoms, $element);
-                }
+                push (@atoms, $element);
             }
         }else {
             if ($entry =~ /^gen/) {
@@ -402,9 +400,7 @@ sub read_ecp {
             push (@atoms, $entry);
         }elsif ($entry =~ /^tm$/i) {
             for my $element (keys %{ $tmetal }) {
-                unless (exists $self->{ecp}->{$element}) {
-                    push (@atoms, $element);
-                }
+                push (@atoms, $element);
             }
         }else {
             if (@atoms) {
@@ -526,7 +522,7 @@ sub method {
     }elsif ($self->{typein_basis}) {
         $method = $self->{method}. "/gen";
     }elsif (@{$self->unique_basis()} == 1) {
-        $method = $self->{method} . "/$self->unique_basis{}->[0]";
+        $method = $self->{method} . "/" . $self->unique_basis()->[0];
     }else {
         $method = $self->{method};
     }
@@ -577,7 +573,7 @@ sub footer {
     if (keys %{ $self->{basis} }) {
         if (@{$self->unique_basis()} > 1 ||
             $self->{ecp} ||
-            $self->{gen_basis} ||
+            @{$self->{gen_basis}} ||
             $self->{typein_basis}) {
 
             my @elements = @{ $geometry->{elements} };
@@ -594,6 +590,8 @@ sub footer {
                         push (@exit_atoms, $atom);
                     }
                 }
+
+                next unless @exit_atoms;
 
                 $return .= sprintf "%s " x @exit_atoms, @exit_atoms;
                 $return .= "0\n";
@@ -630,6 +628,8 @@ sub footer {
                     push (@exit_atoms, $atom);
                 }
             }
+
+            next unless @exit_atoms;
 
             $return .= sprintf "%s " x @exit_atoms, @exit_atoms;
             $return .= "0\n";

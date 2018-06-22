@@ -23,7 +23,7 @@ my $system_ada = ADA;
 my $queue_type = $ENV{'QUEUE_TYPE'} ?
                  $ENV{'QUEUE_TYPE'} : $system_ada->{QUEUE};
 
-my $cores = $system_ada->{N_PROCS};
+my $numprocs = $system_ada->{N_PROCS};
 my $walltime = $system_ada->{WALL};
 my $node = '';
 my $help;
@@ -40,10 +40,9 @@ for my $i (0..$#argv) {
 
 GetOptions(
     'wall|w=i' => \$walltime,
-    'n_procs|p=i' => \$cores,
+    'n_procs|p=i' => \$numprocs,
     'node|n=i' => \$node,
     'help|h' => \$help,
-    'restart' => \$redundacy,
     'record' => \$redundacy,
     'method|m=s' => \$redundacy,
     'basis|b=s' => \@redundacy,
@@ -54,10 +53,12 @@ GetOptions(
     'denfit' => \$redundacy,
     'custom' => \$redundacy,
     'emp_disp' => \$redundacy,
+    'debug|d' => \$redundacy,
 ) or pod2usage(
     -exitval => 1,
     -verbose => 1,
 );
+
 
 pod2usage(
     -msg => $helpMsg,
@@ -87,7 +88,7 @@ my $env_variable = $template_job->{env};
 
 $env_variable =~ s/\Q$template_pattern->{JOB_NAME}/$jobname/g;
 $env_variable =~ s/\Q$template_pattern->{WALL_TIME}/$walltime/g;
-$env_variable =~ s/\Q$template_pattern->{N_PROCS}/$cores/g;
+$env_variable =~ s/\Q$template_pattern->{N_PROCS}/$numprocs/g;
 $env_variable =~ s/\Q$template_pattern->{NODE_TYPE}/$node/g;
 #remove the formula part
 for my $var (sort keys %{ $template_job->{formula} }) {
@@ -98,18 +99,112 @@ for my $var (sort keys %{ $template_job->{formula} }) {
 open JOB, ">$jobname.job" or die "Cannot open $jobname.job file";
 
 print JOB "$env_variable\n";
+
+#Make sure job starts in submission directory
+if($queue_type =~ /LSF/i) {
+    print JOB "cd \$LS_SUBCWD\n";
+} elsif($queue_type =~ /Slurm/i) {
+    print JOB "cd \$SLURM_SUBMIT_DIR\n";
+} elsif($queue_type =~ /PBS/i) {
+    print JOB "cd \$PBS_O_WORKDIR\n";
+}
 print JOB "$AARON/utility/_TS_search.pl @argv\n";
 print JOB "exit\n";
-
 close JOB;
 
 if($queue_type =~ /LSF/i) {
     if(system("bsub < $jobname.job >& /dev/null")) {
         print "Submission denied!\n";
+        print "Please check your template.job file in $AARON.\n"
+    } else {
+        print "TS_search job submitted!\n";
     }
+
+#Note: sbatch does not seem to return error codes for failed submissions
 } elsif($queue_type =~ /Slurm/i) {
-    if(system("qsub $jobname.job -N $jobname >& /dev/null")) { 
+    my $output = `sbatch < $jobname.job 2>&1`;
+    if($output =~ /error/i) { 
         print "Submission denied!\n";
+        print "Please check your template.job file in $AARON.\n"
+    } else {
+        print "TS_search job submitted!\n";
+    }
+} elsif($queue_type =~ /PBS/i) {
+    if(system("qsub $jobname.job >& /dev/null")) { 
+        print "Submission denied!\n";
+        print "Please check your template.job file in $AARON.\n"
+    } else {
+        print "TS_search job submitted!\n";
     }
 }
+
+
+=pod
+
+=head1 SYNOPSIS
+
+$AARON/utility/TS_search.pl [options] input.xyz
+
+=head1 OPTIONS
+
+=over
+
+=item B<-w time_in_hours>, B<--wall time_in_hours>
+
+wall time of running TS_search on the queue
+
+=item B<-p numer_of_procs>, B<--n_procs number_of_procs>
+
+numer of processors required for TS_search on the queue
+
+=item B<-n node_type>, B<--node node_type>
+
+type of node required
+
+=item B<-r>, B<--record>
+
+track the failed computaions. Failed computaions will be saved as filename_cycleX_attemptX.log. This is recommended.
+
+=item B<-m method>, B<--method method>
+
+level of theory used to search TS.
+
+=item B<-b basis>, B<--basis basis>
+
+basis set used to search TS. The sytax for basis is the same as AARON. Mutliple basis sets are allowed by rasing this flag mutliple times. If you raise the flag as -b gen or -b C N O gen
+then you will be required to put in user defined basis sets. 
+NOTE! if you specify the element don't forget using double quote!
+For example -basis "C N O 6-31G"
+
+=item B<-e ecp>, B<--ecp ecp>
+
+Effective core potential, syntax is similar as basis sets
+
+=item B<-c charge mult>, B<--chargemult charge mult>
+
+charge and multiplicity for the system, no double quote
+
+=item B<-s solvent>, B<--solvent solvent>
+
+solvent for the system, defulat is gas
+
+=item B<--pcm solvent_model>
+
+solvent model
+
+=item B<--denfit>
+
+Use density fitting for electronic structure calculation
+
+=item B<--custom custom_theory>
+
+Use custom theory preset in the .aaronrc
+
+=item B<--emp_disp emp_disp>
+
+empirical dispersion function
+
+=back
+
+=cut
 

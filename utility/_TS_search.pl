@@ -25,7 +25,6 @@ my $method;
 my @ecp;
 my @chargemult;
 
-my $restart;
 my $sleep = SLEEP_TIME;
 my $custom;
 my $wall;
@@ -33,11 +32,10 @@ my $procs;
 
 #read arguments
 GetOptions(
-    'restart' => \$restart,
     'record' => \$Wkey->{record},
     'method|m=s' => \$method,
     'wall|w=i' => \$wall,
-    'process|p=i' => \$procs,
+    'n_procs|p=i' => \$procs,
     'node|n=i' => \$Gkey->{node},
     'basis|b=s' => \@basis,
     'ecp|e=s' => \@ecp,
@@ -48,7 +46,7 @@ GetOptions(
     'pcm=s' => \$Gkey->{pcm},
     'custom=s' => \$Gkey->{custom},
     'short' => \$Wkey->{short},
-    'debug' => \$Wkey->{debug},
+    'debug|d' => \$Wkey->{debug},
     'noquota' => \$Wkey->{no_quota},
     'emp_disp=s' => \$Gkey->{emp_disp},
 );
@@ -83,7 +81,7 @@ if (@$wrong_con) {
     my $msg = '';
     for my $atom (@$wrong_con) {
         $atom ++;
-        $msg .= "Atoms too calsh around atom $atom, ";
+        $msg .= "Atoms too close around atom $atom, ";
     }
     $msg .= "Aaron has stopped this time, check your structure and fix. If this is right, ".
             "restart AARON with flag -nocrowd\n";
@@ -97,7 +95,8 @@ my $G09job = new G09Job_TS_Single(
     catalysis => $geometry,
     Gkey => $Gkey,
     Wkey => $Wkey,
-    template_job => $template_job );
+    template_job => $template_job,
+    );
 
 #unless (-e "$input_name.1.com") {
 #    $G09job->build_com( directory => '.');

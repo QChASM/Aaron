@@ -9,7 +9,9 @@ use Constants qw(:SYSTEM :JOB_FILE);
 use Exporter qw(import);
 use Cwd qw(getcwd);
 
-our @EXPORT = qw(findJob killJob submit_job count_time);
+our @EXPORT = qw(findJob killJob submit_job count_time get_job_template);
+
+my $AARON = $ENV{'AARON'};
 
 my $queue_type = $ENV{'QUEUE_TYPE'} ?
                  $ENV{'QUEUE_TYPE'} : ADA->{QUEUE};
@@ -40,7 +42,7 @@ sub findJob {
 
         #parse each job looking for $Path
         foreach my $job (@jobs) {
-            if ($job =~ /Job<(\d+)>\S+CWD<.+$Path>/) {
+            if ($job =~ /Job<(\d+)>.+CWD\s<.+$Path>/) {
                 push(@jobIDs,$1);
             }
         }
@@ -137,97 +139,10 @@ sub submit_job {
         }
     }
 
-    
-    unless (-e $jobfile) {
-
-        my $memory=$numprocs*120000000;
-        my $mb;
-        if($queue_type eq 'LSF') {
-            $memory = 0.8*$numprocs*2*10**9/8;		#memory in words per job
-            $mb = 2700;				#memory in MB per core + padding
-        }
-
-        open JOB, ">$jobfile";
-
-        if($queue_type =~ /LSF/i) {					#LSF queue
-            print JOB "#BSUB -J $jobname\n" .
-                      "#BSUB -o $jobname.job.%J\n" .
-                      "#BSUB -L /bin/bash\n" .
-                      "#BSUB -W $walltime:00\n" .
-                      "#BSUB -M $mb\n" .
-                      "#BSUB -R 'rusage[mem=$mb]'\n" .
-                      "#BSUB -R 'span[ptile=$numprocs]'\n" .
-                      "export g09root=$g09root\n" .
-                      ". \$g09root/g09/bsd/g09.profile\n" .
-                      "trap \"rm -r \$SCRATCH/\$LSB_JOBID\" 0 1 2 3 9 13 14 15\n" .
-                      "mkdir \$SCRATCH/\$LSB_JOBID\n" .
-                      "cd \$SCRATCH/\$LSB_JOBID\n" .
-                      "echo -P- $numprocs > Default.Route\n" .
-                      "echo -M- $memory >> Default.Route\n" .
-                      "module purge\n" .
-                      "env\n" .
-                      "cp \$LS_SUBCWD/*.chk .\n" .
-                      "g09  < \$LS_SUBCWD/$jobname.com  > \$LS_SUBCWD/$jobname.log\n" .
-                      "cp *.chk \$LS_SUBCWD/\n" .
-                      "exit\n";
-        }elsif ($queue_type =~ /PBS/i) {					#PBS (default)
-            print JOB "#!/bin/bash\n" .
-                      "#PBS -l walltime=$walltime:00:00,mem=8gb,nodes=1:ppn=$numprocs\n\n\n" .
-                      "export g09root=$g09root\n" .
-                      ". \$g09root/g09/bsd/g09.profile\n\n" .
-                      "trap \"\\rm -r \$TMPDIR/\$PBS_JOBID\" 0 1 2 3 9 13 14 15\n\n" .
-                      "mkdir \$TMPDIR/\$PBS_JOBID\n" .
-                      "cd \$TMPDIR/\$PBS_JOBID\n\n" .
-                      "echo -P- $numprocs > Default.Route\n" .
-                      "echo -M- $memory >> Default.Route\n\n" .
-                      "module purge\n\n" .
-                      "env\n\n" .
-                      "cp \$PBS_O_WORKDIR/*.chk .\n" .
-                      "g09  < \$PBS_O_WORKDIR/$jobname.com > \$PBS_O_WORKDIR/$jobname.log\n\n" .
-                      "cp *.chk \$PBS_O_WORKDIR/\n\n" .
-                      "exit";
-        }elsif ($queue_type =~ /Slurm/i) {
-            print JOB "#!/bin/bash\n" .
-                       "#\n" .
-                       "#SBATCH -J $jobname -e $jobname.job.e%j -o $jobname.job.o%j\n";
-            if ($node) {
-                print JOB "#SBATCH -p $node\n";
-            }else {
-                print JOB "#SBATCH -p medium\n";
-            }
-            print JOB "#SBATCH -t $walltime:00:00 -n $numprocs --mem=56G\n" .
-                      "#SBATCH --ntasks-per-node=$numprocs\n" .
-                      "\n" .
-                      "\n" .
-                      "cd \$TMPDIR\n" .
-                      "\n" .
-                      "df -h\n" .
-                      "export g09root=/sw/group/lms/sw/g09_D01\n" .
-                      ". $g09root/g09/bsd/g09.profile\n" .
-                      "\n" .
-                      "echo -P- 28 > Default.Route \n" .
-                      "echo -M- 56GB >> Default.Route \n" .
-                      "\n" .
-                      "module purge \n" .
-                      "\n" .
-                      "env\n" .
-                      "\n" .
-                      "g09  <  \$SLURM_SUBMIT_DIR/$jobname.com  >  \$SLURM_SUBMIT_DIR/$jobname.log\n" .
-                      "\n" .
-                      "df -h\n" .
-                      "\n" .
-                      "ls -al\n" .
-                      "\n" .
-                      "\cp *.wf? *.47 \$LS_SUBCWD\n" .
-                      "\n" .
-                      "exit\n";
-        }
-        close(JOB);
-    }
-
     my $failed = 1;
     #Alert user if qsub (or bsub) returns error
     #FIXME
+
     if (-e $jobfile) {
         my $current = getcwd();
         $failed = 0;
@@ -235,12 +150,19 @@ sub submit_job {
         chdir($dir);
         if($queue_type =~ /LSF/i) {
             if(system("bsub < $jobname.job >& /dev/null")) {
-                print "Submission denied!\n";
+                print "Submission denied for $jobname.job!\n";
                 $failed = 1;
             }
+#Note: sbatch does not seem to return error codes for failed submissions
         } elsif($queue_type =~ /Slurm/i) {
-            if(system("qsub $jobname.job -N $jobname >& /dev/null")) { 
-                print "Submission denied!\n";
+            my $output = `sbatch < $jobname.job 2>&1`;
+            if($output =~ /error/i) { 
+		print "Submission denied for $jobname.job!\n";
+                $failed = 1;
+            }
+        } elsif($queue_type =~ /PBS/i) {
+            if(system("qsub $jobname.job >& /dev/null")) { 
+		print "Submission denied for $jobname.job!\n";
                 $failed = 1;
             }
         }
@@ -332,6 +254,55 @@ sub call_g09 {
     }
 }
 
+
+sub get_job_template {
+    my $template_job = {};
+    if ( -e "$AARON/template.job") {
+        my $job_invalid;
+        my $template_pattern = TEMPLATE_JOB;
+
+        $template_job->{job} = "$AARON/template.job";
+        $template_job->{formula} = {};
+        $template_job->{env} = '';
+        $template_job->{command} = [];
+
+        open JOB, "<$AARON/template.job";
+        #get formulas
+        JOB:
+        while (<JOB>) {
+            /^\s*\#/ && do {$template_job->{env} .= $_; next;};
+
+            /&formula&/ && do {
+                while (<JOB>) {
+                    /&formula&/ && last JOB;
+                    /^(\S+)=(\S+)$/ && do {
+                        my $formula = $2;
+                        my @pattern = grep {$formula =~
+                               /\Q$_\E/} values %$template_pattern;
+
+                        unless (@pattern) {
+                           print "template.job in $AARON is invalid. " .
+                                 "Formula expression is wrong. " .
+                                 "Please see manual.\n";
+                           $job_invalid = 1;
+                           last;
+                        }
+                        $template_job->{formula}->{$1} = $2;
+                    };
+                }
+                last if $job_invalid;
+            };
+            chomp( my $command = $_ );
+            push (@{$template_job->{command}}, $command) unless ($command =~ /^$/);
+        }
+        chomp($template_job->{env});
+        chomp($template_job->{command});
+    }else {
+        die "Cannot found template.job in $AARON folder.\n";
+    }
+
+    return $template_job;
+}
 
 
 

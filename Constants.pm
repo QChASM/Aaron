@@ -67,6 +67,8 @@ use constant CUTOFF => {
     RMSD_CUTOFF => 0.15,
     D_CUTOFF => 0.35,
     CRASH_CUTOFF => 0.8,
+    TS_CUTOFF => 0.3,
+    TS_D => 1.95,
 };
 
 #template.job constant

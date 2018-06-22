@@ -53,7 +53,9 @@ sub header {
       print $ol "                            $author\n";
     }
     print $ol "                          Texas A&M University\n";
-    print $ol "                         September, 2013 - 2017\n\n";
+    print $ol "                         September, 2013 - 2018\n\n";
+    print $ol "                         University of Georgia\n";
+    print $ol "                         August, 2018 - \n\n";
     print $ol "                                          /\\          /\\ \n";
     print $ol "                                         ( \\\\        // )\n";
     print $ol "                                          \\ \\\\      // / \n";
@@ -77,12 +79,9 @@ sub header {
     print $ol "                              Alkylation\n";
     print $ol "                              Reaction\n";
     print $ol "                              Optimizer for\n";
-    print $ol "                              New catalyst\n\n";
+    print $ol "                              New catalysts\n\n";
     print $ol "Citation:\n";
-    print $ol "AARON, verson $version, S. E. Wheeler and B. J. Rooks, Texas A&M University, $year.\n\n";
-    print $ol "B. J. Rooks, M. R. Haas, D. Sepulveda, T. Lu, and S. E. Wheeler, \"Prospects for the
-Co  mputational Design of Bipyridine N,N\'-Dioxide Catalysts for Asymmetric Propargylations\" ACS Catalysis 
-5,   272 (2015).\n\n";
+    print $ol "AARON, verson $version, Y. Guan, V. M. Ingman, B. J. Rooks, and S. E. Wheeler, Texas A&M University, $year.\n\n";
     print $ol "The following should also be cited when AARON is used for bidentate Lewis-base catalyzed alkylation reactions:\n\n";
     print $ol "1. T. Lu, M. A. Porterfield, and S. E. Wheeler, \"Explaining the Disparate Stereoselectivities
 of   N-Oxide Catalyzed Allylations and Propargylations of Aromatic Aldehydes\", Org. Lett. 14, 
@@ -93,6 +92,9 @@ Pr  opargylation of Aromatic Aldehydes Catalyzed by Helical N-Oxides\", J. Am. C
     print $ol "3. D. Sepulveda, T. Lu, and S. E. Wheeler, \"Performance of DFT Methods and Origin of
 St  ereoselectivity in Bipyridine N,N\'-Dioxide Catalyzed Allylation and Propargylation Reactions\", 
 12  , 8346 (2014).\n\n";
+    print $ol "4. B. J. Rooks, M. R. Haas, D. Sepulveda, T. Lu, and S. E. Wheeler, \"Prospects for the
+Co  mputational Design of Bipyridine N,N\'-Dioxide Catalysts for Asymmetric Propargylations\" ACS Catalysis 
+5,   272 (2015).\n\n";
     print $ol "The development of AARON is sponsored in part by the National Science Foundation,\nGrant CHE-1266022.\n\n\n";
 } #end sub header
 
@@ -248,7 +250,7 @@ sub print_status {
 
         @start && do {$msg .= "\nThe following jobs are going to start:\n";};
         for my $geometry(@start) {
-            $msg .= "$geometry is starting the AARON workflow using geometry from TS libraries\n";
+            $msg .= "$geometry is starting the AARON workflow using the geometry from the TS library\n";
         }
 
         @done && do {$msg .= "\nThe following jobs are done:\n";};
@@ -278,7 +280,7 @@ sub print_status {
             $msg .= ($job->{msg} or "No msg recorded") . "\n";
         }
 
-        @restart && do {$msg .= "\nThe following jobs are restarted by some reasons:\n";};
+        @restart && do {$msg .= "\nThe following jobs have been restarted for some reasons:\n";};
         for my $geometry(@restart) {
             my $job = &$_get_job($geometry);
             $msg .= "$geometry step $job->{step} " .
@@ -291,7 +293,7 @@ sub print_status {
             $msg .= "Now at attempt $job->{attempt}, cycle $job->{cycle}.\n";
         }
 
-        @skipped && do {$msg .= "\nThe following jobs are skipped by some error during calculation: \n";};
+        @skipped && do {$msg .= "\nThe following jobs are skipped due to some error during the calculation: \n";};
         for my $geometry(@skipped) {
             my $job = &$_get_job($geometry);
             $msg .= "$geometry step $job->{step} " .
@@ -303,7 +305,7 @@ sub print_status {
             }
         }
 
-        @killed && do {$msg .= "\nThe following jobs are stopped by reason:\n";};
+        @killed && do {$msg .= "\nThe following jobs are stopped:\n";};
         for my $geometry(@killed) {
             my $job = &$_get_job($geometry);
             $msg .= "$geometry\n step $job->{step} attemp $job->{attempt}: ";
@@ -352,7 +354,7 @@ sub print_ee {
 
         foreach my $thermo (@{$thermo}) {
             if ($absolute_only || $arg_parser{multistep} || $absolute) {
-                $data .= sprintf "%13.4f", $thermo;
+                $data .= sprintf "%13.6f", $thermo;
             }else {
                 $data .= sprintf "%10.1f", $thermo;
             }

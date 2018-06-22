@@ -9,4 +9,6 @@ Default
     denfit=1
     charge=0
     mult=1
+    wall=12
+    n_procs=20
 
