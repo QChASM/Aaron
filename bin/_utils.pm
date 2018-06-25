@@ -210,7 +210,11 @@ Returns a hash, keyed by substituent labels provided during catalyst object gene
             next;
         }
 
-        $convert{$target} = $aaron_num;
+        if ( $convert{$target} ) {
+            $convert{$target} .= "," . $aaron_num;
+        } else {
+            $convert{$target} = $aaron_num;
+        }
     }
     return %convert;
 }
