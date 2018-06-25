@@ -410,11 +410,15 @@ sub get_all_connected {
 sub check_connectivity {
     my ($self) = @_;
 
+    my @wrong_connectivity;
+
     for my $atom (0..$#{ $self->{elements} }) {
         if ($#{ $self->{connection}->[$atom] } + 1 > 
-            $CONNECTIVITY->{$self->{elements}->[$atom]}) {return $atom;}
+            $CONNECTIVITY->{$self->{elements}->[$atom]}) {
+            push(@wrong_connectivity, $atom);
+         }
     }
-    return -1;
+    return [@wrong_connectivity];
 }
 
 

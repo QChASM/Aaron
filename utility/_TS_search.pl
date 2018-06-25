@@ -51,6 +51,8 @@ GetOptions(
     'emp_disp=s' => \$Gkey->{emp_disp},
 );
 
+$Gkey->{custom} //= 'Default';
+
 my ($input_xyz) = grep { $_ =~ /\.xyz$/ } @ARGV;
 my ($input_name) = $input_xyz =~ /(\S+)\.xyz/;
 
