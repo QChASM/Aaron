@@ -34,8 +34,8 @@ sub main {
     ( $numbered{substrate}, $named{substrate} ) =
       store_requested( \%opt, 'substrate' );
 	if ( $debug ){
-		print "NUMBERED\n";
-		print Dumper(%numbered);
+		print "NUMBERED\n", Dumper(%numbered);
+		print "NAMED\n", Dumper(%named);
 		print "\n";
 	}
 
@@ -48,7 +48,10 @@ sub main {
     #
     # Ligand screen_subs (can't do both components at same time)
     my %params = get_params( $geom, 'ligand', %opt );
-    if ($debug) {
+	while ( my ($k, $v) = each %{ $named{ligand} } ){
+		$params{$k} = [split /,/, $v];
+	}
+	if ($debug) {
         print "PARAMS\n";
         print Dumper(%params);
         print "\n";
@@ -111,7 +114,7 @@ sub store_requested {
         } elsif ( $sub =~ /^\d+/ ) {
             $numbered{ $sub - 1 } = $sub;
         } else {
-            $named{$sub} = $sub;
+            $named{$sub} = $opt{$component}{$sub};
         }
     }
 

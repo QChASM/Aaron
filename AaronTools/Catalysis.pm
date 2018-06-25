@@ -633,7 +633,13 @@ sub screen_subs {
     if ($component eq $LIGAND) { $object = $self->ligand() };
     if ($component eq $SUBSTRATE) { $object = $self->substrate() };
 
-    my @subs = grep { $_ =~ /(\d+,?)+/ } keys %params;
+	# ligand can take named substitutions, substrate cannot
+	my @subs;
+	if ( $component eq $LIGAND ) {
+		@subs = keys %params;
+	} else {
+		@subs = grep { $_ =~ /(\d+,?)+/ } keys %params;
+	}
 
     my @subs_final = ({});
     for my $key (@subs) {
