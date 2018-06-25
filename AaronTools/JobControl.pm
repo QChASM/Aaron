@@ -38,7 +38,7 @@ sub findJob {
         $bjobs =~ s/\r|\n//g;
 
         #First grab all jobs
-        my @jobs = ($bjobs =~ m/(Job<\d+>.+?RUNLIMIT)/g);
+        my @jobs = ($bjobs =~ m/(Job<\d+>.+?MEMORY\sUSAGE)/g);
 
         #parse each job looking for $Path
         foreach my $job (@jobs) {
