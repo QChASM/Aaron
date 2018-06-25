@@ -4,22 +4,64 @@ use strict;
 use lib $ENV{'AARON'};
 use lib $ENV{'PERL_LIB'};
 
+use Getopt::Long;
+use Pod::Usage;
 use AaronTools::Geometry;
 
-my $file = $ARGV[0];
+sub main {
+	my %opt = %{ shift(@_) };
+	my $file = shift;
 
-unless($file) {
-    die("A file name must be provided\n");
+	my $geo = new AaronTools::Geometry();
+
+	$geo->{name} = $file;
+
+	$geo->read_geometry($file) or die ("File may be damaged, cannot read geometry\n");
+
+	$geo->printXYZ( $opt{output} );
+	return ;
 }
 
-my $geo = new AaronTools::Geometry();
 
-$geo->{name} = $file;
+my %opt;
+$opt{help}   = '';
+$opt{output} = '';
+GetOptions(
+    'help|h'     => \$opt{help},
+    'output|o:s' => \$opt{output} )
+  or pod2usage( {
+      -exitval => 1,
+      -verbose => 1
+  } );
+pod2usage(0) if $opt{help};
+pod2usage( {
+        -message => "Please specify a filename\n",
+        -exitval => 1,
+        -verbose => 1
+    } ) if @ARGV < 1;
 
-$geo->read_geometry($file) or die ("File may be damaged, cannot read geometry\n");
+&main( \%opt, @ARGV );
 
-$geo->printXYZ();
-    
+=pod
 
+=head1 SYNOPSIS
+
+pg2xyz [options] filename
+
+=head1 OPTIONS
+
+=over
+
+=item B<-h>, B<--help>
+
+Print this help message and exit
+
+=item B<-o FILENAME>, B<--output FILENAME>
+
+Write output to FILENAME (in xyz format)
+
+=back
+
+=cut
 
 
