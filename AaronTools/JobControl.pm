@@ -131,6 +131,7 @@ sub submit_job {
             $job_content =~ s/\Q$var/$var_value/g;
         }
 
+
         if ($job_found) {
             print "$jobfile\n";
             open JOB, ">$jobfile" or die "cannot open $jobfile\n";

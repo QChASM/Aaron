@@ -967,6 +967,9 @@ sub new_conformer {
               name => $self->{name} . "/$cf",
               step => $params{step},
              cycle => $params{cycle},
+             Wkey => $self->{Wkey},
+             Gkey => $self->{Gkey},
+           template_job => $self->{template_job},
            attempt => $params{attempt},
          catalysis => $self->{catalysis}
     );
@@ -1249,6 +1252,9 @@ sub new_conformer {
               name => $self->{name} . "/$cf",
               step => $params{step},
              cycle => $params{cycle},
+             Wkey => $self->{Wkey},
+             Gkey => $self->{Gkey},
+           template_job => $self->{template_job},
            attempt => $params{attempt},
          catalysis => $self->{catalysis}
     );
@@ -1427,6 +1433,9 @@ sub new_conformer {
               name => $self->{name} . "/$cf",
               step => $params{step},
              cycle => $params{cycle},
+             Wkey => $self->{Wkey},
+             Gkey => $self->{Gkey},
+           template_job => $self->{template_job},
            attempt => $params{attempt},
          catalysis => $self->{catalysis}
     );
