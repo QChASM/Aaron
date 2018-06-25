@@ -251,8 +251,6 @@ sub dir_tree {
 
         my $cf_num = $cat_temp->number_of_conformers();
 
-        #extends_all = (Cf1 ,Cf2, Cf3, Cf4, Cf5)
-        #$cf_num = 5
         my $extend = $new_dir->{$newdir}->{extend};
         my @extends_new;
 

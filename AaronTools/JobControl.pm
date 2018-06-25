@@ -38,7 +38,7 @@ sub findJob {
         $bjobs =~ s/\r|\n//g;
 
         #First grab all jobs
-        my @jobs = ($bjobs =~ m/(Job<\d+>.+?RUNLIMIT)/g);
+        my @jobs = ($bjobs =~ m/(Job<\d+>.+?MEMORY\sUSAGE)/g);
 
         #parse each job looking for $Path
         foreach my $job (@jobs) {
@@ -130,6 +130,7 @@ sub submit_job {
             my $var_value = eval($template_job->{formula}->{$var});
             $job_content =~ s/\Q$var/$var_value/g;
         }
+
 
         if ($job_found) {
             print "$jobfile\n";
