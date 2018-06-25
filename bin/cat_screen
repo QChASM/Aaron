@@ -12,7 +12,7 @@ use Data::Dumper;
 unshift @INC, ("$ENV{'AARON'}/bin");
 require _utils;
 
-my $debug = 0;
+my $debug = 1;
 
 sub main {
     my $file = shift;
@@ -116,6 +116,7 @@ sub get_params {
     if ($debug) {
         print "\nCONVERT\n";
         print Dumper(%convert);
+		print "\n";
     }
 
     while ( my ( $target, $aaron_num ) = each %convert ) {
@@ -134,6 +135,7 @@ sub get_params {
     if ($debug) {
         print "\nPARAMS\n";
         print Dumper(%params);
+		print "\n";
     }
     return %params;
 }

@@ -13,6 +13,8 @@ package _utils;
 use strict;
 use Data::Dumper;
 
+my $debug = 1;
+
 sub get_geom {
 
 =head2 get_geom($file)
