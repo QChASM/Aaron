@@ -12,7 +12,7 @@ use Data::Dumper;
 unshift @INC, ("$ENV{'AARON'}/bin");
 require _utils;
 
-my $debug = 1;
+my $debug;
 
 sub main {
     my $file = shift;
@@ -33,6 +33,11 @@ sub main {
     ( $numbered{ligand}, $named{ligand} ) = store_requested( \%opt, 'ligand' );
     ( $numbered{substrate}, $named{substrate} ) =
       store_requested( \%opt, 'substrate' );
+	if ( $debug ){
+		print "NUMBERED\n";
+		print Dumper(%numbered);
+		print "\n";
+	}
 
     # create catalysis object with requested substituent indexing
     my $geom = _utils::get_cat( $file, \%numbered, $opt{relnum} ) if -e $file;
@@ -43,6 +48,11 @@ sub main {
     #
     # Ligand screen_subs (can't do both components at same time)
     my %params = get_params( $geom, 'ligand', %opt );
+    if ($debug) {
+        print "PARAMS\n";
+        print Dumper(%params);
+        print "\n";
+    }
     # substitute at appropriate spots on ligand
     my @sub_ligs;
     if (%params) {
@@ -53,6 +63,11 @@ sub main {
 
     # Substrate screen_subs for each ligand-substituted generated above
     %params = get_params( $geom, 'substrate', %opt );
+    if ($debug) {
+        print "PARAMS\n";
+        print Dumper(%params);
+        print "\n";
+    }
     # perform screen on each of the newly generated geometries
     my @sub_geoms;
     foreach my $geom (@sub_ligs) {
@@ -114,9 +129,9 @@ sub get_params {
     my %params;
     my %convert = _utils::get_sub_numbers( $geom, $component );
     if ($debug) {
-        print "\nCONVERT\n";
+        print "CONVERT\n";
         print Dumper(%convert);
-		print "\n";
+        print "\n";
     }
 
     while ( my ( $target, $aaron_num ) = each %convert ) {
@@ -132,11 +147,6 @@ sub get_params {
         };
     }
 
-    if ($debug) {
-        print "\nPARAMS\n";
-        print Dumper(%params);
-		print "\n";
-    }
     return %params;
 }
 
@@ -174,6 +184,7 @@ $opt{ligand}    = \%liglist;
 $opt{write}     = '-';
 GetOptions(
     'help|h'            => \$opt{help},
+    'debug|d'           => \$debug,
     'substrate|s=s%{,}' => \%sublist,
     'ligand|l=s%{,}'    => \%liglist,
     'relnum|r'          => \$opt{relnum},

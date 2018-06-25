@@ -707,7 +707,7 @@ sub _replace_all {
     for my $object ($self->ligand(), $self->substrate()) {
         for my $target ( sort { $a <=> $b } keys %{ $object->{substituents} } ) {
             next unless $object->{substituents}->{$target}->{sub};
-            next if ($object->{substituents}->{$target}->{sub} =~ /^\d+$/);
+            next if ($object->{substituents}->{$target}->{sub} =~ /^\d+(,\d+)*$/);
             $object->replace_substituent(
                 target => $target,
                    sub => $object->{substituents}->{$target}->{sub} );
