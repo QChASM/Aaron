@@ -1,0 +1,117 @@
+#!/usr/bin/perl -w
+
+use strict;
+use lib $ENV{'AARON'};
+use lib $ENV{'PERL_LIB'};
+
+use Getopt::Long;
+use Pod::Usage;
+use Data::Dumper;
+use Math::Vector::Real;
+use Math::Trig;
+
+use AaronTools::Catalysis;
+unshift @INC, ("$ENV{'AARON'}/bin");
+require _utils;
+
+my $debug;
+
+sub main {
+    my $file = shift;
+    my %opt  = @_;
+
+    if ( $opt{name} ) {
+        if ( $opt{name} =~ /\/?(.*\/)+.*/ ) {
+            $opt{name} = _utils::strip_dir( $opt{name} );
+        }
+        if ( $opt{name} =~ /.*\.xyz/ ) {
+            $opt{name} =~ s/(.*)\.xyz/$1/;
+        }
+        $opt{name} =
+          $ENV{'HOME'} . "/AARON_LIBS/Ligands/" . $opt{name} . ".xyz";
+        if ( -e $opt{name} ) {
+            die
+              "Ligand of the same name already in your AaronTools library. Please choose a different name or delete it.\nFile already exists at: $opt{name}\n";
+        }
+    }
+
+    # read in geometry from file
+    my $geom = _utils::get_cat($file) if -f $file;
+    return 1 unless $geom;
+
+    # new geom with just ligand and transition metal
+    my $ligand = $geom->ligand();
+    if ($debug) { print "Initial:\n"; $ligand->printXYZ(); }
+
+    my $center = $geom->center();
+    $ligand->splice_atom( 0, 0, $center );
+
+    # move metal to origin and remove TM
+    $ligand->coord_shift( -1 * $ligand->get_point(0) );
+    if ($debug) { print "Coord Shift:\n"; $ligand->printXYZ(); }
+    $ligand->splice_atom( 0, 1 );
+
+    # orient key atoms along z-axis?
+
+    if ($debug) { print "Final:\n"; $ligand->printXYZ(); }
+    $ligand->printXYZ( $opt{name}, '', 1 );
+}
+
+# read in options
+my %opt;
+my @confs;
+$opt{confs} = \@confs;
+$opt{name}  = '';
+GetOptions(
+    'help|h'   => \$opt{help},
+    'debug|d'  => \$debug,
+    'name|n:s' => \$opt{name} )
+  or pod2usage( {
+      -exitval => 1,
+      -verbose => 1
+  } );
+pod2usage(0) if $opt{help};
+
+# need to supply a geometry file
+pod2usage( {
+        -message => "Please provide one geometry file to substitute",
+        -exitval => 1,
+        -verbose => 1
+    } ) unless ( $#ARGV == 0 );
+
+&main( $ARGV[0], %opt );
+
+=pod
+
+=head1 SYNOPSIS
+
+cat_screen [options] [-l|s target=sub ...] file
+
+=head1 OPTIONS
+
+=over
+
+=item B<-t atom>, B<--target atom>
+
+The index of the substituent atom connected to the rest of the geometry
+
+=item B<-a atom> B<--avoid atom>
+
+The index of the atom that the substituent connects to
+
+=item B<-c nconfs rotangle>, B<-conf nconfs rotangle>
+
+The number of conformers and the rotation angle (in degrees) used to generate each
+
+=item B<-n name>, B<--name name>
+
+The name the substituent should be saved under (without the path or file extention). If unsupplied, will simply print to STDOUT
+
+=item B<-h>, B<--help>
+
+Print this help message and exit
+
+=back
+
+=cut
+
