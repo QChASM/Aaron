@@ -7,6 +7,7 @@ my $TS_lib = NAMES->{TS_LIB};
 package AaronTools::G_Key;
 use strict; use warnings;
 use Constants qw(:PHYSICAL);
+use Data::Dumper;
 
 my $HOME = $ENV{'HOME'};
 my $AARON = $ENV{'AARON'};
@@ -34,7 +35,6 @@ sub new {
 
     bless $self, $class;
 
-    $self->{custom} //= 'Default';
     $self->{solvent} //= 'gas';
     $self->{con_thres} //= 0.5;
 
@@ -113,6 +113,7 @@ sub _read_key_from_input {
     my $self = shift;
 
     my ($input) = @_;
+
     my $theory = $self->{custom};
 
     open INPUT, "<$input" or die "Can't open $input:$!\n";
@@ -138,7 +139,8 @@ sub _read_key_from_input {
                 $self->{n_procs} = $1 unless $self->{n_procs}; next;
             };
             
-            /^\s*[wW]all=(\d+)/ && do {$self->{wall} = $1 unless $self->{wall}; next;};
+            /^\s*[wW]all=(\d+)/ && do {
+                $self->{wall} = $1 unless $self->{wall}; next;};
             /^\s*[sS]hort_procs=(\d+)/ && do {
                 $self->{short_procs} = $1 unless $self->{short_procs}; next;
             };
@@ -200,6 +202,8 @@ sub read_key_from_input {
     my ($input) = @_;
  
     $self->_read_key_from_input($input) if $input;
+
+    $self->{custom} //= 'Default';
 
     my $hit;
     if (-e "$HOME/.aaronrc") {
