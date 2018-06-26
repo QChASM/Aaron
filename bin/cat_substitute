@@ -12,6 +12,8 @@ use Data::Dumper;
 unshift @INC, ("$ENV{'AARON'}/bin");
 require _utils;
 
+my $debug;
+
 sub main {
     my $file = shift;
     my %opt  = @_;
@@ -27,19 +29,12 @@ sub main {
     $named{substrate} = {};
 
     # store command line options in the appropriate hash
-    foreach my $sub ( keys %{ $opt{ligand} } ) {
-        if ( $sub !~ /^\d+$/ ) {
-            $named{ligand}{$sub} = $opt{ligand}{$sub};
-        } else {
-            $numbered{ligand}{ $sub - 1 } = $sub;
-        }
-    }
-    foreach my $sub ( keys %{ $opt{substrate} } ) {
-        if ( $sub !~ /^\d+$/ ) {
-            $named{substrate}{$sub} = $opt{substrate}{$sub};
-        } else {
-            $numbered{substrate}{ $sub - 1 } = $sub;
-        }
+    ( $numbered{ligand}, $named{ligand} ) = store_requested( \%opt, 'ligand' );
+    ( $numbered{substrate}, $named{substrate} ) =
+      store_requested( \%opt, 'substrate' );
+    if ($debug) {
+        print "NUMBERED\n", Dumper(%numbered), "\n";
+        print "NAMED\n",    Dumper(%named),    "\n";
     }
 
     # create catalysis object with requested substituent indexing
@@ -52,8 +47,14 @@ sub main {
         my %params;
         my %convert = _utils::get_sub_numbers( $geom, $component );
         while ( my ( $target, $aaron_num ) = each %convert ) {
-            $params{$aaron_num} = $opt{$component}{$target};
+            map { $params{$_} = $opt{$component}{$target}; } split /,/,
+              $aaron_num;
+
         }
+        if ($debug) {
+            print "PARAMS\n", Dumper(%params), "\n";
+        }
+
         # do substitution
         $geom->substitute( $component, %params );
     }
@@ -63,8 +64,30 @@ sub main {
 
     # Printing
     # prints to STDOUT if $outfile == ''
+	$opt{outfile} = _utils::handle_overwrite($opt{outfile});
     print("Saving substituted coords to $opt{outfile}\n") if $opt{outfile};
-    $geom->printXYZ( $opt{outfile} );
+    $geom->printXYZ( $opt{outfile}, '', 1 );
+}
+
+# store atoms requested for substitution in the appropriate hash
+# this allows us to label atoms that may be moved around during the process
+sub store_requested {
+    my %opt       = %{ shift @_ };
+    my $component = shift;
+    my %numbered;
+    my %named;
+
+    foreach my $sub ( keys %{ $opt{$component} } ) {
+        if ( $sub =~ /^\d+,/ ) {
+            map { $numbered{ $_ - 1 } = $sub } split( /,/, $sub );
+        } elsif ( $sub =~ /^\d+/ ) {
+            $numbered{ $sub - 1 } = $sub;
+        } else {
+            $named{$sub} = $opt{$component}{$sub};
+        }
+    }
+
+    return \%numbered, \%named;
 }
 
 # read in options
@@ -76,6 +99,7 @@ $opt{ligand}    = \%liglist;
 $opt{outfile}   = '';
 GetOptions(
     'help|h'            => \$opt{help},
+    'debug|d'           => \$debug,
     'relnum|r'          => \$opt{relnum},
     'substrate|s=s%{,}' => \%sublist,
     'ligand|l=s%{,}'    => \%liglist,

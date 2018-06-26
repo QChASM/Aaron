@@ -33,7 +33,8 @@ sub main {
 
 	#prints to STDOUT  if $opt{output} == '' or saves to file
 	if ( @{ $opt{set} } or @{ $opt{change} } ){
-        $geom->printXYZ( $opt{output} );
+		$opt{outfile} = _utils::handle_overwrite($opt{outfile});
+        $geom->printXYZ( $opt{output}, '', 1);
 	}
     return 0;
 }

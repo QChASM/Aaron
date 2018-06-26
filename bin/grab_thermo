@@ -9,12 +9,14 @@ use Pod::Usage;
 use AaronTools::G09Out;
 
 unshift @INC, ("$ENV{'AARON'}/bin");
+require _utils;
 
 sub main {
     my $opt   = shift;
     my %opt   = %$opt;
     my @files = @_;
 
+	$opt{output} = _utils::handle_overwrite($opt{output});
     if ( $opt{output} ) {
         open( OFILE, ">", $opt{output} )
           || die "$0: can't open $opt{output} for writing: $!\n";

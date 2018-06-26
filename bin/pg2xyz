@@ -8,6 +8,9 @@ use Getopt::Long;
 use Pod::Usage;
 use AaronTools::Geometry;
 
+unshift @INC, ("$ENV{'AARON'}/bin");
+require _utils;
+
 sub main {
 	my %opt = %{ shift(@_) };
 	my $file = shift;
@@ -18,7 +21,8 @@ sub main {
 
 	$geo->read_geometry($file) or die ("File may be damaged, cannot read geometry\n");
 
-	$geo->printXYZ( $opt{output} );
+	$opt{output} = _utils::handle_overwrite($opt{output});
+	$geo->printXYZ( $opt{output}, '', 1 );
 	return ;
 }
 

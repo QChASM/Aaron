@@ -40,7 +40,8 @@ sub main {
           . _utils::strip_dir($reffile)
           . "\n" );
     print("Saving substituted coords to $opt{outfile}\n") if $opt{outfile};
-    $targetgeom->printXYZ( $opt{outfile}, "RMSD: $rmsd" );
+	$opt{output} = _utils::handle_overwrite($opt{output});
+    $targetgeom->printXYZ( $opt{outfile}, "RMSD: $rmsd", 1);
 }
 
 # read in options

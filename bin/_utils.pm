@@ -15,6 +15,8 @@ use Data::Dumper;
 
 my $debug = 1;
 
+# AaronTools helpers
+
 sub get_geom {
 
 =head2 get_geom($file)
@@ -87,83 +89,6 @@ Gets catalysis object from file. Optional substituent information can be provide
     return $cat;
 }
 
-sub get_lig {
-
-=head2 get_lig($file)
-
-Reads in ligand object from .xyz file or by built-in name
-
-=cut
-
-    use AaronTools::Catalysis;
-
-    my $file = shift;
-    my $lig;
-    if ( $file =~ /.*\.xyz$/ ) {
-        $lig = new AaronTools::Ligand( name => ( $file =~ /(.*)\..*?$/ ) );
-    } else {
-        $lig = new AaronTools::Ligand( name => $file );
-    }
-    unless ( @{ $lig->{elements} } ) {
-        print {*STDERR} ("\nCouldn't read ligand geometry: $file\n\n");
-        return 0;
-    }
-    return $lig;
-}
-
-sub get_outfile {
-
-=head2 get_outfile($filebase, $path, \@appends, $sep)
-
-Generates an outfile name for printXYZ() methods
-
-outfile = path/filebase_appends.xyz (sep defaults to _)
-
-=cut
-
-    # prints to STDOUT if $path == ''
-    # or saves to infile_append1_append2_etc.xyz
-    # $path= '-', defaults to cwd
-    my $filebase = shift;
-    my $path     = shift;
-    my $appends  = shift(@_) // [];
-    my $sep      = '_';
-
-    my $outfile = '';
-    if ( $path ne '-' ) {
-        # strip just file name (no path or file extension)
-        $outfile = $filebase;
-        $outfile =~ s/(.*\/)?(.*)\..*?$/$2/;
-        if ( $path ne '' ) {
-            # if no directory specified, write to cwd
-            # make sure we don't have double path seperators!
-            if ( $path =~ /.*\/$/ ) {
-                $outfile = $path . $outfile;
-            } else {
-                $outfile = $path . '/' . $outfile;
-            }
-        }
-        foreach my $append (@$appends) {
-            $outfile .= $sep . $append;
-        }
-        $outfile .= '.xyz';
-    }
-    return $outfile;
-}
-
-sub strip_dir {
-
-=head2 strip_dir($fname)
-
-Removes the directory path and returns only the file name
-
-=cut
-
-    my $fname = shift;
-    $fname =~ s/.*\/(.*)/$1/;
-    return $fname;
-}
-
 sub get_ligstart {
 
 =head2 get_ligstart($catalysis)
@@ -219,6 +144,119 @@ Returns a hash, keyed by substituent labels provided during catalyst object gene
         }
     }
     return %convert;
+}
+
+sub get_lig {
+
+=head2 get_lig($file)
+
+Reads in ligand object from .xyz file or by built-in name
+
+=cut
+
+    use AaronTools::Catalysis;
+
+    my $file = shift;
+    my $lig;
+    if ( $file =~ /.*\.xyz$/ ) {
+        $lig = new AaronTools::Ligand( name => ( $file =~ /(.*)\..*?$/ ) );
+    } else {
+        $lig = new AaronTools::Ligand( name => $file );
+    }
+    unless ( @{ $lig->{elements} } ) {
+        print {*STDERR} ("\nCouldn't read ligand geometry: $file\n\n");
+        return 0;
+    }
+    return $lig;
+}
+
+# File handling helpers
+
+sub get_outfile {
+
+=head2 get_outfile($filebase, $path, \@appends, $sep)
+
+Generates an outfile name for printXYZ() methods
+
+outfile = path/filebase_appends.xyz (sep defaults to _)
+
+=cut
+
+    # prints to STDOUT if $path == ''
+    # or saves to infile_append1_append2_etc.xyz
+    # $path= '-', defaults to cwd
+    my $filebase = shift;
+    my $path     = shift;
+    my $appends  = shift(@_) // [];
+    my $sep      = '_';
+
+    my $outfile = '';
+    if ( $path ne '-' ) {
+        # strip just file name (no path or file extension)
+        $outfile = $filebase;
+        $outfile =~ s/(.*\/)?(.*)\..*?$/$2/;
+        if ( $path ne '' ) {
+            # if no directory specified, write to cwd
+            # make sure we don't have double path seperators!
+            if ( $path =~ /.*\/$/ ) {
+                $outfile = $path . $outfile;
+            } else {
+                $outfile = $path . '/' . $outfile;
+            }
+        }
+        foreach my $append (@$appends) {
+            $outfile .= $sep . $append;
+        }
+        $outfile .= '.xyz';
+    }
+    return $outfile;
+}
+
+sub strip_dir {
+
+=head2 strip_dir($fname)
+
+Removes the directory path and returns only the file name
+
+=cut
+
+    my $fname = shift;
+    $fname =~ s/.*\/(.*)/$1/;
+    return $fname;
+}
+
+sub handle_overwrite {
+
+=head2 handle_overwrite( $outfile )
+
+Queries the user to see if it is ok to overwrite the file, if it exists. Returns the (possibly edited) file name.
+
+=cut
+
+    my $outfile     = shift;
+    my $old_outfile = $outfile;
+    while ( $outfile && -f $outfile ) {
+        my $ans;
+        do {
+            $ans = '';
+            print "File $outfile exists... Ok to overwrite? [y/N]: ";
+            $ans = <STDIN>;
+            chomp $ans;
+        } while ( $ans !~ /^y(es)?$/i && $ans !~ /^no?$/i && $ans !~ /^$/ );
+        if ( $ans !~ /^y(es)?$/i ) {
+            print "New name: ";
+            $outfile = <STDIN>;
+            chomp $outfile;
+            if ( $outfile =~ /^$/ ) {
+                $outfile = $old_outfile;
+            } elsif ( $outfile =~ /^stdout$/i ) {
+                $outfile = '';
+            }
+        } else {
+            last;
+        }
+    }
+    return $outfile;
 }
 
 1;
