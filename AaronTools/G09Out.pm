@@ -1,7 +1,6 @@
 #Contributors: Yanfei Guan and Steven E. Wheeler
 #This is a module containing the G09 output class
 #This class is initiated from a .log file
-use lib $ENV{'PERL_LIB'};
 use lib $ENV{'AARON'};
 
 use Constants qw(:PHYSICAL);

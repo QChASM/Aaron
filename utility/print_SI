@@ -2,7 +2,6 @@
 
 use strict;
 use lib $ENV{'AARON'};
-use lib $ENV{'PERL_LIB'};
 
 use AaronInit qw($W_Key $ligs_subs init_main);
 use AaronOutput qw(print_ee);

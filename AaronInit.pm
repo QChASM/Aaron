@@ -2,7 +2,6 @@ package AaronInit;
 
 use strict; use warnings;
 use lib $ENV{'AARON'};
-use lib $ENV{'PERL_LIB'};
 
 my $HOME = $ENV{'HOME'};
 my $AARON = $ENV{'AARON'};

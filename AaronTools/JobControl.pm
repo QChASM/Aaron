@@ -1,7 +1,6 @@
 package AaronTools::JobControl;
 
 use strict; use warnings;
-use lib $ENV{'PERL_LIB'};
 use lib $ENV{'AARON'};
 
 use Constants qw(:SYSTEM :JOB_FILE);
@@ -15,9 +14,6 @@ my $AARON = $ENV{'AARON'};
 
 my $queue_type = $ENV{'QUEUE_TYPE'} ?
                  $ENV{'QUEUE_TYPE'} : ADA->{QUEUE};
-my $g09root = $ENV{'G09_ROOT'} ?
-              $ENV{'G09_ROOT'} : "/software/lms/g09_D01";       #absolute path to root directory for Gaussian09
-                
 
 #Returns jobIDs of all jobs (queued or running) in current directory, returns 0 if no jobs in queue match current directory
 #This could be improved by searching for $Path more carefully!

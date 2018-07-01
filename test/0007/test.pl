@@ -8,7 +8,6 @@ my $AARON = $ENV{'AARON'};
 
 eval {
     use lib $ENV{'AARON'};
-    use lib $ENV{'PERL_LIB'};
    
     use AaronTools::G_Key;
     use AaronTools::JobControl qw(get_job_template submit_job findJob killJob);

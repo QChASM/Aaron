@@ -1,4 +1,3 @@
-use lib $ENV{'PERL_LIB'};
 use lib $ENV{'AARON'};
 use Constants qw(:OTHER_USEFUL);
 
@@ -323,7 +322,6 @@ sub examine {
 package AaronTools::Theory_level;
 use strict; use warnings;
 use lib $ENV{'AARON'};
-use lib $ENV{'PERL_LIB'};
 use Data::Dumper;
 
 use AaronTools::Atoms qw(:BASIC);

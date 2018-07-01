@@ -2,7 +2,6 @@ package AaronTools::FileReader;
 
 use strict; use warnings;
 
-use lib $ENV{'PERL_LIB'};
 use lib $ENV{'AARON'};
 
 use AaronTools::Atoms qw(:BASIC :LJ);

@@ -5,7 +5,6 @@ my $rmsd;
 
 eval {
     use lib $ENV{'AARON'};
-    use lib $ENV{'PERL_LIB'};
     
     use Data::Dumper;
     

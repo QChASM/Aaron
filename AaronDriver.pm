@@ -3,7 +3,6 @@ package AaronDriver;
 use strict;
 
 use lib $ENV{'AARON'};
-use lib $ENV{'PERL_LIB'};
 
 use Constants qw(:THEORY :PHYSICAL :OTHER_USEFUL :COMPARE);
 use AaronInit qw($G_Key %arg_parser $parent

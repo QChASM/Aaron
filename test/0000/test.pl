@@ -9,9 +9,6 @@ unless ($ENV{'AARON'}) {
     $fail = 1;
 }
 
-unless ($ENV{'PERL_LIB'}) {
-    warn "FATAL! Environmental variable \$PERL_LIB is not set.\n" .
-         "Please set the path to your perl library as \$PERL_LIB environmental variable.\n";
     $fail = 1;
 }
 

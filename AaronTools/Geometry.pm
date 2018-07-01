@@ -1,6 +1,5 @@
 #Contributors Yanfei Guan and Steven E. Wheeler
 
-use lib $ENV{'PERL_LIB'};
 use lib $ENV{'AARON'};
 
 use Constants qw(:PHYSICAL :COMPARE);

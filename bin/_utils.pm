@@ -7,7 +7,6 @@ Provides utilities for common interactions with AaronTools
 =cut
 
 use lib $ENV{'AARON'};
-use lib $ENV{'PERL_LIB'};
 
 package _utils;
 use strict;

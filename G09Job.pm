@@ -1,6 +1,5 @@
 #Contributors: Yanfei Guan and Steven Wheeler
 
-use lib $ENV{'PERL_LIB'};
 use lib $ENV{'AARON'};
 
 use Constants qw(:OTHER_USEFUL :PHYSICAL);
