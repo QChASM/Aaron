@@ -31,7 +31,7 @@ my $success = 0;
 my @fail;
 
 for my $case (@cases) {
-    print "Testing $case...\n";
+    print "Testing $case ";
     my $case_dir = $TESTDIR . "/$case";
     chdir($case_dir) or do {
         warn "Cannot change into directory $case_dir:$!\n";
@@ -39,6 +39,10 @@ for my $case (@cases) {
         print '-' x 88 . "\n";
         next;
     };
+    open(my $fh, '<', "description") or warn "Cannot find description of test case\n";
+    my $description = <$fh>;
+    chomp($description);
+    print "($description)...\n";
 
     unless (-e "test.pl") {
         warn "Cannot find test file for case $case\n";

@@ -5,7 +5,6 @@ my $failed_to_submit;
 my $job_found;
 my $failed_to_kill;
 my $QCHASM = $ENV{'QCHASM'};
-
 eval {
     use lib $ENV{'QCHASM'};
    
@@ -44,22 +43,23 @@ eval {
     die "Error found in code: $error\n";
 };
 
-system("rm -fr test.job*");
-system("rm -fr test.log");
 
 if ($failed_to_submit) {
-    die "Test failed. Failed to submit test job to the queue.\n"
+    die "Test failed. Failed to submit test job to the queue.  Check test.job for errors.\n"
 }
 
 unless ($job_found) {
-    die "Test Failed. Cannot find job submitted to the queue. Please find the job and kill manually first.\n";
+    die "Test Failed. Cannot find job submitted to the queue. Please find the job and kill manually. Contact developers to debug findjob.\n";
 }
 
 if ($failed_to_kill) {
-    die "Test Failed. Cannot kill the job on the queue. Please kill the job manually first.\n";
+    die "Test Failed. Cannot kill a job on the queue. Please kill the job manually.\n";
 }
 
 print "Test passed!\n";
+#Leave behind .job and .log file unless test passed!
+system("rm -fr test.job*");
+system("rm -fr test.log");
 
 
 
