@@ -1,12 +1,13 @@
-package AaronInit;
+package Aaron::AaronInit;
 
 use strict; use warnings;
-use lib $ENV{'AARON'};
+use lib $ENV{'QCHASM'};
 
 my $HOME = $ENV{'HOME'};
-my $AARON = $ENV{'AARON'};
+my $QCHASM = $ENV{'QCHASM'};
 
-use Constants qw(:INFORMATION :THEORY :PHYSICAL :SYSTEM :JOB_FILE :OTHER_USEFUL);
+use Aaron::Constants qw(INFO OTHERS);
+use AaronTools::Constants qw(NAMES);
 use AaronTools::JobControl qw(get_job_template);
 use Pod::Usage;
 
@@ -25,13 +26,13 @@ my $helpMsg = "\nAARON: An Automated Reaction Optimizer for new catalyst\n".
               "constrained and uncontrained optimizations to arrive at final predicted structures and energies for all transition states.\n";
 
 #arguments for AARON taking from command line
-our %arg_parser = ( sleeptime => SLEEP_TIME );
+our %arg_parser = ( sleeptime => OTHERS->{SLEEP_TIME} );
 
 use Cwd qw(getcwd);
 use Getopt::Long;
 use Exporter qw(import);
 use AaronTools::Atoms qw(:BASIC :LJ);
-use AaronTools::G_Key;
+use Aaron::G_Key;
 use Data::Dumper;
 
 #default values for some argument
@@ -43,8 +44,8 @@ my $LIG_OLD = NAMES->{LIG_OLD};
 my $LIG_NONE = NAMES->{LIG_NONE};
 our $jobname;
 our $parent = getcwd();
-our $G_Key = new AaronTools::G_Key();
-our $W_Key = new AaronTools::Workflow_Key();
+our $G_Key = new Aaron::G_Key();
+our $W_Key = new Aaron::Workflow_Key();
 
 my $input_file;
 
@@ -57,20 +58,6 @@ our $ligs_subs = {};
 #read command line arguments
 sub check_modules {
     print "Checking for required Perl modules...\n";
-
-    eval {
-        require Math::Vector::Real;
-        $module->{Real}->{install} = 1;
-        1;
-    } or do {$module->{Real}->{install} = 0;};
-    $module->{Real}->{mod} = 'Math::Vector::Real';
-
-    eval {
-        require Math::MatrixReal;
-        $module->{Matrix}->{install} = 1;
-        1;
-    } or do {$module->{Matrix}->{install} = 0;};
-    $module->{Matrix}->{mod} = 'Math::MatrixReal';
 
     eval {
         require Data::Dumper;
@@ -111,13 +98,13 @@ sub read_args{
         'sleep=s' => \$arg_parser{sleeptime},
         'no_quota' => \$W_Key->{no_quota},
     ) or pod2usage (
-        -input => "$AARON/pod_ref",
+        -input => "$QCHASM/Aaron/pod_ref",
         -exitval => 1,
         -verbose => 1 );
 
     pod2usage(
         -msg => $helpMsg,
-        -input => "$AARON/pod_ref",
+        -input => "$QCHASM/Aaron/pod_ref",
         -exitval => 1,
         -verbose => 1) if $arg_parser{help};
 
@@ -125,7 +112,7 @@ sub read_args{
 
     $input_file or pod2usage (
         -msg => "A input file must be provided\n",
-        -input => "$AARON/pod_ref",
+        -input => "$QCHASM/Aaron/pod_ref",
         -exitval => 1,
         -verbose => 0 );
 
@@ -207,7 +194,7 @@ sub read_params {
                                 @inexplicit_sub;
 
         #examine the inexplicit sub
-        open (my $fh, "<$AARON/AaronTools/Subs/subs") or die "Cannot open $AARON/AaronTools/Subs/subs";
+        open (my $fh, "<$QCHASM/AaronTools/Subs/subs") or die "Cannot open $QCHASM/AaronTools/Subs/subs";
         my %subs_record;
 
         while (<$fh>) {

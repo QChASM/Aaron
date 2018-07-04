@@ -1,13 +1,13 @@
 #!/usr/bin/perl -w
 
 use strict;
-use lib $ENV{'AARON'};
+use lib $ENV{'QCHASM'};
 
 use Getopt::Long;
 use Pod::Usage;
 use AaronTools::Geometry;
 
-unshift @INC, ("$ENV{'AARON'}/bin");
+unshift @INC, ("$ENV{'QCHASM'}/AaronTools/bin");
 require _utils;
 
 sub main {

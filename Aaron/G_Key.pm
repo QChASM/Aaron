@@ -1,15 +1,14 @@
-use lib $ENV{'AARON'};
-use Constants qw(:OTHER_USEFUL);
+use lib $ENV{'QCHASM'};
+use AaronTools::Constants qw(NAMES);
 
 my $TS_lib = NAMES->{TS_LIB};
 
-package AaronTools::G_Key;
+package Aaron::G_Key;
 use strict; use warnings;
-use Constants qw(:PHYSICAL);
 use Data::Dumper;
 
 my $HOME = $ENV{'HOME'};
-my $AARON = $ENV{'AARON'};
+my $QCHASM = $ENV{'QCHASM'};
 
 sub new {
     my $class = shift;
@@ -37,9 +36,9 @@ sub new {
     $self->{solvent} //= 'gas';
     $self->{con_thres} //= 0.5;
 
-    $self->{level} = new AaronTools::Theory_level();
-    $self->{low_level} = new AaronTools::Theory_level();
-    $self->{high_level} = new AaronTools::Theory_level();
+    $self->{level} = new Aaron::Theory_level();
+    $self->{low_level} = new Aaron::Theory_level();
+    $self->{high_level} = new Aaron::Theory_level();
 
     return $self;
 }
@@ -209,8 +208,8 @@ sub read_key_from_input {
         $hit = $self->_read_key_from_input("$HOME/.aaronrc");
     }
 
-    if (-e "$AARON/.aaronrc" && !$hit) {
-        $self->_read_key_from_input("$AARON/.aaronrc");
+    if (-e "$QCHASM/Aaron/.aaronrc" && !$hit) {
+        $self->_read_key_from_input("$QCHASM/Aaron/.aaronrc");
     }
 
     for my $level ( $self->{low_level}, $self->{level}, $self->{high_level} ) {
@@ -220,7 +219,7 @@ sub read_key_from_input {
 }
         
 
-package AaronTools::Workflow_Key;
+package Aaron::Workflow_Key;
 use strict; use warnings;
 use Data::Dumper;
 
@@ -307,11 +306,11 @@ sub examine {
 
     my $TS_path = (-d "$HOME/$TS_lib/$self->{reaction_type}/$self->{template}") ?
                     "$HOME/$TS_lib/$self->{reaction_type}/" : 
-                    "$AARON/$TS_lib/$self->{reaction_type}/";
+                    "$QCHASM/$TS_lib/$self->{reaction_type}/";
 
     unless (-d $TS_path) {
         print "Can't find $self->{template} in either user defined TS library: ".
-              "$HOME/$TS_lib/ or the built_in library: $AARON/$TS_lib/$self->{template}\n";
+              "$HOME/$TS_lib/ or the built_in library: $QCHASM/$TS_lib/$self->{template}\n";
         exit(1);
     }
 
@@ -319,9 +318,9 @@ sub examine {
 }
 
 
-package AaronTools::Theory_level;
+package Aaron::Theory_level;
 use strict; use warnings;
-use lib $ENV{'AARON'};
+use lib $ENV{'QCHASM'};
 use Data::Dumper;
 
 use AaronTools::Atoms qw(:BASIC);

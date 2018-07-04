@@ -5,7 +5,7 @@ my @rmsd;
 my @subs = ('Me', 'Et', 'Cl', 'tBu');
 
 eval {
-    use lib $ENV{'AARON'};
+    use lib $ENV{'QCHASM'};
     
     use Data::Dumper;
     

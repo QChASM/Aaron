@@ -1,19 +1,18 @@
 #Contributors Yanfei Guan and Steven E. Wheeler
+use lib $ENV{'QCHASM'};
+use lib $ENV{'PERL_LIB'};
 
-use lib $ENV{'AARON'};
-
-use Constants qw(:PHYSICAL :COMPARE);
+use AaronTools::Constants qw(CUTOFF);
 use AaronTools::Atoms qw(:BASIC :LJ);
 use AaronTools::Molecules;
 use AaronTools::FileReader;
 
-our $boltzman = BOLTZMANN;
 our $CONNECTIVITY = CONNECTIVITY;
 our $UNROTATABLE_BOND = UNROTATABLE_BOND;
 our $CUTOFF = CUTOFF;
 our $mass = MASS;
 our $radii = RADII;
-our $AARON = $ENV{'AARON'};
+our $QCHASM = $ENV{'QCHASM'};
 our $rij = RIJ;
 our $eij = EIJ;
 
@@ -885,7 +884,7 @@ sub fused_ring {
 
   if ($type =~ /Ar/) {
     $ring = new AaronTools::Geometry( name => 'Ar_ring' );
-    $ring->read_geometry("$AARON/Ring_fragments/six_$path_length.xyz");
+    $ring->read_geometry("$QCHASM/AaronTools/Ring_fragments/six_$path_length.xyz");
   }
   else {	#Chairs
     if($path_length != 3) {
@@ -893,7 +892,7 @@ sub fused_ring {
       return 0;
     } else {
       $ring = new AaronTools::Geometry( name => 'Chairs' );
-      $ring->read_geometry("$AARON/Ring_fragments/Chairs/$type.xyz");
+      $ring->read_geometry("$QCHASM/AaronTools/Ring_fragments/Chairs/$type.xyz");
     }
   }
 
@@ -1831,8 +1830,8 @@ sub new {
 
     if (exists $params{name}) {
         $self->set_name($params{name});
-        if (-f "$AARON/AaronTools/Subs/$self->{name}.xyz") {
-            $self->read_geometry("$AARON/AaronTools/Subs/$self->{name}.xyz");
+        if (-f "$QCHASM/AaronTools/Subs/$self->{name}.xyz") {
+            $self->read_geometry("$QCHASM/AaronTools/Subs/$self->{name}.xyz");
         }
     }
 
@@ -1889,7 +1888,7 @@ sub compare_lib {
 
     my $subs = {};
 
-    open (my $fh, "<$AARON/AaronTools/Subs/subs") or die "Cannot open $AARON/AaronTools/Subs/subs";
+    open (my $fh, "<$QCHASM/AaronTools/Subs/subs") or die "Cannot open $QCHASM/AaronTools/Subs/subs";
 
     while (<$fh>) {
         chomp;

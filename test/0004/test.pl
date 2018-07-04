@@ -4,7 +4,7 @@ use strict; use warnings;
 my $rmsd;
 
 eval {
-    use lib $ENV{'AARON'};
+    use lib $ENV{'QCHASM'};
     
     use Data::Dumper;
     

@@ -1,11 +1,12 @@
 #!/usr/bin/perl -w
 
 use strict;
-use lib $ENV{'AARON'};
+use lib $ENV{'QCHASM'};
+use lib $ENV{'PERL_LIB'};
 
-use AaronInit qw(init_main $parent write_status);
-use AaronDriver qw(make_directories get_status_run analyze_result);
-use AaronOutput qw(init_log print_status terminate_AARON sleep_AARON);
+use Aaron::AaronInit qw(init_main $parent write_status);
+use Aaron::AaronDriver qw(make_directories get_status_run analyze_result);
+use Aaron::AaronOutput qw(init_log print_status terminate_AARON sleep_AARON);
 #initiate AARON, reading needed information from command line and input files
 init_main();
 init_log(print_params=>1);

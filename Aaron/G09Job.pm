@@ -1,13 +1,15 @@
 #Contributors: Yanfei Guan and Steven Wheeler
 
-use lib $ENV{'AARON'};
+use lib $ENV{'QCHASM'};
 
-use Constants qw(:OTHER_USEFUL :PHYSICAL);
+use Aaron::Constants qw(OTHERS MAXSTEP);
+use AaronTools::Constants qw(PHYSICAL UNIT CUTOFF);
 use Cwd qw(cwd);
 
-my $AARON = $ENV{'AARON'};
-my $HART_TO_KCAL = HART_TO_KCAL;
-my $MAXCYCLE = MAX_CYCLE;
+my $HART_TO_KCAL = UNIT->{HART_TO_KCAL};
+my $MAXCYCLE = OTHERS->{MAX_CYCLE};
+my $MAX_LAUNCH_FAILED = OTHERS->{MAX_LAUNCH_FAILED};
+my $MAXSTEP = MAXSTEP;
 my $launch_failed = 0;
 my $CUTOFF = CUTOFF;
 my $parent = cwd;
@@ -15,15 +17,14 @@ my $short_wall = SHORT_WALL;
 
 
 
-package G09Job;
+package Aaron::G09Job;
 use strict; use warnings;
 
 use Cwd qw(cwd);
 use File::Path qw(make_path);
-use AaronOutput qw(print_message close_log);
+use Aaron::AaronOutput qw(print_message close_log);
 use AaronTools::G09Out;
 use AaronTools::JobControl;
-use Constants qw(:OTHER_USEFUL :COMPARE);
 use Data::Dumper;
 
 
@@ -679,12 +680,12 @@ sub submit {
                                       node => $self->{Gkey}->{node} );
     }
 
-    if ($launch_failed > MAX_LAUNCH_FAILED) {
+    if ($launch_failed > $MAX_LAUNCH_FAILED) {
 
         my $time = AaronTools::JobControl::count_time(60);
 
         my $msg = "AARON has failed to submit jobs to queue more than " .
-                  MAX_LAUNCH_FAILED .
+                  $MAX_LAUNCH_FAILED .
                   " times. AARON believe you may run out of hours or " .
                   "something wrong with the system. " .
                   "AARON will just sleep for one hour and continue.\n" .
@@ -929,25 +930,24 @@ sub reduce_maxstep {
 }
 
 
-package G09Job_TS;
+package Aaron::G09Job_TS;
 use strict; use warnings;
 
 use Cwd qw(cwd);
-use AaronOutput qw(print_message);
+use Aaron::AaronOutput qw(print_message);
 use AaronTools::G09Out;
 use AaronTools::JobControl;
-use Constants qw(:OTHER_USEFUL);
 
-our @ISA = qw(G09Job);
+our @ISA = qw(Aaron::G09Job);
 
 sub new {
     my $class = shift;
      
-    my $self = new G09Job(@_);
+    my $self = new Aaron::G09Job(@_);
 
     bless $self, $class;
 
-    $self->{maxstep} = MAXSTEP->{TS};
+    $self->{maxstep} = $MAXSTEP->{TS};
     $self->{maxstep}-- unless $self->{Gkey}->{high_method};
 
     return $self;
@@ -962,7 +962,7 @@ sub new_conformer {
 
     $self->{conformers} = {} unless $self->{conformers};
 
-    $self->{conformers}->{$cf} = new G09Job_TS( 
+    $self->{conformers}->{$cf} = new Aaron::G09Job_TS( 
               name => $self->{name} . "/$cf",
               step => $params{step},
              cycle => $params{cycle},
@@ -982,7 +982,7 @@ sub new_conformer {
 sub _copy {
     my $self = shift;
 
-    my $new = new G09Job_TS( name => $self->{name},
+    my $new = new Aaron::G09Job_TS( name => $self->{name},
                              step => $self->{step},
                             cycle => $self->{cycle},
                            attemp => $self->{attempt},
@@ -1214,25 +1214,24 @@ sub com_route_footer {
 }
 
 
-package G09Job_MIN;
+package Aaron::G09Job_MIN;
 use strict; use warnings;
 
 use Cwd qw(cwd);
-use AaronOutput qw(print_message);
+use Aaron::AaronOutput qw(print_message);
 use AaronTools::G09Out;
 use AaronTools::JobControl;
-use Constants qw(:OTHER_USEFUL);
 
-our @ISA = qw(G09Job);
+our @ISA = qw(Aaron::G09Job);
 
 sub new {
     my $class = shift;
 
-    my $self = new G09Job(@_);
+    my $self = new Aaron::G09Job(@_);
 
     bless $self, $class;
 
-    $self->{maxstep} = MAXSTEP->{INT};
+    $self->{maxstep} = $MAXSTEP->{INT};
     $self->{maxstep}-- unless $self->{Gkey}->{high_method};
 
     return $self;
@@ -1247,7 +1246,7 @@ sub new_conformer {
 
     $self->{conformers} = {} unless $self->{conformers};
 
-    $self->{conformers}->{$cf} = new G09Job_MIN( 
+    $self->{conformers}->{$cf} = new Aaron::G09Job_MIN( 
               name => $self->{name} . "/$cf",
               step => $params{step},
              cycle => $params{cycle},
@@ -1267,7 +1266,7 @@ sub new_conformer {
 sub _copy {
     my $self = shift;
 
-    my $new = new G09Job_MIN( name => $self->{name},
+    my $new = new Aaron::G09Job_MIN( name => $self->{name},
                               step => $self->{step},
                              cycle => $self->{cycle},
                             attemp => $self->{attempt},
@@ -1397,24 +1396,23 @@ sub com_route_footer {
 }
 
 
-package G09Job_TS_Single;
+package Aaron::G09Job_TS_Single;
 use strict; use warnings;
 
 use Cwd qw(cwd);
-use Constants qw(:OTHER_USEFUL);
-use AaronOutput qw(print_message close_log);
+use Aaron::AaronOutput qw(print_message close_log);
 use Data::Dumper;
 
-our @ISA = qw(G09Job);
+our @ISA = qw(Aaron::G09Job);
 
 sub new {
     my $class = shift;
 
-    my $self = new G09Job(@_);
+    my $self = new Aaron::G09Job(@_);
 
     bless $self, $class;
 
-    $self->{maxstep} = MAXSTEP->{TS_SINGLE};
+    $self->{maxstep} = $MAXSTEP->{TS_SINGLE};
     
     return $self;
 }
@@ -1428,7 +1426,7 @@ sub new_conformer {
 
     $self->{conformers} = {} unless $self->{conformers};
 
-    $self->{conformers}->{$cf} = new G09Job_TS_Single( 
+    $self->{conformers}->{$cf} = new Aaron::G09Job_TS_Single( 
               name => $self->{name} . "/$cf",
               step => $params{step},
              cycle => $params{cycle},
@@ -1448,7 +1446,7 @@ sub new_conformer {
 sub _copy {
     my $self = shift;
 
-    my $new = new G09Job_TS_Single( 
+    my $new = new Aaron::G09Job_TS_Single( 
         name => $self->{name},
         step => $self->{step},
        cycle => $self->{cycle},

@@ -2,7 +2,7 @@
 
 =head1 SYNOPSIS
 
-$AARON/Aaron_1.0 [options] jobname.in
+$QCHASM/Aaron/Aaron [options] jobname.in
 
 =head1 OPTIONS
 

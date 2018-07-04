@@ -1,11 +1,11 @@
-package AaronOutput;
+package Aaron::AaronOutput;
 
 use strict;
 
-use lib $ENV{'AARON'};
+use lib $ENV{'QCHASM'};
 
-use Constants qw(:INFORMATION :THEORY :PHYSICAL);
-use AaronInit qw($G_Key %arg_parser $W_Key $parent $jobname $ligs_subs);
+use Aaron::Constants qw(INFO);
+use Aaron::AaronInit qw($G_Key %arg_parser $W_Key $parent $jobname $ligs_subs);
 
 use Cwd;
 use Exporter qw(import);
@@ -13,6 +13,7 @@ use Exporter qw(import);
 our @EXPORT = qw(&init_log print_message print_params terminate_AARON 
                  clean_up print_ee print_status close_log sleep_AARON);
 
+my $QCHASM = $ENV{'QCHASM'};
 my $ol;
 my $out_file;
 my $old_data;
@@ -121,7 +122,7 @@ sub print_message {
 #print all job parameters to $ol
 sub print_params {
     my $version = INFO->{VERSION};
-    my $AARON_HOME = INFO->{AARON_HOME};
+    my $AARON_HOME = "$QCHASM/Aaron";
     my $method = $G_Key->{level}->method();
     my $high_method = $G_Key->{high_level}->method();
     my $low_method = $G_Key->{low_level}->method();

@@ -1,0 +1,25 @@
+#BSUB -J $jobname
+#BSUB -o $jobname.job.%J
+#BSUB -L /bin/bash
+#BSUB -W $walltime:00
+#BSUB -M 2700
+#BSUB -R 'rusage[mem=2700]'
+#BSUB -n $numprocs
+#BSUB -R 'span[ptile=$numprocs]'
+export g09root=/software/lms/g09_D01
+. $g09root/g09/bsd/g09.profile
+trap "rm -r $SCRATCH/$LSB_JOBID" 0 1 2 3 9 13 14 15
+mkdir $SCRATCH/$LSB_JOBID
+cd $SCRATCH/$LSB_JOBID
+echo -P- $numprocs > Default.Route
+echo -M- $memory >> Default.Route
+module purge
+env
+cp $LS_SUBCWD/*.chk .
+g09  < $LS_SUBCWD/$jobname.com  > $LS_SUBCWD/$jobname.log
+cp *.chk $LS_SUBCWD/
+exit
+
+&formula&
+$memory=0.8*$numprocs*2*10**9/8
+&formula&

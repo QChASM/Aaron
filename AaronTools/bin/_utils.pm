@@ -6,7 +6,7 @@ Provides utilities for common interactions with AaronTools
 
 =cut
 
-use lib $ENV{'AARON'};
+use lib $ENV{'QCHASM'};
 
 package _utils;
 use strict;

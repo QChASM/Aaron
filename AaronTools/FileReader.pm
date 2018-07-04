@@ -2,7 +2,7 @@ package AaronTools::FileReader;
 
 use strict; use warnings;
 
-use lib $ENV{'AARON'};
+use lib $ENV{'QCHASM'};
 
 use AaronTools::Atoms qw(:BASIC :LJ);
 

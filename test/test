@@ -5,9 +5,9 @@
 use strict; use warnings;
 use Cwd qw(cwd);
 
-my $AARON = $ENV{'AARON'};
+my $QCHASM = $ENV{'QCHASM'};
 
-my $TESTDIR = "$AARON/test";
+my $TESTDIR = "$QCHASM/test";
 
 opendir(CAS, $TESTDIR) or die "Cannot open test directory $TESTDIR: $!";
 my @cases = readdir(CAS);

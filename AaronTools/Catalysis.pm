@@ -1,11 +1,12 @@
 #Contributors: Yanfei Guan and Steven Wheeler
 
-use lib $ENV{'AARON'};
+use lib $ENV{'QCHASM'};
+use lib $ENV{'PERL_LIB'};
 
-use Constants qw(:PHYSICAL :COMPARE :OTHER_USEFUL);
+use AaronTools::Constants qw(CUTOFF NAMES);
 use AaronTools::Atoms qw (:BASIC :LJ);
 
-my $AARON = $ENV{'AARON'};
+my $QCHASM = $ENV{'QCHASM'};
 my $mass = MASS;
 my $CUTOFF = CUTOFF;
 my $TMETAL = TMETAL;
@@ -1714,8 +1715,8 @@ sub new {
 
     if (exists $params{name}) {
         $self->set_name($params{name});
-        if (-f "$AARON/AaronTools/Ligands/$self->{name}.xyz") {
-            $self->read_geometry("$AARON/AaronTools/Ligands/$self->{name}.xyz");
+        if (-f "$QCHASM/AaronTools/Ligands/$self->{name}.xyz") {
+            $self->read_geometry("$QCHASM/AaronTools/Ligands/$self->{name}.xyz");
         }
 
     }
