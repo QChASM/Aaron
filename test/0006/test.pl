@@ -4,7 +4,6 @@ use strict; use warnings;
 my @rmsd;
 my @subs = ('Me', 'Et', 'Cl', 'tBu');
 
-print "Testing screen_subs...";
 eval {
     use lib $ENV{'AARON'};
     use lib $ENV{'PERL_LIB'};

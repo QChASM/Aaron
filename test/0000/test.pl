@@ -3,7 +3,6 @@ use strict; use warnings;
 
 my $fail;
 
-print "Testing for required environmental variables and files...";
 unless ($ENV{'AARON'}) {
     warn "FATAL! Environmental variable \$AARON is not set.\n" .
          "Please set the path to AARON directory as \$AARON environmental variable.\n";

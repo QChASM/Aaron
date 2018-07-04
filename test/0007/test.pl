@@ -6,7 +6,6 @@ my $job_found;
 my $failed_to_kill;
 my $AARON = $ENV{'AARON'};
  
-print "Testing job submission and findjob...";
 eval {
     use lib $ENV{'AARON'};
     use lib $ENV{'PERL_LIB'};

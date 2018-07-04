@@ -3,7 +3,6 @@ use strict; use warnings;
 
 my $rmsd;
 
-print "Testing mapligand...";
 eval {
     use lib $ENV{'AARON'};
     use lib $ENV{'PERL_LIB'};
