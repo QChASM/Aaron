@@ -1,23 +1,18 @@
 package AaronTools::JobControl;
 
 use strict; use warnings;
-use lib $ENV{'PERL_LIB'};
-use lib $ENV{'AARON'};
+use lib $ENV{'QCHASM'};
 
-use Constants qw(:SYSTEM :JOB_FILE);
+use AaronTools::Constants qw(TEMPLATE_JOB);
 
 use Exporter qw(import);
 use Cwd qw(getcwd);
 
 our @EXPORT = qw(findJob killJob submit_job count_time get_job_template);
 
-my $AARON = $ENV{'AARON'};
+my $QCHASM = $ENV{'QCHASM'};
 
-my $queue_type = $ENV{'QUEUE_TYPE'} ?
-                 $ENV{'QUEUE_TYPE'} : ADA->{QUEUE};
-my $g09root = $ENV{'G09_ROOT'} ?
-              $ENV{'G09_ROOT'} : "/software/lms/g09_D01";       #absolute path to root directory for Gaussian09
-                
+my $queue_type = $ENV{'QUEUE_TYPE'};
 
 #Returns jobIDs of all jobs (queued or running) in current directory, returns 0 if no jobs in queue match current directory
 #This could be improved by searching for $Path more carefully!
@@ -38,11 +33,11 @@ sub findJob {
         $bjobs =~ s/\r|\n//g;
 
         #First grab all jobs
-        my @jobs = ($bjobs =~ m/(Job<\d+>.+?MEMORY\sUSAGE)/g);
+        my @jobs = ($bjobs =~ m/(Job<\d+>.*RUNLIMIT)/g);
 
         #parse each job looking for $Path
         foreach my $job (@jobs) {
-            if ($job =~ /Job<(\d+)>.+CWD\s<.+$Path>/) {
+            if ($job =~ /Job<(\d+)>\S+CWD<.+$Path>/) {
                 push(@jobIDs,$1);
             }
         }
@@ -258,16 +253,16 @@ sub call_g09 {
 
 sub get_job_template {
     my $template_job = {};
-    if ( -e "$AARON/template.job") {
+    if ( -e "$QCHASM/AaronTools/template.job") {
         my $job_invalid;
         my $template_pattern = TEMPLATE_JOB;
 
-        $template_job->{job} = "$AARON/template.job";
+        $template_job->{job} = "$QCHASM/AaronTools/template.job";
         $template_job->{formula} = {};
         $template_job->{env} = '';
         $template_job->{command} = [];
 
-        open JOB, "<$AARON/template.job";
+        open JOB, "<$QCHASM/AaronTools/template.job";
         #get formulas
         JOB:
         while (<JOB>) {
@@ -282,7 +277,7 @@ sub get_job_template {
                                /\Q$_\E/} values %$template_pattern;
 
                         unless (@pattern) {
-                           print "template.job in $AARON is invalid. " .
+                           print "template.job in $QCHASM/AaronTools is invalid. " .
                                  "Formula expression is wrong. " .
                                  "Please see manual.\n";
                            $job_invalid = 1;
@@ -299,7 +294,7 @@ sub get_job_template {
         chomp($template_job->{env});
         chomp($template_job->{command});
     }else {
-        die "Cannot found template.job in $AARON folder.\n";
+        die "Cannot found template.job in $QCHASM/AaronTools folder.\n";
     }
 
     return $template_job;

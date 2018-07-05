@@ -1,0 +1,66 @@
+#!/usr/bin/perl -w
+
+use strict;
+use lib $ENV{'QCHASM'};
+
+use Getopt::Long;
+use Pod::Usage;
+use AaronTools::Geometry;
+
+sub main {
+	my %opt = %{ shift(@_) };
+	my $file = shift;
+
+	my $geo = new AaronTools::Geometry();
+
+	$geo->{name} = $file;
+
+	$geo->read_geometry($file) or die ("File may be damaged, cannot read geometry\n");
+
+	$geo->printXYZ( $opt{output} );
+	return ;
+}
+
+
+my %opt;
+$opt{help}   = '';
+$opt{output} = '';
+GetOptions(
+    'help|h'     => \$opt{help},
+    'output|o:s' => \$opt{output} )
+  or pod2usage( {
+      -exitval => 1,
+      -verbose => 1
+  } );
+pod2usage(0) if $opt{help};
+pod2usage( {
+        -message => "Please specify a filename\n",
+        -exitval => 1,
+        -verbose => 1
+    } ) if @ARGV < 1;
+
+&main( \%opt, @ARGV );
+
+=pod
+
+=head1 SYNOPSIS
+
+pg2xyz [options] filename
+
+=head1 OPTIONS
+
+=over
+
+=item B<-h>, B<--help>
+
+Print this help message and exit
+
+=item B<-o FILENAME>, B<--output FILENAME>
+
+Write output to FILENAME (in xyz format)
+
+=back
+
+=cut
+
+

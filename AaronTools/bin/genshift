@@ -1,0 +1,139 @@
+#!/usr/bin/perl -w
+
+use strict;
+use lib $ENV{'QCHASM'};
+use lib $ENV{'PERL_LIB'};
+
+use Getopt::Long;
+use Pod::Usage;
+use Math::Trig;
+use Math::Vector::Real;
+use AaronTools::Geometry;
+
+unshift @INC, ("$ENV{'QCHASM'}/AaronTools/bin");
+require _utils;
+
+sub main {
+    my $files = shift;
+    my %opt   = @_;
+
+    # perform coord_shift for each file
+    foreach my $file ( @{$files} ) {
+        my $geom = _utils::get_geom($file);
+        next unless $geom;
+
+        my $nshift = 0;
+        my $vector = V( @{ $opt{vector} } );
+        while ( $nshift < $opt{nshift} ) {
+
+            # shift target atoms if specified, defaults to all atoms
+            if ( @{ $opt{targets} } ) {
+                $geom->coord_shift( $vector, $opt{targets} );
+            } else {
+                $geom->coord_shift($vector);
+            }
+
+            # increase repeat count
+            $nshift += 1;
+
+           # Printing
+           # Get shift vector (adjust for previous shifts if multiple requested)
+            my @v;
+            for ( my $i = 0; $i < @{ $opt{vector} }; $i++ ) {
+                push @v, $opt{vector}[$i] * $nshift;
+            }
+
+            # generate outfile name and comment string
+            my $outfile =
+              _utils::get_outfile( $file, $opt{write},
+                [ 'shift', join( '_', @v ) ] );
+            my $comment = _utils::strip_dir($file);
+            $comment .= '   Shifted by (' . join( ',', @v ) . ')';
+            if ($outfile) {
+                print("Saved to $outfile\n");
+            } else {
+				print("###\n") if ($file ne $files->[0]);
+            }
+
+            # prints to STDOUT if $outfile == ''
+            $geom->printXYZ( $outfile, $comment );
+        }
+    }
+}
+
+# read in options
+my %opt;
+my @vector;
+my @targets;
+$opt{help}    = '';
+$opt{vector}  = \@vector;
+$opt{nshift}  = 1;
+$opt{targets} = \@targets;
+$opt{write}   = '-';         # '-' indicates no write, '' indicates write to cwd
+GetOptions(
+    'help|h'         => \$opt{help},
+    'vector|v=f{3}'  => \@vector,
+    'nshift|n:i'     => \$opt{nshift},
+    'targets|t:i{,}' => \@targets,
+    'write|w:s'      => \$opt{write} )
+  or pod2usage( {
+      -exitval => 1,
+      -verbose => 1
+  } );
+pod2usage(0) if $opt{help};
+
+# requires a shift vector and at least one file
+pod2usage( {
+        -message => "Please provide a shift vector and at least one file",
+        -exitval => 1,
+        -verbose => 1
+    } ) unless ( @ARGV > 0 and @{ $opt{vector} } );
+
+pod2usage( {
+        -message => "Number of repeats must be a positive integer.\n",
+        -exitval => 1,
+        -verbose => 1
+    } ) if ( $opt{nshift} < 0 );
+
+# targets supplied as 1-indexed, Aaron uses 0-indexing
+foreach my $t ( @{ $opt{targets} } ) {
+    $t -= 1;
+}
+
+&main( \@ARGV, %opt );
+
+=pod
+
+=head1 SYNOPSIS
+
+genshift [options] -v x y z file1 [file2, file3, ...]
+
+=head1 OPTIONS
+
+=over
+
+=item B<-v x y z>, B<--vector x y z>
+
+Shift the molecule (or target fragment) by the vector (x, y, z)
+
+=item B<-n num>, B<--nshift num>
+
+Repeat the shift n times
+
+=item B<-t list>, B<--targets list>
+
+List of atom numbers to shift (1-indexed). Defaults to all atoms.
+
+=item B<-w [directory]>, B<--write [directory]>
+
+Write new geometry output to INFILE-NAME_shift_VECTOR.xyz instead of STDOUT.
+Directory defaults to current working directory.
+
+=item B<-h>, B<--help>
+
+Print this help message and exit
+
+=back
+
+=cut
+

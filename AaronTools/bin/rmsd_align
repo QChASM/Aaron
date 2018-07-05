@@ -1,0 +1,117 @@
+#!/usr/bin/perl -w
+
+use strict;
+use lib $ENV{'QCHASM'};
+
+use Getopt::Long;
+use Pod::Usage;
+use AaronTools::Geometry;
+
+unshift @INC, ("$ENV{'QCHASM'}/AaronTools/bin");
+require _utils;
+
+sub main {
+    my $reffile    = shift;
+    my $targetfile = shift;
+    my %opt        = @_;
+
+    # read in reference and target geometry
+    my $refgeom    = _utils::get_geom($reffile);
+    my $targetgeom = _utils::get_geom($targetfile);
+    unless ( $refgeom and $targetgeom ) {
+        print( STDERR "Issue reading $reffile\n" )    unless ($refgeom);
+        print( STDERR "Issue reading $targetfile\n" ) unless ($targetgeom);
+        print( STDERR "... exiting\n" );
+        return 1;
+    }
+
+    # perform rmsd align
+    my $rmsd = $targetgeom->RMSD(
+        'ref_geo'     => $refgeom,
+        'ref_atoms1'  => $opt{targetatoms},
+        'ref_atoms2'  => $opt{refatoms},
+        'heavy_atoms' => $opt{heavyatoms} );
+
+    # Printing
+    # prints to STDOUT if $outfile == ''
+    print(  _utils::strip_dir($targetfile)
+          . " -> aligned to "
+          . _utils::strip_dir($reffile)
+          . "\n" );
+    print("Saving substituted coords to $opt{outfile}\n") if $opt{outfile};
+    $targetgeom->printXYZ( $opt{outfile}, "RMSD: $rmsd" );
+}
+
+# read in options
+my %opt;
+my @refatoms;
+my @targetatoms;
+$opt{help}        = '';
+$opt{heavyatoms}  = '';
+$opt{refatoms}    = undef;
+$opt{targetatoms} = undef;
+$opt{outfile}     = '';
+GetOptions(
+    'help|h'              => \$opt{help},
+    'heavyatoms|ha'       => \$opt{heavyatoms},
+    'refatoms|r=i{1,}'    => \@refatoms,
+    'targetatoms|t=i{1,}' => \@targetatoms,
+    'output|o=s'          => \$opt{outfile} )
+  or pod2usage( {
+      -exitval => 1,
+      -verbose => 1
+  } );
+pod2usage(0) if $opt{help};
+
+pod2usage( {
+        -message => "Please provide a reference and target geometry",
+        -exitval => 1,
+        -verbose => 1
+    } ) unless ( @ARGV == 2 );
+
+# AaronTools uses 0-indexing
+foreach my $r (@refatoms) {
+    $r -= 1;
+}
+foreach my $t (@targetatoms) {
+    $t -= 1;
+}
+
+&main( @ARGV, %opt );
+
+=pod
+
+=head1 SYNOPSIS
+
+rmsd_align [options] [-r reference_atomlist] reference_geom [-t target_atomlist] target_geom
+
+Aligns [specified atoms in] target_geom to [specified atoms in] reference_geom.
+
+=head1 OPTIONS
+
+=over
+
+=item B<-ha>, B<--heavyatoms>
+
+Only align heavy atoms.
+
+=item B<-r atomlist>, B<--refatoms atomlist>
+
+List of atoms in reference geometry to align to (1-indexed).
+
+=item B<-t atomlist>, B<--targetatoms atomlist>
+
+List of atoms in target geometry to align (1-indexed).
+
+=item B<-o outfile>, B<--output outfile>
+
+Write aligned geometry to OUTFILE instead of STDOUT
+
+=item B<-h>, B<--help>
+
+Print this help message and exit
+
+=back
+
+=cut
+

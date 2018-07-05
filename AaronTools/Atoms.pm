@@ -2,7 +2,6 @@ package AaronTools::Atoms;
 
 use strict; use warnings;
 
-use lib $ENV{'PERL_LIB'};
 
 use base qw(Exporter);
 use Math::Trig;

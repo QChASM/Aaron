@@ -1,0 +1,186 @@
+#!/usr/bin/perl -w
+
+use strict;
+use lib $ENV{'QCHASM'};
+
+use Getopt::Long;
+use Pod::Usage;
+use Math::Trig;
+use AaronTools::Geometry;
+
+unshift @INC, ("$ENV{'QCHASM'}/AaronTools/bin");
+require _utils;
+
+sub main {
+    my $file = shift;
+    my %opt  = @_;
+
+    my $geom = _utils::get_geom($file);
+    unless ($geom) {
+        return 1;
+    }
+
+    if ( @{ $opt{print} } ) {
+        &print_dihedral( $geom, $opt{rads}, @{ $opt{print} } );
+    }
+    if ( @{ $opt{set} } ) {
+        &set_dihedral( $geom, $opt{rads}, @{ $opt{set} } );
+    }
+    if ( @{ $opt{change} } ) {
+        &change_dihedral( $geom, $opt{rads}, @{ $opt{change} } );
+    }
+
+	#prints to STDOUT  if $opt{output} == '' or saves to file
+	if ( @{ $opt{set} } or @{ $opt{change} } ){
+        $geom->printXYZ( $opt{output} );
+	}
+    return 0;
+}
+
+sub change_dihedral {
+    my $geom = shift;
+    my $rads = shift;
+    my @args = @_;
+
+    while ( @args > 0 ) {
+        my @atoms = splice( @args, 0, 2 );
+        for my $atom (@atoms) {
+
+            #AaronTools uses 0-indexing for atoms
+            $atom -= 1;
+        }
+        my $angle = shift(@args);
+
+        unless ($rads) {
+            $angle = deg2rad($angle);
+        }
+
+        $geom->change_dihedral( @atoms, $angle );
+    }
+    return;
+}
+
+sub set_dihedral {
+    my $geom = shift;
+    my $rads = shift;
+    my @args = @_;
+
+    while ( @args > 0 ) {
+        my @atoms = splice( @args, 0, 4 );
+        for my $atom (@atoms) {
+
+            #AaronTools uses 0-indexing for atoms
+            $atom -= 1;
+        }
+        my $angle = shift(@args);
+
+        if ($rads) {
+            $angle = rad2deg($angle);
+        }
+
+        $geom->set_dihedral( @atoms, $angle );
+    }
+    return;
+}
+
+sub print_dihedral {
+    my $geom     = shift;
+    my $rads     = shift;
+    my @atomlist = @_;
+
+    while ( @atomlist > 0 ) {
+        my $angle;
+        my @atoms = splice( @atomlist, 0, 4 );
+        for my $atom (@atoms) {
+
+            #AaronTools uses 0-indexing for atoms
+            $atom -= 1;
+        }
+
+        eval { $angle = $geom->dihedral(@atoms) };
+        if ($@) {
+            die "cannot calculate dihedral angle from atoms provided: $@";
+        }
+
+        if ($rads) {
+            $angle = deg2rad($angle);
+        }
+
+        for my $atom (@atoms) {
+
+            #switch back to 1-indexing for printing
+            $atom += 1;
+        }
+        printf( "Dihedral between atoms %d %d %d %d: %f\n", @atoms, $angle );
+    }
+    return;
+}
+
+my %opt;
+$opt{help}   = '';
+$opt{rads}   = '';
+$opt{output} = '';
+GetOptions(
+    'help|h'        => \$opt{help},
+    'radians|r'     => \$opt{rads},
+    'change|c=f{3}' => \@{ $opt{change} },
+    'print|p=i{4}'  => \@{ $opt{print} },
+    'set|s=f{5}'    => \@{ $opt{set} },
+    'output|o=s'    => \$opt{output} )
+  or pod2usage( {
+      -exitval => 1,
+      -verbose => 1
+  } );
+pod2usage(0) if $opt{help};
+pod2usage( {
+        -message => "Please specify a filename\n",
+        -exitval => 1,
+        -verbose => 1
+    } ) if @ARGV < 1;
+pod2usage( {
+        -message =>
+          "Please specify at least one of the following: --change, --print, --set\n",
+        -exitval => 1,
+        -verbose => 1
+    } ) unless ( @{ $opt{change} } or @{ $opt{print} } or @{ $opt{set} } );
+
+&main( $ARGV[0], %opt );
+
+=pod
+
+=head1 SYNOPSIS
+
+dihedral [options] filename
+
+=head1 OPTIONS
+
+=over
+
+=item B<-c ATOM1 ATOM2 ANGLE>, B<--change ATOM1 ATOM2 ANGLE>
+
+Change dihedral about ATOM1-ATOM2 (1-indexed) bond by ANGLE
+
+=item B<-p ATOM1 ATOM2 ATOM3 ATOM4>, B<--print ATOM1 ATOM2 ATOM3 ATOM4>
+
+Print current ATOM1-ATOM2-ATOM3-ATOM4 (1-indexed) dihedral to STDOUT
+
+=item B<-s ATOM1 ATOM2 ATOM3 ATOM4 ANGLE>, B<--set ATOM1 ATOM2 ATOM3 ATOM4 ANGLE>
+
+Set new ATOM1-ATOM2-ATOM3-ATOM4 (1-indexed) dihedral to ANGLE
+
+=item B<-o outfile.xyz>, B<--output outfile.xyz>
+
+Write new geometry output to xyz-file instead of STDOUT
+
+=item B<-r>, B<--radians>
+
+Use radians for ANGLE units (default is degrees)
+
+=item B<-h>, B<--help>
+
+Print this help message and exit
+
+=back
+
+=cut
+

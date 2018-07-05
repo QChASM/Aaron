@@ -1,0 +1,249 @@
+#!/usr/bin/perl -w
+
+use strict;
+use lib $ENV{'QCHASM'};
+
+use Getopt::Long;
+use Pod::Usage;
+use AaronTools::Catalysis;
+use Data::Dumper;
+
+unshift @INC, ("$ENV{'QCHASM'}/AaronTools/bin");
+require _utils;
+
+my $debug;
+
+sub main {
+    my $file = shift;
+    my %opt  = @_;
+
+    # if substituent is named, just go ahead and pass that to substitute()
+    # otherwise, we should pass substituent numbering to Catalysis class
+    # to preserve indexing when interacting with object on our side
+    my %numbered;
+    $numbered{ligand}    = {};
+    $numbered{substrate} = {};
+    my %named;
+    $named{ligand}    = {};
+    $named{substrate} = {};
+
+    # store atoms requested for substitution in the appropriate hash
+    # this allows us to label atoms that may be moved around during the process
+    ( $numbered{ligand}, $named{ligand} ) = store_requested( \%opt, 'ligand' );
+    ( $numbered{substrate}, $named{substrate} ) =
+      store_requested( \%opt, 'substrate' );
+	if ( $debug ){
+		print "NUMBERED\n", Dumper(%numbered);
+		print "NAMED\n", Dumper(%named);
+		print "\n";
+	}
+
+    # create catalysis object with requested substituent indexing
+    my $geom = _utils::get_cat( $file, \%numbered, $opt{relnum} ) if -e $file;
+    return 1 unless $geom;
+
+    #
+    # Generate geometry for each ligand/substrate substitution combination
+    #
+    # Ligand screen_subs (can't do both components at same time)
+    my %params = get_params( $geom, 'ligand', %opt );
+	while ( my ($k, $v) = each %{ $named{ligand} } ){
+		$params{$k} = [split /,/, $v];
+	}
+	if ($debug) {
+        print "PARAMS\n";
+        print Dumper(%params);
+        print "\n";
+    }
+    # substitute at appropriate spots on ligand
+    my @sub_ligs;
+    if (%params) {
+        @sub_ligs = $geom->screen_subs( 'ligand', %params );
+    } else {
+        @sub_ligs = ($geom);
+    }
+
+    # Substrate screen_subs for each ligand-substituted generated above
+    %params = get_params( $geom, 'substrate', %opt );
+    if ($debug) {
+        print "PARAMS\n";
+        print Dumper(%params);
+        print "\n";
+    }
+    # perform screen on each of the newly generated geometries
+    my @sub_geoms;
+    foreach my $geom (@sub_ligs) {
+        push @sub_geoms, $geom->screen_subs( 'substrate', %params );
+    }
+
+    #
+    # Printing
+    #
+    # prints to STDOUT if $outfile == ''
+    for my $geom (@sub_geoms) {
+        my @appends;    # for filename generation
+
+        # add ligand info to @appends
+        push @appends, get_appends( $geom, 'ligand', $opt{relnum} );
+        # add substrate info to @appends
+        push @appends, get_appends( $geom, 'substrate', $opt{relnum} );
+
+        # generate filename (with appropriate directory)
+        my $outfile = _utils::get_outfile( _utils::strip_dir($file),
+            $opt{write}, \@appends );
+
+        # save or print to stdout
+        print("Saving substituted coords to $outfile\n") if $outfile;
+        print("***\n") unless $outfile;
+        $geom->printXYZ($outfile);
+    }
+}
+
+# store atoms requested for substitution in the appropriate hash
+# this allows us to label atoms that may be moved around during the process
+sub store_requested {
+    my %opt       = %{ shift @_ };
+    my $component = shift;
+    my %numbered;
+    my %named;
+
+    foreach my $sub ( keys %{ $opt{$component} } ) {
+        if ( $sub =~ /^\d+,/ ) {
+            map { $numbered{ $_ - 1 } = $sub } split( /,/, $sub );
+        } elsif ( $sub =~ /^\d+/ ) {
+            $numbered{ $sub - 1 } = $sub;
+        } else {
+            $named{$sub} = $opt{$component}{$sub};
+        }
+    }
+
+    return \%numbered, \%named;
+}
+
+# Generates parameter hash for passing to screen_subs
+# Used to determine AaronTools atom numbering from command-line provided numbering
+sub get_params {
+    my $geom      = shift;
+    my $component = shift;
+    my %opt       = @_;
+
+    # determine requested target atom, in aaron's number scheme
+    my %params;
+    my %convert = _utils::get_sub_numbers( $geom, $component );
+    if ($debug) {
+        print "CONVERT\n";
+        print Dumper(%convert);
+        print "\n";
+    }
+
+    while ( my ( $target, $aaron_num ) = each %convert ) {
+        # screen_subs takes %params in the form of
+        # {'atom1,atom2,...' => [sub1, sub2, ...]}
+        my @subs = split /,/, $opt{$component}{$target};
+        eval {
+            local $@;
+            push @{ $params{$aaron_num} }, @subs;
+            1;
+        } or do {
+            $params{$aaron_num} = \@subs;
+        };
+    }
+
+    return %params;
+}
+
+# Generates appends array for file naming
+# General format is <target>-<substituent>
+sub get_appends {
+    my $geom      = shift;
+    my $component = shift;
+    my $relnum    = shift;
+
+    my @appends;
+    my %subs = %{ $geom->{$component}->{substituents} };
+
+    while ( my ( $k, $v ) = each %subs ) {
+        # $k = atom number, $v = substituent object
+        if ($relnum) {
+            push @appends,
+              ( substr( $component, 0, 1 ) . ( $k + 1 ) . '-' . $v->{name} );
+        } else {
+            push @appends,
+              ( ( $k + $geom->{ $component . "_atoms" }[0] + 1 ) . '-'
+                  . $v->{name} );
+        }
+    }
+
+    return @appends;
+}
+
+# read in options
+my %opt;
+my %sublist;
+my %liglist;
+$opt{substrate} = \%sublist;
+$opt{ligand}    = \%liglist;
+$opt{write}     = '-';
+GetOptions(
+    'help|h'            => \$opt{help},
+    'debug|d'           => \$debug,
+    'substrate|s=s%{,}' => \%sublist,
+    'ligand|l=s%{,}'    => \%liglist,
+    'relnum|r'          => \$opt{relnum},
+    'write|w:s'         => \$opt{write} )
+  or pod2usage( {
+      -exitval => 1,
+      -verbose => 1
+  } );
+pod2usage(0) if $opt{help};
+
+# need to supply a geometry file
+pod2usage( {
+        -message => "Please provide one geometry file to substitute",
+        -exitval => 1,
+        -verbose => 1
+    } ) unless ( $#ARGV == 0 );
+
+# target supplied as 1-indexed, Aaron uses 0-indexing
+
+&main( $ARGV[0], %opt );
+
+=pod
+
+=head1 SYNOPSIS
+
+cat_screen [options] [-l|s target=sub ...] file
+
+=head1 OPTIONS
+
+=over
+
+=item B<-l target=sub1[,sub2,... target2=sub3,sub4,...]>
+
+B<--ligand target=sub1[,sub2,... target2=sub3,sub4,...]>
+
+Run through substitution combinations, outputing a file for each. For example, -l 3=Me,Ph 4=OMe,tBu will generate 4 files:
+3=Me,4=OMe; 3=Me,4=tBu; 3=Ph,4=OMe; and 3=Ph,4=tBu
+
+=item B<-s target=sub1[,sub2,... target2=sub3,sub4,...]>
+
+B<--substrate target=sub1[,sub2,... target2=sub3,sub4,...]>
+
+Same as ligand flag above, but for substrate substitutions
+
+=item B<-r>, B<--relnum>
+
+Use relative ligand/substrate numbering instead of absolute numbering
+
+=item B<-w [directory]> B<--write [directory]>
+
+Save files instead of printing to STDOUT. Will be saved to directory, if provided (defaults to current directory).
+
+=item B<-h>, B<--help>
+
+Print this help message and exit
+
+=back
+
+=cut
+

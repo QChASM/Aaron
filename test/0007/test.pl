@@ -4,16 +4,14 @@ use strict; use warnings;
 my $failed_to_submit;
 my $job_found;
 my $failed_to_kill;
-my $AARON = $ENV{'AARON'};
- 
+my $QCHASM = $ENV{'QCHASM'};
 eval {
-    use lib $ENV{'AARON'};
-    use lib $ENV{'PERL_LIB'};
+    use lib $ENV{'QCHASM'};
    
-    use AaronTools::G_Key;
+    use Aaron::G_Key;
     use AaronTools::JobControl qw(get_job_template submit_job findJob killJob);
 
-    my $Gkey = new AaronTools::G_Key;
+    my $Gkey = new Aaron::G_Key;
 
     $Gkey->read_key_from_input();
 
@@ -32,12 +30,12 @@ eval {
 
     sleep(10);
 
-    ($job_found) = findJob("$AARON/test");
+    ($job_found) = findJob("$QCHASM/test/0007");
 
     killJob($job_found) if $job_found;
     sleep(5);
 
-    $failed_to_kill = findJob("$AARON/test");
+    $failed_to_kill = findJob("$QCHASM/test/0007");
     1
 } or do {
     my $error = $@;

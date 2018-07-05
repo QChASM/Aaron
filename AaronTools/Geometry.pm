@@ -1,20 +1,18 @@
 #Contributors Yanfei Guan and Steven E. Wheeler
-
+use lib $ENV{'QCHASM'};
 use lib $ENV{'PERL_LIB'};
-use lib $ENV{'AARON'};
 
-use Constants qw(:PHYSICAL :COMPARE);
+use AaronTools::Constants qw(CUTOFF);
 use AaronTools::Atoms qw(:BASIC :LJ);
 use AaronTools::Molecules;
 use AaronTools::FileReader;
 
-our $boltzman = BOLTZMANN;
 our $CONNECTIVITY = CONNECTIVITY;
 our $UNROTATABLE_BOND = UNROTATABLE_BOND;
 our $CUTOFF = CUTOFF;
 our $mass = MASS;
 our $radii = RADII;
-our $AARON = $ENV{'AARON'};
+our $QCHASM = $ENV{'QCHASM'};
 our $rij = RIJ;
 our $eij = EIJ;
 
@@ -132,7 +130,7 @@ sub copy {
 sub update_coords {
     my $self = shift;
     my %param = @_;
-    
+
     for my $i (0..$#{ $param{targets} }) {
         $self->{coords}->[$param{targets}->[$i]] = $param{coords}->[$i];
     }
@@ -191,7 +189,7 @@ sub subgeo {
 
 sub splice_atom {
     my ($self, $target, $number_splice, $geo_2) = @_;
-    
+
     for my $entry ('elements', 'flags', 'coords', 'connection') {
         if ($geo_2) {
             splice(@{ $self->{$entry} }, $target, $number_splice, @{ $geo_2->{$entry} });
@@ -221,7 +219,7 @@ sub separate {
     while(@atoms) {
         my $start = $atoms[0];
         my @molecule = @{ $self->get_all_connected($start) };
-        
+
         my %atoms = map { $_ => 1 } @atoms;
         map {delete $atoms{$_} } @molecule;
         @atoms = keys %atoms;
@@ -231,16 +229,25 @@ sub separate {
 }
 
 
-#Removes fragment by cutting $atom1-$atom2 bond and removing $atom2 and all connected atoms, replaces with hydrogen along original $atom1-$atom2 bond.
+#Cuts $atom1-$atom2 bond and removes $atom2 and all connected atoms
+#replaces with hydrogen along original $atom1-$atom2 bond.
 #remove_fragment(\@coords, $atom1, $atom2);
 sub remove_fragment {
+	# atom1 = where fragment connected
+	# atom2 = start of fragment (replaced with H)
     my ($self, $atom1, $atom2) = @_;
 
+	# determine atoms in continuous fragment extending from atom2 and avoiding atom1
     my $fragment = $self->get_all_connected($atom2, $atom1);
+	# save a list of all atoms, excluding atom2
     my @fragment_no_atom2 = grep { $_ != $atom2 } @$fragment;
+	# change atom2 to H
     $self->{elements}->[$atom2] = 'H';
+	# adjust bond length
     $self->correct_bond_length( atom1 => $atom1, atom2 => $atom2 );
+	# delete all other atoms in fragment
     $self->delete_atom([@fragment_no_atom2]);
+	# update connection info
     $self->get_connected();
 }
 
@@ -324,8 +331,8 @@ sub get_connected {
     foreach my $atom2 (@$subgroups) {
       my $distance = $self->distance(atom1 => $atom1, atom2 => $atom2);
 
-      my $cutoff = $radii->{$self->{elements}->[$atom1]} + 
-                   $radii->{$self->{elements}->[$atom2]} + 
+      my $cutoff = $radii->{$self->{elements}->[$atom1]} +
+                   $radii->{$self->{elements}->[$atom2]} +
                    $tolerance;
       if($distance < $cutoff && $atom1 != $atom2) {
         push(@row, $atom2);
@@ -348,8 +355,8 @@ sub refresh_connected {
     foreach my $atom2 (@$subgroups) {
       my $distance = $self->distance(atom1 => $atom1, atom2 => $atom2);
 
-      my $cutoff = $radii->{$self->{elements}->[$atom1]} + 
-                   $radii->{$self->{elements}->[$atom2]} + 
+      my $cutoff = $radii->{$self->{elements}->[$atom1]} +
+                   $radii->{$self->{elements}->[$atom2]} +
                    $tolerance;
       if($distance < $cutoff && $atom1 != $atom2) {
         push(@row, $atom2);
@@ -413,7 +420,7 @@ sub check_connectivity {
     my @wrong_connectivity;
 
     for my $atom (0..$#{ $self->{elements} }) {
-        if ($#{ $self->{connection}->[$atom] } + 1 > 
+        if ($#{ $self->{connection}->[$atom] } + 1 >
             $CONNECTIVITY->{$self->{elements}->[$atom]}) {
             push(@wrong_connectivity, $atom);
          }
@@ -488,7 +495,7 @@ sub change_distance {
     my $self = shift;
     my %params = @_;
 
-    my ($atom1, $atom2, $distance, 
+    my ($atom1, $atom2, $distance,
         $by_distance,
         $move_atom2, $move_frag) = ( $params{atom1},
                                      $params{atom2},
@@ -516,7 +523,7 @@ sub change_distance {
     $self->_change_distance( all_atoms1 => $all_connected_atoms1,
                              all_atoms2 => $all_connected_atoms2,
                              atom1 => $atom1,
-                             atom2 => $atom2, 
+                             atom2 => $atom2,
                              distance => $distance,
                              by_distance => $by_distance );
 }
@@ -526,7 +533,7 @@ sub _change_distance {
     my $self = shift;
     my %params = @_;
 
-    my ($all_atoms1, $all_atoms2, 
+    my ($all_atoms1, $all_atoms2,
         $atom1, $atom2, $distance,
         $by_distance) = ($params{all_atoms1}, $params{all_atoms2},
                          $params{atom1}, $params{atom2}, $params{distance},
@@ -550,7 +557,7 @@ sub _change_distance {
         $v2 = $v12 * $difference / (2*$current_distance);
         $v1 = -$v12 * $difference / (2*$current_distance);
     }
-    
+
     $self->coord_shift($v1, $all_atoms1) if $all_atoms1;
     $self->coord_shift($v2, $all_atoms2) if $all_atoms2;
 }
@@ -560,7 +567,7 @@ sub correct_bond_length {
     my $self = shift;
     my %params = @_;
     my ($atom1, $atom2) = ($params{atom1}, $params{atom2});
-    my $new_distance = $radii->{$self->{elements}->[$atom1]} 
+    my $new_distance = $radii->{$self->{elements}->[$atom1]}
                        + $radii->{$self->{elements}->[$atom2]};
 
     $self->change_distance( atom1 => $atom1,
@@ -623,7 +630,7 @@ sub rotate {
         if ($axis =~ /[Zz]/) {
             $self->genrotate(V(0,0,1), $angle);
             last Switch;
-        } 
+        }
         die "Can only rotate around Cartesian axes!\n";
     }
 }
@@ -631,7 +638,7 @@ sub rotate {
 
 sub center_genrotate {
     my ($self, $point, $v, $angle, $targets) = @_;
-    
+
     my $shift_v = $point =~ /^\d+$/ ?
                   $self->get_point($point) : $point;
 
@@ -643,7 +650,7 @@ sub center_genrotate {
 
 sub angle {
     my ($self, $atom1, $atom2, $atom3) = @_;
-    
+
     my $bond1 = $self->get_bond($atom1, $atom2);
     my $bond2 = $self->get_bond($atom3, $atom2);
 
@@ -671,7 +678,7 @@ sub dihedral {
 #change_dihedral(atom1, atom2, angle_change, ref_to_coords
 sub change_dihedral {
     my ($self, $atom1, $atom2, $angle) = @_;
-    
+
     my $connected_atoms = $self->get_all_connected($atom1, $atom2);
 
     if ($#{ $connected_atoms } < 0) {
@@ -702,18 +709,18 @@ sub center_ring {
     for my $atom ($atom1, $atom2, $atom3) {
         $com += $self->get_point($atom);
     }
-    $com /= 3; 
-    
+    $com /= 3;
+
     #shift geom to COM
     $self->coord_shift(-1*$com);
-    
+
     #Put atom1 along x-axis
     my $v1 = $self->get_point($atom1);
     my $vx = V(1,0,0);
     my $cross1 = $v1 x $vx;
     my $angle1 = atan2($v1, $vx);
     $self->genrotate($cross1, -$angle1);
-    
+
     #Now put atom2 and atom3 in XY-plane (or as close as possible)
     my ($v2, $v3) = ($self->get_point($atom2), $self->get_poing($atom3));
     $v2->[0] = 0;
@@ -789,7 +796,7 @@ sub substitute {
                                               $param{sub},
                                               $param{minimize_torsion} );
 
-    my ($end, $old_sub_atoms) = $self->get_sub($target);  
+    my ($end, $old_sub_atoms) = $self->get_sub($target);
 
     my $sub_object = new AaronTools::Substituent( name => $sub, end => $end );
 
@@ -818,7 +825,7 @@ sub _substitute {
                            target => $target,
                               end => $end );
 
-    
+
     #replace target with first atom of substituent
     $self->splice_atom($target, 1, $sub->subgeo([0])->copy());
 
@@ -833,7 +840,7 @@ sub _substitute {
 
     $self->delete_atom($delete_atoms);
     $self->refresh_connected();
-    
+
     #build list of substituent coords
     my $old_num_atoms = $#{ $self->{elements} } + 1;
     $self->append($sub->subgeo([1..$#{ $sub->{elements} }])->copy());
@@ -843,7 +850,7 @@ sub _substitute {
     $self->correct_bond_length( atom1 => $end, atom2 => $target );
 
     if ($minimize_torsion) {
-        $self->minimize_torsion(start_atom => $target, 
+        $self->minimize_torsion(start_atom => $target,
                                   end_atom => $end);
     }
 }
@@ -854,11 +861,11 @@ sub fused_ring {
 
   #get connected atoms
   my @connected = @{ $self->{connection} };
-  if($#{$self->{connection}->[$target1]} > 0 
+  if($#{$self->{connection}->[$target1]} > 0
      || $#{$self->{connection}->[$target2]} > 0) {
     print "Trying to substitute non-monovalent atom!\n";
     return 0;
-  } 
+  }
 
   #Figure out what needs to be added to match fused ring
   my $path_length = $self->shortest_path($target1, $target2);
@@ -867,7 +874,7 @@ sub fused_ring {
     return 0;
   }
   #check to make sure known type
-  if($type !~ /a_pinene/ && $type !~ /LD_chair/ && $type !~ /LU_chair/ 
+  if($type !~ /a_pinene/ && $type !~ /LD_chair/ && $type !~ /LU_chair/
      && $type !~ /D_boat/ && $type !~ /U_boat/ && $type !~ /Ar/) {
     print "Unknown ring type!\n";
     return 0;
@@ -877,7 +884,7 @@ sub fused_ring {
 
   if ($type =~ /Ar/) {
     $ring = new AaronTools::Geometry( name => 'Ar_ring' );
-    $ring->read_geometry("$AARON/Ring_fragments/six_$path_length.xyz");
+    $ring->read_geometry("$QCHASM/AaronTools/Ring_fragments/six_$path_length.xyz");
   }
   else {	#Chairs
     if($path_length != 3) {
@@ -885,10 +892,10 @@ sub fused_ring {
       return 0;
     } else {
       $ring = new AaronTools::Geometry( name => 'Chairs' );
-      $ring->read_geometry("$AARON/Ring_fragments/Chairs/$type.xyz");
+      $ring->read_geometry("$QCHASM/AaronTools/Ring_fragments/Chairs/$type.xyz");
     }
   }
-  
+
   #get nearest neighbors from @connected
   my $nearest_neighbor1 = $self->{connection}->[$target1]->[0];
   my $nearest_neighbor2 = $self->{connection}->[$target2]->[0];
@@ -918,7 +925,7 @@ sub fused_ring {
 
   my @sub_atoms = ($target1, $target2);
   my $coord_num_old = $#{ $self->{elements} };
-  
+
   #replace target1 with 1st ring atom
   #replace target2 with 2nd ring atom
   #Add remainder of ring coords
@@ -929,7 +936,7 @@ sub fused_ring {
   $self->splice_atom($target2, 1, $ring2);
   $self->append($ring_remain->copy());
   push(@sub_atoms, $coord_num_old+1..$#{ $self->{elements} });
-  
+
   #Return geometry to original orientation/position
   $self->rotate('x',$chi);
   $self->genrotate($cross1, -$angle1) unless (abs($cross1) == 0);
@@ -1003,7 +1010,7 @@ sub minimize_torsion {
       $E_min = $energy;
     }
   }
-  
+
   $self->center_genrotate($atom1, $axis, deg2rad($angle_min), $targets);
 }
 
@@ -1014,7 +1021,7 @@ sub get_bond {
 
     my $pt1 = $self->get_point($atom1);
     my $pt2 = $geometry_2->get_point($atom2);
-    
+
     my $bond = $pt1 - $pt2;
     return $bond;
 }
@@ -1028,7 +1035,7 @@ sub RMSD {
 
     my %params = @_;
 
-    my ($geo2, $heavy_only, 
+    my ($geo2, $heavy_only,
         $atoms1_ref, $atoms2_ref) = ( $params{ref_geo}, $params{heavy_atoms},
                                       $params{ref_atoms1}, $params{ref_atoms2} );
 
@@ -1045,9 +1052,9 @@ sub RMSD {
     $geo2->coord_shift(-1*$cen2);
 
     for my $i (0..2) {
-        map {$atoms1_ref->[$_]->[$i] -= $cen1->[$i]} 
+        map {$atoms1_ref->[$_]->[$i] -= $cen1->[$i]}
             grep {$atoms1_ref->[$_] !~ /^\d+$/} (0..$#{$atoms1_ref});
-        map {$atoms2_ref->[$_]->[$i] -= $cen2->[$i]} 
+        map {$atoms2_ref->[$_]->[$i] -= $cen2->[$i]}
             grep {$atoms2_ref->[$_] !~ /^\d+$/} (0..$#{$atoms2_ref});
     }
 
@@ -1056,7 +1063,7 @@ sub RMSD {
     $self->coord_shift($cen2);
 
     for my $i (0..2) {
-        map {$atoms1_ref->[$_]->[$i] += $cen2->[$i]} 
+        map {$atoms1_ref->[$_]->[$i] += $cen2->[$i]}
             grep {$atoms1_ref->[$_] !~ /^\d+$/} (0..$#{$atoms1_ref});
     }
 
@@ -1069,7 +1076,7 @@ sub MSD {
 
     my %params = @_;
 
-    my ($geo2, $heavy_only, 
+    my ($geo2, $heavy_only,
         $atoms1_ref, $atoms2_ref) = ( $params{ref_geo}, $params{heavy_atoms},
                                       $params{ref_atoms1}, $params{ref_atoms2} );
 
@@ -1115,7 +1122,7 @@ sub _RMSD {
         $Q = $evectors->column($i);
       }
     }
-    
+
     my $rmsd = 0;
     if($sd > 0) { #to avoid very small negative numbers for sd (-1e-16, etc)
       $rmsd = sqrt($sd/($#{$atoms1_ref}+1));
@@ -1146,7 +1153,7 @@ sub RMSD_mirror {
 
     my %params = @_;
 
-    my ($geo2, $heavy_only, 
+    my ($geo2, $heavy_only,
         $atoms1_ref, $atoms2_ref) = ( $params{ref_geo}, $params{heavy_atoms},
                                       $params{ref_atoms1}, $params{ref_atoms2} );
 
@@ -1207,7 +1214,7 @@ sub RMSD_mirror {
 
     @sd = @sd[@idx_sort];
     @Q = @Q[@idx_sort];
-            
+
     my $rmsd = 0;
     if($sd[0] > 0) { #to avoid very small negative numbers for sd (-1e-16, etc)
        $rmsd = sqrt($sd[0]/($#{$atoms1_ref}+1));
@@ -1219,7 +1226,7 @@ sub RMSD_mirror {
     my $w = V($Q[0]->element(2,1), $Q[0]->element(3,1), $Q[0]->element(4,1));
 
     $self->quat_rot($a, $w);
-    
+
     $self->coord_shift($cen2);
 
     return $rmsd;
@@ -1229,21 +1236,21 @@ sub RMSD_mirror {
 
 
 #this function map a catalyst to a ts from TS library. The old catalyst
-#will be replaced by the new one. Here, $self is the geometry instance for 
+#will be replaced by the new one. Here, $self is the geometry instance for
 #the new catalyst and geo_ref is the TS geometry instance. To replace old
 #catalyst, the first atom of the catalyst in the ts should be provided.
-#FIXME this is a very priliminary function, and only can be used for some very specific 
-#purpose. 
+#FIXME this is a very priliminary function, and only can be used for some very specific
+#purpose.
 sub map_catalyst {
     my $self = shift;
     my %params = @_;
     my ($geo_ref, $bonds_LJ, $first_cat_atom) = ( $params{geo_ref},
                                                 $params{bonds_LJ},
                                                 $params{first_cat_atom} );
-    
-    my $mapped_cata = $self->map_molecule( geo_ref => $params{geo_ref}, 
-                                           key_atoms1 => $params{key_atoms1}, 
-                                           key_atoms2 => $params{key_atoms2}, 
+
+    my $mapped_cata = $self->map_molecule( geo_ref => $params{geo_ref},
+                                           key_atoms1 => $params{key_atoms1},
+                                           key_atoms2 => $params{key_atoms2},
                                            bonds => $params{bonds} );
 
     my $num_splice = $#{ $geo_ref->{elements} } - $first_cat_atom + 1;
@@ -1251,7 +1258,7 @@ sub map_catalyst {
 
     $new_geo->splice_atom($first_cat_atom, $num_splice);
     $new_geo->append($mapped_cata->copy());
-    #FIXME the catatlyst rotatation was removed 
+    #FIXME the catatlyst rotatation was removed
     for my $bond_LJ (@$bonds_LJ) {
         my @bond_LJ = map {$_ + $first_cat_atom} @$bond_LJ;
         $new_geo->minimize_torsion(@bond_LJ);
@@ -1338,7 +1345,7 @@ sub rotatable_bonds {
                                     }
                                 }
                             }
-                        }elsif (! exists $new_path->{$atom_next}) { 
+                        }elsif (! exists $new_path->{$atom_next}) {
                             $new_path->{$atom_next} = -1;
                             push (@newpath, $new_path);
                         }
@@ -1396,7 +1403,7 @@ sub bare_backbone {
                     if (($atom_next == $activei || ($atom_next == $activej)) &&
                         (keys %{ $new_path } > 3)) {
                         @backbone{keys %{ $new_path }} = ();
-                    }elsif (! exists $path->{$atom_next}) { 
+                    }elsif (! exists $path->{$atom_next}) {
 
                         $new_path->{head} = $atom_next;
                         push (@newpath, $new_path);
@@ -1457,7 +1464,7 @@ sub XYZ {
 
         if ($self->{ligand}->{active_centers} ||
             $self->{active_centers}) {
-            my $centers = $self->{ligand}->{active_centers} ? $self->{ligand}->{active_centers} : 
+            my $centers = $self->{ligand}->{active_centers} ? $self->{ligand}->{active_centers} :
                           $self->{active_centers};
             $comment .= " K:";
             for my $key_atoms (@{$centers}) {
@@ -1525,18 +1532,18 @@ sub write_com {
                                                                          $params{filename} );
     my $fh;
     $filename && open ($fh, ">$filename") || ($fh = *STDOUT);
-    
+
     print $fh "$route\n\n";
     print $fh "$comment\n\n";
     print $fh "$charge $mult\n";
 
     foreach my $atom (0..$#{ $self->{elements} }) {
         if ($flag) {
-            printf $fh "%-2s%4s%14.6f%14.6f%14.6f\n", ($self->{elements}->[$atom], 
+            printf $fh "%-2s%4s%14.6f%14.6f%14.6f\n", ($self->{elements}->[$atom],
                                                        $self->{flags}->[$atom],
                                                        @{ $self->{coords}->[$atom] });
-        }else { 
-            printf $fh "%2s%14.6f%14.6f%14.6f\n", ($self->{elements}->[$atom], 
+        }else {
+            printf $fh "%2s%14.6f%14.6f%14.6f\n", ($self->{elements}->[$atom],
                                                        @{ $self->{coords}->[$atom] });
         }
     }
@@ -1553,7 +1560,7 @@ sub write_com {
 
 sub flatten {
     my ($self) = @_;
-    
+
     my $num_atoms = $#{ $self->{elements} } + 1;
     my $geometry = "$num_atoms\\\\n\\\\n";
     foreach my $atom (0..$#{ $self->{elements} }) {
@@ -1587,10 +1594,10 @@ sub quat_matrix {
     my ($xm, $ym, $zm) = @{ $pt1 - $pt2 };
     my ($xp, $yp, $zp) = @{ $pt1 + $pt2 };
 
-    my $temp_matrix = Math::MatrixReal->new_from_rows( 
+    my $temp_matrix = Math::MatrixReal->new_from_rows(
         [[$xm*$xm + $ym*$ym + $zm*$zm, $yp*$zm - $ym*$zp,          $xm*$zp - $xp*$zm,           $xp*$ym - $xm*$yp],
         [$yp*$zm - $ym*$zp,           $yp*$yp + $zp*$zp + $xm*$xm,$xm*$ym - $xp*$yp,           $xm*$zm - $xp*$zp],
-        [$xm*$zp - $xp*$zm,           $xm*$ym - $xp*$yp,          $xp*$xp + $zp*$zp + $ym*$ym, $ym*$zm - $yp*$zp], 
+        [$xm*$zp - $xp*$zm,           $xm*$ym - $xp*$yp,          $xp*$xp + $zp*$zp + $ym*$ym, $ym*$zm - $yp*$zp],
         [$xp*$ym - $xm*$yp,           $xm*$zm - $xp*$zp,          $ym*$zm - $yp*$zp,           $xp*$xp + $yp*$yp + $zm*$zm]]
     );
 
@@ -1610,7 +1617,7 @@ sub __point_quat_rot {
     my $new_vec = $vec + 2*$a*$wx + 2*($w x $wx);
     #This is to maintain the array ref
     map {$vec->[$_] = $new_vec->[$_]} (0..2);
-}    
+}
 
 
 package AaronTools::NanoTube;
@@ -1626,25 +1633,25 @@ sub new {
     #initiate
     my $class = shift;
     my %params = @_;
-    my $name = $params{name} ? 
-               "$params{name}-$params{width}-$params{length}" : 
+    my $name = $params{name} ?
+               "$params{name}-$params{width}-$params{length}" :
                "nt-$params{width}-$params{length}";
 
     my $self = new AaronTools::Geometry(name => $name);
-   
+
     $self->{width} = $params{width};
     $self->{length} = $params{length};
     $self->{radius} = $params{radius};
-    $self->{angular_offset} = $params{angular_offset} // 0; 
+    $self->{angular_offset} = $params{angular_offset} // 0;
 
     my $fragment = $self->{radius} ? 1 : 0;
-    $self->{radius} //= ($self->{width} >= 2) ? 
+    $self->{radius} //= ($self->{width} >= 2) ?
                         newton($CC, $self->{width}) : 0;
     unless ($self->{radius}) {die ("Can't build nanotube smaller than (2,2)!\n");}
-        
+
     bless $self, $class;
 
-    #make new atom geometry 
+    #make new atom geometry
     my $atom = new AaronTools::Geometry(name => 'carbon',
                                         elements => ['C'],
                                         coords => [[$self->{radius}, 0, 0]]);
@@ -1655,7 +1662,7 @@ sub new {
     my $CC_side = $CC*sqrt(3.0)/2.0;
 
     my $a = $self->angular_offset();
-    my $angle = -($self->width()/2+$self->width()-1)*$CC_angle - 
+    my $angle = -($self->width()/2+$self->width()-1)*$CC_angle -
                 $self->angular_offset()*2*($CC_angle+$CC_halfangle);
     $atom->rotate('z', $angle);
 
@@ -1688,10 +1695,10 @@ sub new {
             $atom->rotate('z', $CC_angle+2*$CC_halfangle);
             $angle_tally += $CC_angle+2*$CC_halfangle;
         }
-    
+
         #Reset and shift
     #    slide(-$CC_side);
-        $atom->coord_shift(V(0, 0, -$CC_side)); 
+        $atom->coord_shift(V(0, 0, -$CC_side));
         $atom->rotate('z', -$angle_tally);
         $angle_tally = 0;
     }
@@ -1701,7 +1708,7 @@ sub new {
                                         elements => ['H'],
                                         flags => [0],
                                         coords => [[0, 0, 0]]);
-    
+
     my $numCs = $#{ $self->{elements} };
     my $Hatoms = new AaronTools::Geometry(name => 'Hs');
     foreach my $atom1 (0..$numCs) {
@@ -1719,7 +1726,7 @@ sub new {
             my $norm = abs($vector);
             $vector /= $norm;
             my $coord = [ @{ $self->get_point($atom1) - $vector } ];
-            $Hatom->update_coords(targets => [0], coords => [$coord]); 
+            $Hatom->update_coords(targets => [0], coords => [$coord]);
             $Hatoms->append($Hatom->copy());
         }
         if($neighbors < 2) {
@@ -1823,8 +1830,8 @@ sub new {
 
     if (exists $params{name}) {
         $self->set_name($params{name});
-        if (-f "$AARON/AaronTools/Subs/$self->{name}.xyz") {
-            $self->read_geometry("$AARON/AaronTools/Subs/$self->{name}.xyz");
+        if (-f "$QCHASM/AaronTools/Subs/$self->{name}.xyz") {
+            $self->read_geometry("$QCHASM/AaronTools/Subs/$self->{name}.xyz");
         }
     }
 
@@ -1881,7 +1888,7 @@ sub compare_lib {
 
     my $subs = {};
 
-    open (my $fh, "<$AARON/AaronTools/Subs/subs") or die "Cannot open $AARON/AaronTools/Subs/subs";
+    open (my $fh, "<$QCHASM/AaronTools/Subs/subs") or die "Cannot open $QCHASM/AaronTools/Subs/subs";
 
     while (<$fh>) {
         chomp;
@@ -1954,7 +1961,7 @@ sub _align_on_geometry {
     my $v_x = V(1,0,0);
     my $cross = $v_x x $bond_axis;
     my $angle = atan2($bond_axis, $v_x);
-    
+
     $self->genrotate($cross, $angle);
     $self->coord_shift($nearst_v);
 
@@ -1962,7 +1969,7 @@ sub _align_on_geometry {
                                            geometry2 => $geo);
     my $current_bond = $self->get_bond( 0, $end, $geo);
 
-    my $new_distance = $radii->{$self->{elements}->[0]} 
+    my $new_distance = $radii->{$self->{elements}->[0]}
                        + $radii->{$geo->{elements}->[$end]};
 
     my $difference = $new_distance - $current_distance;

@@ -1,0 +1,93 @@
+#!/usr/bin/perl -w
+
+use strict;
+use lib $ENV{'QCHASM'};
+
+use Getopt::Long;
+use Pod::Usage;
+use AaronTools::G09Out;
+
+unshift @INC, ("$ENV{'QCHASM'}/AaronTools/bin");
+
+sub main {
+    my $opt   = shift;
+    my %opt   = %$opt;
+    my @files = @_;
+
+    if ( $opt{output} ) {
+        open( OFILE, ">", $opt{output} )
+          || die "$0: can't open $opt{output} for writing: $!\n";
+
+        my $header = sprintf( "%s,%s,%s,%s,%s\n", qw(E H G Grimme_G FileName) );
+        print( OFILE $header );
+    }
+
+    for my $file (@files) {
+        my $out = '';
+        eval {
+            local $@;
+            $out = new AaronTools::G09Out( 'file' => $file );
+            1;
+        } or do {
+            print {*STDERR} ("Issue reading log file: $@\nSkipping $file...\n");
+            next;
+        };
+        my $energy      = $out->energy();
+        my $enthalpy    = $out->enthalpy();
+        my $free_energy = $out->free_energy();
+        my $grimmeG     = $out->Grimme_G();
+
+        if ( $opt{output} ) {
+            print( OFILE "$energy,$enthalpy,$free_energy,$grimmeG,$file\n" );
+        } else {
+            print("*** $file ***\n") if $#ARGV > 0;
+            printf( "E        = %.6f\n",   $energy );
+            printf( "H        = %.6f\n",   $enthalpy );
+            printf( "G        = %.6f\n",   $free_energy );
+            printf( "Grimme_G = %.6f\n\n", $grimmeG );
+        }
+    }
+    close(OFILE) || die "couldn't close $opt{output}: $!";
+}
+
+my %opt;
+$opt{help}   = '';
+$opt{output} = '';
+GetOptions(
+    'help|h'     => \$opt{help},
+    'output|o:s' => \$opt{output} )
+  or pod2usage( {
+      -exitval => 1,
+      -verbose => 1
+  } );
+pod2usage(0) if $opt{help};
+pod2usage( {
+        -message => "Please specify a filename\n",
+        -exitval => 1,
+        -verbose => 1
+    } ) if @ARGV < 1;
+
+&main( \%opt, @ARGV );
+
+=pod
+
+=head1 SYNOPSIS
+
+grab_thermo [options] file1 [file2 file3]
+
+=head1 OPTIONS
+
+=over
+
+=item B<-h>, B<--help>
+
+Print this help message and exit
+
+=item B<-o FILENAME>, B<--output FILENAME>
+
+Write output to FILENAME (in csv format)
+
+=back
+
+=cut
+

@@ -1,0 +1,178 @@
+#!/usr/bin/perl -w
+
+use strict;
+use lib $ENV{'QCHASM'};
+use lib $ENV{'PERL_LIB'};
+
+use Getopt::Long;
+use Pod::Usage;
+use Math::Trig;
+use Math::Vector::Real;
+use AaronTools::Geometry;
+
+unshift @INC, ("$ENV{'QCHASM'}/AaronTools/bin");
+require _utils;
+
+sub main {
+    my $files  = shift;
+    my %opt    = @_;
+    my $angle  = $opt{angle};
+    my $vector = V( @{ $opt{vector} } );
+
+    # set angle if equally spaced rotations requested
+    unless ( $opt{angle} ) {
+        $angle = 2 * pi / $opt{nrots};
+    }
+
+    # perform rotation for each file
+    foreach my $file ( @{$files} ) {
+        my $geom = _utils::get_geom($file);
+        next unless $geom;
+
+        # perform requested number of rotations
+        my $nrots = 0;
+        while ( $nrots < $opt{nrots} ) {
+
+            # rotates target atoms if specified, defaults to all atoms
+            if ( @{ $opt{targets} } ) {
+                $geom->genrotate( $vector, $angle, $opt{targets} );
+            } else {
+                $geom->genrotate( $vector, $angle );
+            }
+
+            # increase rotation count before printing for angle calculation
+            $nrots += 1;
+
+            # Printing
+            # $outfile will be empty string if write to file not requested
+            my $axis = join( '_', @{ $opt{vector} } );
+            my $outfile = _utils::get_outfile( $file, $opt{write},
+                [ 'genrotate', $axis, rad2deg($angle) ] );
+            if ( $opt{radians} ) {
+                my $outfile = _utils::get_outfile( $file, $opt{write},
+                    [ 'genrotate', $axis, $angle ] );
+            }
+
+            # set comment line to something useful
+            my $comment;
+            if ($outfile) {
+                print("Saving to $outfile\n") if $outfile;
+                $comment = _utils::strip_dir($outfile);
+            } else {
+                print("###\n") if ($file ne $files->[0]);
+                $comment = _utils::strip_dir($file);
+            }
+            if ( $opt{radians} ) {
+                $comment .= "  Rotated " . $angle * $nrots / pi . "*pi";
+            } else {
+                $comment .= "  Rotated " . rad2deg( $angle * $nrots );
+            }
+
+            # printXYZ('') prints to STDOUT
+            $geom->printXYZ( $outfile, $comment );
+        }
+    }
+    return 0;
+}
+
+# read in options
+my %opt;
+my @vector;
+my @targets;
+$opt{help}    = '';
+$opt{vector}  = \@vector;
+$opt{angle}   = 0;
+$opt{nrots}   = 1;
+$opt{targets} = \@targets;
+$opt{radians} = '';
+$opt{write}   = '-';         # '-' indicates no write, '' indicates write to cwd
+GetOptions(
+    'help|h'         => \$opt{help},
+    'vector|v=f{3}'  => \@vector,
+    'angle|a:f'      => \$opt{angle},
+    'nrots|n:i'      => \$opt{nrots},
+    'targets|t:i{,}' => \@targets,
+    'radians|r'      => \$opt{radians},
+    'write|w:s'      => \$opt{write} )
+  or pod2usage( {
+      -exitval => 1,
+      -verbose => 1
+  } );
+pod2usage(0) if $opt{help};
+
+# requires axis vector, angle or number of rotations, and at least one file
+pod2usage( {
+        -message =>
+          "Please provide an axis vector, an angle and/or a number of rotations, and at least one file\n",
+        -exitval => 1,
+        -verbose => 1
+    } )
+  unless ( @ARGV > 0
+    and @{ $opt{vector} }
+    and ( $opt{angle} or $opt{nrots} > 1 ) );
+
+pod2usage( {
+        -message => "Number of rotations must be a positive integer.\n",
+        -exitval => 1,
+        -verbose => 1
+    } ) if ( $opt{nrots} < 0 );
+
+# targets supplied as 1-indexed, Aaron uses 0-indexing
+foreach my $t ( @{ $opt{targets} } ) {
+    $t -= 1;
+}
+
+# angle should be in radians
+unless ( $opt{radians} ) {
+    $opt{angle} = deg2rad( $opt{angle} );
+}
+
+&main( \@ARGV, %opt );
+
+=pod
+
+=head1 SYNOPSIS
+
+genrotate [options] -v x y z -a angle [-n repeat] file [file2 file3 ...]
+
+genrotate [options] -v x y z -n rotations file [file2 file3 ...]
+
+=head1 OPTIONS
+
+=over
+
+=item B<-v x y z>, B<--vector x y z>
+
+The rotation vector defined by the points (0, 0, 0), (x, y, z).
+Should be space separated.
+
+=item B<-a angle>, B<--angle angle>
+
+Rotate by ANGLE degrees.
+
+=item B<-n num>, B<--nrot num>
+
+If used with --angle specified, repeats the rotation NUM times.
+Otherwise, performs NUM equally spaced rotations (implies ANGLE=360/NUM).
+
+=item B<-t list>, B<--targets list>
+
+List of atom numbers to rotate (1-indexed). Defaults to all atoms.
+
+=item B<-r>, B<--radians>
+
+Angle specified in radians (default is degrees).
+
+=item B<-w [directory]>, B<--write [directory]>
+
+Write new geometry output to INFILE_genrotate_AXIS_ANGLE.xyz instead of STDOUT.
+Directory defaults to current working directory.
+
+=item B<-h>, B<--help>
+
+Print this help message and exit.
+
+=back
+
+=cut
+

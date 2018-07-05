@@ -1,0 +1,98 @@
+#!/usr/bin/perl -w
+
+use strict;
+use lib $ENV{'QCHASM'};
+
+use Getopt::Long;
+use Pod::Usage;
+use Math::Trig;
+use AaronTools::Geometry;
+
+unshift @INC, ("$ENV{'QCHASM'}/AaronTools/bin");
+require _utils;
+
+sub main {
+    my $files = shift;
+    my %opt   = @_;
+
+    foreach my $file ( @{$files} ) {
+        my $geom = _utils::get_geom($file);
+		next unless $geom;
+
+        $geom->mirror_coords( $opt{axis} );
+
+        # Printing
+        # Get outfile name, will be '' if write flag not set
+        my $outfile =
+          _utils::get_outfile( $file, $opt{write}, [ 'mirror', $opt{axis} ] );
+
+        # make comment something useful
+        my $comment;
+        if ($outfile) {
+            print("Saving mirrored coords to $outfile\n") if $outfile;
+            $comment = _utils::strip_dir($outfile);
+        } else {
+			print("###\n") if ($file ne $files->[0]);
+            $comment = _utils::strip_dir($file);
+        }
+        $comment .= "   Mirror (" . $opt{axis} . ")";
+
+        # will write to STDOUT if $outfile == ''
+        $geom->printXYZ( $outfile, $comment );
+    }
+    return 0;
+}
+
+my %opt;
+$opt{help}  = '';
+$opt{axis}  = 'x';
+$opt{write} = '-';
+GetOptions(
+    'help|h'    => \$opt{help},
+    'axis|x=s'  => \$opt{axis},
+    'write|w:s' => \$opt{write} )
+  or pod2usage( {
+      -exitval => 1,
+      -verbose => 1
+  } );
+pod2usage(0) if $opt{help};
+pod2usage( {
+        -message => "Please specify at least one filename\n",
+        -exitval => 1,
+        -verbose => 1
+    } ) if @ARGV < 1;
+pod2usage( {
+        -message => "Please specify x, y, or z to mirror\n",
+        -exitval => 1,
+        -verbose => 1
+    } ) unless ( $opt{axis} =~ m/[xXyYzZ]/ );
+
+&main( \@ARGV, %opt );
+
+=pod
+
+=head1 SYNOPSIS
+
+mirror [options] file [file2 file3 ...]
+
+=head1 OPTIONS
+
+=over
+
+=item B<-x x>, B<--axis x>
+
+Specify cartesian axis perpendicular to reflection plane (defaults to X).
+
+=item B<-w [directory]>, B<--write [directory]>
+
+Write new geometry output to INFILE_mirror.xyz instead of STDOUT.
+Directory defaults to current working directory.
+
+=item B<-h>, B<--help>
+
+Print this help message and exit
+
+=back
+
+=cut
+

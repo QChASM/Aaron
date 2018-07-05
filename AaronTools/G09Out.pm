@@ -1,22 +1,21 @@
 #Contributors: Yanfei Guan and Steven E. Wheeler
 #This is a module containing the G09 output class
 #This class is initiated from a .log file
-use lib $ENV{'PERL_LIB'};
-use lib $ENV{'AARON'};
+use lib $ENV{'QCHASM'};
 
-use Constants qw(:PHYSICAL);
+use AaronTools::Constants qw(PHYSICAL UNIT);
 use AaronTools::Atoms qw(:BASIC);
 
 my $elements = ELEMENTS;
 my $radii = RADII;
 
-my $h = PLANK;
-my $kb = KB;
-my $c = SPEED_OF_LIGHT;
-my $R = GAS_CONSTANT;
-my $P = STANDARD_PRESSURE;
-my $hart2kcal = HART_TO_KCAL;
-my $amu2kg = AMU_TO_KG;
+my $h = PHYSICAL->{PLANK};
+my $kb = PHYSICAL->{KB};
+my $c = PHYSICAL->{SPEED_OF_LIGHT};
+my $R = PHYSICAL->{GAS_CONSTANT};
+my $P = PHYSICAL->{STANDARD_PRESSURE};
+my $hart2kcal = UNIT->{HART_TO_KCAL};
+my $amu2kg = UNIT->{AMU_TO_KG};
 
 package AaronTools::G09Out;
 use strict; use warnings;

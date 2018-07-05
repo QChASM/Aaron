@@ -1,0 +1,91 @@
+#!/usr/bin/perl -w
+
+use strict;
+use lib $ENV{'QCHASM'};
+
+use Getopt::Long;
+use Pod::Usage;
+use Math::Trig;
+use AaronTools::Geometry;
+
+unshift @INC, ("$ENV{'QCHASM'}/AaronTools/bin");
+require _utils;
+
+sub main {
+    my $file = shift;
+    my %opt  = @_;
+
+    my $geom = _utils::get_geom($file);
+    unless ($geom) {
+        return 1;
+    }
+
+    my @atoms;
+    for my $atom ( @{ $opt{atoms} } ) {
+        push @atoms, $atom - 1;
+    }
+
+    my $angle = $geom->angle(@atoms);
+
+    #prints to STDOUT
+    if ( $opt{rads} ) {
+        print( $angle, "\n" );
+        return 0;
+    }
+    print( rad2deg($angle), "\n" );
+    return 0;
+}
+
+my %opt;
+my @atoms;
+$opt{help}  = '';
+$opt{atoms} = \@atoms;
+$opt{rads}  = '';
+GetOptions(
+    'help|h'       => \$opt{help},
+    'atoms|a=i{3}' => \@atoms,
+    'radians|r'    => \$opt{rads} )
+  or pod2usage( {
+      -exitval => 1,
+      -verbose => 1
+  } );
+pod2usage(0) if $opt{help};
+pod2usage( {
+        -message => "Please specify a filename\n",
+        -exitval => 1,
+        -verbose => 1
+    } ) if @ARGV < 1;
+pod2usage( {
+        -message => "Please specify the atoms to find the angle between\n",
+        -exitval => 1,
+        -verbose => 1
+    } ) unless ( @{ $opt{atoms} } );
+
+&main( $ARGV[0], %opt );
+
+=pod
+
+=head1 SYNOPSIS
+
+angle [options] -a atom1 atom2 atom3 filename
+
+=head1 OPTIONS
+
+=over
+
+=item B<-a>, B<--atoms>
+
+Specify the atoms to find the angle between
+
+=item B<-r>, B<--radians>
+
+Use radians for ANGLE units (default is degrees)
+
+=item B<-h>, B<--help>
+
+Print this help message and exit
+
+=back
+
+=cut
+

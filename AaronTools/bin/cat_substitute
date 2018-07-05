@@ -1,0 +1,132 @@
+#!/usr/bin/perl -w
+
+use strict;
+use lib $ENV{'QCHASM'};
+
+use Getopt::Long;
+use Pod::Usage;
+use AaronTools::Catalysis;
+use Data::Dumper;
+
+unshift @INC, ("$ENV{'QCHASM'}/AaronTools/bin");
+require _utils;
+
+sub main {
+    my $file = shift;
+    my %opt  = @_;
+
+    # if substituent is named, just go ahead and pass that to substitute()
+    # otherwise, we should pass substituent numbering to Catalysis class
+    # to preserve indexing when interacting with object on our side
+    my %numbered;
+    $numbered{ligand}    = {};
+    $numbered{substrate} = {};
+    my %named;
+    $named{ligand}    = {};
+    $named{substrate} = {};
+
+    # store command line options in the appropriate hash
+    foreach my $sub ( keys %{ $opt{ligand} } ) {
+        if ( $sub !~ /^\d+$/ ) {
+            $named{ligand}{$sub} = $opt{ligand}{$sub};
+        } else {
+            $numbered{ligand}{ $sub - 1 } = $sub;
+        }
+    }
+    foreach my $sub ( keys %{ $opt{substrate} } ) {
+        if ( $sub !~ /^\d+$/ ) {
+            $named{substrate}{$sub} = $opt{substrate}{$sub};
+        } else {
+            $numbered{substrate}{ $sub - 1 } = $sub;
+        }
+    }
+
+    # create catalysis object with requested substituent indexing
+    my $geom = _utils::get_cat( $file, \%numbered, $opt{relnum} );
+    return 1 unless $geom;
+
+    # perform substitute for each substituent
+    foreach my $component ( keys %numbered ) {
+        # determine requested target atom, in aaron's number scheme
+        my %params;
+        my %convert = _utils::get_sub_numbers( $geom, $component );
+        while ( my ( $target, $aaron_num ) = each %convert ) {
+            $params{$aaron_num} = $opt{$component}{$target};
+        }
+        # do substitution
+        $geom->substitute( $component, %params );
+    }
+    foreach my $component ( keys %named ) {
+        $geom->substitute( $component, %{ $named{$component} } );
+    }
+
+    # Printing
+    # prints to STDOUT if $outfile == ''
+    print("Saving substituted coords to $opt{outfile}\n") if $opt{outfile};
+    $geom->printXYZ( $opt{outfile} );
+}
+
+# read in options
+my %opt;
+my %sublist;
+my %liglist;
+$opt{substrate} = \%sublist;
+$opt{ligand}    = \%liglist;
+$opt{outfile}   = '';
+GetOptions(
+    'help|h'            => \$opt{help},
+    'relnum|r'          => \$opt{relnum},
+    'substrate|s=s%{,}' => \%sublist,
+    'ligand|l=s%{,}'    => \%liglist,
+    'output|o:s'        => \$opt{outfile} )
+  or pod2usage( {
+      -exitval => 1,
+      -verbose => 1
+  } );
+pod2usage(0) if $opt{help};
+
+# need to supply a geometry file
+pod2usage( {
+        -message => "Please provide one geometry file to substitute",
+        -exitval => 1,
+        -verbose => 1
+    } ) unless ( $#ARGV == 0 );
+
+# target supplied as 1-indexed, Aaron uses 0-indexing
+
+&main( $ARGV[0], %opt );
+
+=pod
+
+=head1 SYNOPSIS
+
+cat_substitute [options] [-l|s target=sub ...] file
+
+=head1 OPTIONS
+
+=over
+
+=item B<-l target=sub>, B<--ligand target=sub>
+
+Replace target (atom or substituent) on ligand with specified substituent
+
+=item B<-s target=sub>, B<--substrate target=sub>
+
+Replace target (atom or substituent) on substrate with specified substituent
+
+=item B<-r>, B<--relnum>
+
+Use relative ligand/substrate numbering
+
+=item B<-o outfile>, B<--output outfile>
+
+Output to file instead of STDOUT
+
+=item B<-h>, B<--help>
+
+Print this help message and exit
+
+=back
+
+=cut
+

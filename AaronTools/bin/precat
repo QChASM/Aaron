@@ -1,0 +1,102 @@
+#!/usr/bin/perl -w
+
+use strict;
+use lib $ENV{'QCHASM'};
+
+use Getopt::Long;
+use Pod::Usage;
+use AaronTools::Geometry;
+
+unshift @INC, ("$ENV{'QCHASM'}/AaronTools/bin");
+require _utils;
+
+my $helpMsg = "Read in a catalysis system, reoder substitutents atoms".
+              " and print into output file. The resulting structure ".
+              "is ready for further manipulation, esp. substitute.".
+              "If no output file is required, the output will be printed ".
+              "in <input>_reordered.xyz or overwrite the input file.\n";
+
+sub main {
+    my $file = shift;
+    my %opt = @_;
+
+    my $cat = _utils::get_cat($file);
+    return 1 unless $cat;
+
+    my $out=$file;
+    unless($opt{outfile}) {
+        unless ($opt{force}) {
+            print ("overwrite $file? Y/N: ");
+            my $overwrite = <STDIN>;
+
+            unless ($overwrite =~ /^[Yy]$/) {
+                my ($name) = $file =~ /(\S+).xyz/;
+                $out = $name . "_reordered.xyz";
+            }
+        }
+    }else {
+        $out = $opt{outfile};
+    }
+
+    $cat->printXYZ($out);
+}
+
+my %opt;
+
+GetOptions(
+    'help|h'    => \$opt{help},
+    'output|o'  => \$opt{outfile},
+    'force|f'   => \$opt{force},
+) or pod2usage( 
+    -exitval => 1,
+    -verbose => 1,
+);
+
+my ($input) = grep { $_ =~ /\.xyz$/ } @ARGV;
+
+pod2usage(
+    -msg => $helpMsg,
+    -exitval=>1,
+    -verbose=>1,
+) if $opt{help};
+
+$input or pod2usage (
+    -msg => "A input XYZ file must be provided\n",
+    -exitval => 1,
+    -verbose => 1,
+);
+
+&main($input, %opt);
+    
+            
+=pod
+
+=head1 SYNOPSIS
+
+$QCHASM/AaronTools/bin/precat [options] input.xyz
+
+=head1 OPTIONS
+
+=over
+
+=item B<-h>, B<--help>
+
+Print help message
+
+=item B<-o output_file>, B<--output output_file>
+
+Output to file
+
+=item B<-f>, B<--force>
+
+Ignore missing output file and overwrite input infile
+
+=back
+
+=cut
+
+
+
+
+
+

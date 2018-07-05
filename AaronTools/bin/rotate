@@ -1,0 +1,160 @@
+#!/usr/bin/perl -w
+
+use strict;
+use lib $ENV{'QCHASM'};
+
+use Getopt::Long;
+use Pod::Usage;
+use Math::Trig;
+use AaronTools::Geometry;
+
+unshift @INC, ("$ENV{'QCHASM'}/AaronTools/bin");
+require _utils;
+
+sub main {
+    my $files = shift;
+    my %opt   = @_;
+    my $angle = $opt{angle};
+
+    # set angle if equally spaced rotations was requested
+    unless ( $opt{angle} ) {
+        $angle = 2 * pi / $opt{nrots};
+    }
+
+    foreach my $file ( @{$files} ) {
+
+        # perform rotation for each file
+        my $geom = _utils::get_geom($file);
+        next unless $geom;
+
+        # perform requested number of rotations
+        my $nrots = 0;
+        while ( $nrots < $opt{nrots} ) {
+            $geom->rotate( $opt{axis}, $angle );
+
+            # increase rotation count before printing for angle calculation
+            $nrots += 1;
+
+            # Printing
+            # generate outfile name
+            my $outfile = _utils::get_outfile( $file, $opt{write},
+                [ 'rotate', $opt{axis}, rad2deg($angle) ] );
+            if ( $opt{radians} ) {
+                my $outfile = _utils::get_outfile( $file, $opt{write},
+                    [ 'rotate', $opt{axis}, $angle ] );
+            }
+
+            # set comment line to something useful
+            my $comment;
+            if ($outfile) {
+                print("Saving to $outfile\n") if $outfile;
+                $comment = _utils::strip_dir($outfile);
+            } else {
+                print("###\n") if ($file ne $files->[0]);
+                $comment = _utils::strip_dir($file);
+            }
+            if ( $opt{radians} ) {
+                $comment .= "  Rotated " . $angle * $nrots / pi . "*pi";
+            } else {
+                $comment .= "  Rotated " . rad2deg( $angle * $nrots );
+            }
+
+            # prints to STDOUT if $outfile == ''
+            $geom->printXYZ( $outfile, $comment );
+        }
+    }
+}
+
+# read in options
+my %opt;
+$opt{help}    = '';
+$opt{axis}    = '';
+$opt{angle}   = 0;
+$opt{nrots}   = 1;
+$opt{radians} = '';
+$opt{write}   = '-';    # '-' indicates no write, '' indicates write to cwd
+GetOptions(
+    'help|h'    => \$opt{help},
+    'axis|x=s'  => \$opt{axis},
+    'angle|a:f' => \$opt{angle},
+    'nrots|n:i' => \$opt{nrots},
+    'radians|r' => \$opt{radians},
+    'write|w:s' => \$opt{write} )
+  or pod2usage( {
+      -exitval => 1,
+      -verbose => 1
+  } );
+pod2usage(0) if $opt{help};
+
+# requiree axis, angle, and original coords
+pod2usage( {
+        -message =>
+          "Please provide an axis, an angle and/or a number of rotations, and at least one file\n",
+        -exitval => 1,
+        -verbose => 1
+    }
+) unless ( @ARGV > 0 and $opt{axis} and ( $opt{angle} or $opt{nrots} > 1 ) );
+
+# axis should be cartesian axis
+pod2usage( {
+        -message => "Rotation axis must be either x, y, or z axis\n",
+        -exitval => 1,
+        -verbose => 1
+    } ) unless ( $opt{axis} =~ m/[xXyYzZ]/ );
+
+# number of rotations should be a positive number (defaults to 1)
+pod2usage( {
+        -message => "Number of rotations must be a positive integer.\n",
+        -exitval => 1,
+        -verbose => 1
+    } ) if ( $opt{nrots} < 0 );
+
+# angle should be in radians
+unless ( $opt{radians} ) {
+    $opt{angle} = deg2rad( $opt{angle} );
+}
+
+&main( \@ARGV, %opt );
+
+=pod
+
+=head1 SYNOPSIS
+
+rotate [options] -x x|y|z -a angle [-n repeat] file [file2 file3 ...]
+
+rotate [options] -x x|y|z -n rotations file [file2 file3 ...]
+
+=head1 OPTIONS
+
+=over
+
+=item B<-x axis>, B<--axis axis>
+
+Specify rotation about x, y, or z axis.
+
+=item B<-a angle>, B<--angle angle>
+
+Specify the angle to rotate.
+
+=item B<-n num>, B<--nrot num>
+
+If used with --angle specified, repeats the rotation NUM times.
+Otherwise, performs NUM equally spaced rotations (implies angle=360/num).
+
+=item B<-r>, B<--radians>
+
+Angle specified in radians (default is degrees)
+
+=item B<-w [directory]>, B<--write [directory]>
+
+Write new geometry output to INFILE-NAME_rotate_AXIS_ANGLE.xyz instead of STDOUT.
+Directory defaults to current working directory.
+
+=item B<-h>, B<--help>
+
+Print this help message and exit.
+
+=back
+
+=cut
+

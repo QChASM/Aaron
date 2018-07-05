@@ -1,0 +1,38 @@
+=pod
+
+=head1 SYNOPSIS
+
+$QCHASM/Aaron/Aaron [options] jobname.in
+
+=head1 OPTIONS
+
+=over
+
+=item B<--debug>
+
+Runs all optimizations using the PM6 semi-empirical method with a wall time of 2 hours
+
+=item B<--nosub>
+
+Builds .com files for the current step without submitting anything
+
+=item B<--restart>
+
+Restart AARON workflow. All failed and repeated conformers will be recoverd.
+You should know what you are doing when using this flag!
+
+=item B<--record>
+
+The overwritten failed .log file will be saved for further examination
+
+=item B<--sleep>
+
+Sleeping time interval between neighboring circles
+
+=item B<--short>
+
+Use short wall time for all computations
+
+=back
+
+=cut
