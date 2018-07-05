@@ -1,7 +1,7 @@
 gen=/home/einsteinguan/bin/Aaron/TS_geoms/
 Default
     solvent=Dichloromethane
-    pcm=PCM
+    solvent_model=PCM
     temperature=298
     low_method=PM6
     method=B97D
