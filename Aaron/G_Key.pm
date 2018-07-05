@@ -33,9 +33,6 @@ sub new {
 
     bless $self, $class;
 
-    $self->{solvent} //= 'gas';
-    $self->{con_thres} //= 0.5;
-
     $self->{level} = new Aaron::Theory_level();
     $self->{low_level} = new Aaron::Theory_level();
     $self->{high_level} = new Aaron::Theory_level();
@@ -215,6 +212,9 @@ sub read_key_from_input {
     for my $level ( $self->{low_level}, $self->{level}, $self->{high_level} ) {
         $level->check_gen($self->{gen});
     }
+
+    $self->{solvent} //= 'gas';
+    $self->{con_thres} //= 0.5;
 
     $self->{solvent_model} //= $self->{solvent} =~ /^[Gg]as$/ ? '' : 'pcm'; 
 }
