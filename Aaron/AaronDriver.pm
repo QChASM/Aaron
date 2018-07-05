@@ -467,10 +467,13 @@ sub _analyze_result {
         }
     }
 
-    my $data = print_ee($thermo);
+    my $data = '';
+    unless ($W_Key->{multistep}) {
+        $data = print_ee($thermo);
+    }
 
-    if ($arg_parser{absthermo} || ! $W_Key->{multistep}) {
-        $data .= "Absolute thermo";
+    if ($arg_parser{absthermo} || $W_Key->{multistep}) {
+        $data .= "Absolute thermo: ";
         $data .= print_ee($thermo, 0, 1);
     }
 

@@ -899,6 +899,9 @@ sub build_com {
     my $com_file = "$file_name.$step.com";
     my $comment = "step $step (attempt $self->{attempt}) cycle $self->{cycle}";
 
+    print "$com_file\n";
+    print "AAAAAAAAAAAAAAAAAAAAAA\n";
+
     $self->{catalysis}->write_com( comment => $comment,
                                     route => $route,
                                     charge => $self->{Gkey}->{charge},
@@ -1207,7 +1210,7 @@ sub com_route_footer {
     }
 
     if ($self->{Gkey}->{solvent} ne "gas" && $step > 1) {
-        $route .= " scrf=($self->{Gkey}->{pcm},solvent=$self->{Gkey}->{solvent})";
+        $route .= " scrf=($self->{Gkey}->{solvent_model},solvent=$self->{Gkey}->{solvent})";
     }
 
     return ($route, $footer, $print_flag);
@@ -1389,7 +1392,7 @@ sub com_route_footer {
     }
 
     if ($self->{Gkey}->{solvent} ne "gas" && $step > 1) {
-        $route .= " scrf=($self->{Gkey}->{pcm},solvent=$self->{Gkey}->{solvent})";
+        $route .= " scrf=($self->{Gkey}->{solvent_model},solvent=$self->{Gkey}->{solvent})";
     }
 
     return ($route, $footer, $print_flag);
@@ -1543,7 +1546,7 @@ sub com_route_footer {
     }
 
     if ($self->{Gkey}->{solvent} ne "gas" && $step > 1) {
-        $route .= " scrf=($self->{Gkey}->{pcm},solvent=$self->{Gkey}->{solvent})";
+        $route .= " scrf=($self->{Gkey}->{solvent_model},solvent=$self->{Gkey}->{solvent})";
     }
 
     return ($route, $footer, $print_flag);

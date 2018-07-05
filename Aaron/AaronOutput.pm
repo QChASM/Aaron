@@ -145,7 +145,7 @@ sub print_params {
     if(my $basis = $G_Key->{level}->footer_log()) {
         print $ol "  basis set file     = $basis\n";
     }
-    print $ol "  solvent model      = $G_Key->{pcm}\n" if $G_Key->{pcm};
+    print $ol "  solvent model      = $G_Key->{solvent_model}\n" if $G_Key->{solvent_model};
     print $ol "  low-level method   = $low_method\n";
     print $ol "\n Queue parameters:\n";
     print $ol "  wall               = $G_Key->{wall} hours\n";

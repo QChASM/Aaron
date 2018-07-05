@@ -19,7 +19,7 @@ sub new {
         denfit => $params{denfit},
         charge => $params{charge},
         mult => $params{mult},
-        pcm => $params{pcm},
+        solvent_model => $params{solvent_model},
         n_procs => $params{n_procs},
         wall => $params{wall},
         short_procs => $params{short_procs},
@@ -61,16 +61,16 @@ sub read_key_from_com {
 
     my $temperature;
     my $solvent;
-    my $pcm;
+    my $solvent_model;
     ($self->{$level}->{final_method}) = $command_line =~ /^\#(\S+)(\s+)/;
     ($temperature) = $command_line =~ /temperature=(\d+\.?\d+)/;
     ($solvent) = $command_line =~ /solvent=(\S+\))/;
-    ($pcm) = $command_line =~ /scrf=\((\S+),/;
+    ($solvent_model) = $command_line =~ /scrf=\((\S+),/;
     ($self->{emp_disp}) = $command_line =~ /EmpiricalDispersion=(\S+)/;
 
     $temperature && do {$self->{temperature} = $temperature};
     $solvent && do {$self->{solvent} = $solvent};
-    $pcm && do {$self->{pcm} = $pcm};
+    $solvent_model && do {$self->{solvent_model} = $solvent_model};
 
     my $chargemult;
 
@@ -153,7 +153,7 @@ sub _read_key_from_input {
             #G09
             /emp_disp=(\S+)/  && do {$self->{emp_disp} = $1 unless $self->{emp_disp}; next;};
             /\s*[sS]olvent=(\S+)/ && do {$self->{solvent} = $1 unless $self->{solvent}; next;};
-            /\s*[pP]cm=(\S+)/ && do {$self->{pcm} = $1 unless $self->{pcm}; next;};
+            /\s*[sS]olvent_model=(\S+)/ && do {$self->{solvent_model} = $1 unless $self->{solvent_model}; next;};
 
             /\s*[tT]emperature=(\S+)/ && do {
                 $self->{temperature} = $1 unless $self->{temperature}; next;
