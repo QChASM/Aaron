@@ -216,6 +216,7 @@ sub read_key_from_input {
         $level->check_gen($self->{gen});
     }
 
+    $self->{solvent_model} //= $self->{solvent} =~ /^[Gg]as$/ ? '' : 'pcm'; 
 }
         
 
