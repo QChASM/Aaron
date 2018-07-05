@@ -305,13 +305,13 @@ sub examine {
         exit(1);
     }
 
-    my $TS_path = (-d "$HOME/$TS_lib/$self->{reaction_type}/$self->{template}") ?
-                    "$HOME/$TS_lib/$self->{reaction_type}/" : 
+    my $TS_path = (-d "$HOME/Aaron_libs/$TS_lib/$self->{reaction_type}/$self->{template}") ?
+                    "$HOME/Aaron_libs/$TS_lib/$self->{reaction_type}/" : 
                     "$QCHASM/$TS_lib/$self->{reaction_type}/";
 
     unless (-d $TS_path) {
         print "Can't find $self->{template} in either user defined TS library: ".
-              "$HOME/$TS_lib/ or the built_in library: $QCHASM/$TS_lib/$self->{template}\n";
+              "$HOME/Aaron_libs/$TS_lib/ or the built_in library: $QCHASM/$TS_lib/$self->{template}\n";
         exit(1);
     }
 
