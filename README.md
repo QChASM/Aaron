@@ -1,8 +1,7 @@
 # Aaron
 AARON 1.0, An Automated Reaction Optimizer for New catalysts
 
-We are currently merging several development branches of AARON and AaronTools, to be released soon as AARON 1.0.
-Documentation for AARON will be added coinciding with the publication a paper describing the main features of AARON and AaronTools.
+We are currently merging several development branches of AARON and AaronTools, to be released soon as AARON 1.0 along with accompanying documentation.
 
 Command-line versions of the main AaronTools functionality have been implemented, which should allow widespread use of AaronTools even among non-Perl users.
 
