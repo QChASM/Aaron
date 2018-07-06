@@ -26,7 +26,7 @@ sub init_log {
 
     $job_name //= $jobname;
 
-    $out_file = $parent . '/' . $job_name . "_aaron.log";
+    $out_file = $parent . '/' . $job_name . ".log";
     if (-e $out_file) {
         open $ol, ">>$out_file" or die "Can't open $out_file\n";
         &restart_header($print_params);
@@ -83,8 +83,8 @@ sub header {
     print $ol "                              New catalysts\n\n";
     print $ol "Citation:\n";
     print $ol "AARON, verson $version, Y. Guan, V. M. Ingman, B. J. Rooks, and S. E. Wheeler, Texas A&M University, $year.\n\n";
-    print $ol "Y. Guan, V. M. Ingman, B. J. Rooks, and S. E. Wheeler, \"AARON: An Automated Reaction Optimizer for New Catlaysts\",\n J. Chem. Theory Comput. (submitted).\n";
-    print $ol "The development of AARON is sponsored in part by the National Science Foundation,\nGrants CHE-1266022 and CHE-1665407.\n\n\n";
+    print $ol "Y. Guan, V. M. Ingman, B. J. Rooks, and S. E. Wheeler, \"AARON: An Automated Reaction Optimizer for New Catlaysts\",\n J. Chem. Theory Comput. (submitted).\n\n";
+    print $ol "The development of AARON is sponsored in part by the National Science Foundation,Grants CHE-1266022 and CHE-1665407.\n\n\n";
 } #end sub header
 
 

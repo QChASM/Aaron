@@ -297,21 +297,21 @@ sub examine {
     }
     
     unless ($self->{template}) {
-        print "A template must be figure out explicitly in the <jobname>.in file " .
+        print "A template must be given explicitly in the <jobname>.in file " .
               "by template=xxxxx, \n" .
               "If this catalyst contains different steps in a reaction, " .
-              "you should figure out the step too. e.g. template=catalyst/TS1. \n" .
-              "Exit without calculation\n";
+              "you should also specify the step too. e.g. template=catalyst/TS1. \n" .
+              "Exiting without running any calculations\n";
         exit(1);
     }
 
     my $TS_path = (-d "$HOME/Aaron_libs/$TS_lib/$self->{reaction_type}/$self->{template}") ?
                     "$HOME/Aaron_libs/$TS_lib/$self->{reaction_type}/" : 
-                    "$QCHASM/$TS_lib/$self->{reaction_type}/";
+                    "$QCHASM/Aaron/$TS_lib/$self->{reaction_type}/";
 
     unless (-d $TS_path) {
         print "Can't find $self->{template} in either user defined TS library: ".
-              "$HOME/Aaron_libs/$TS_lib/ or the built_in library: $QCHASM/$TS_lib/$self->{template}\n";
+              "$HOME/Aaron_libs/$TS_lib/ or the built_in library: $QCHASM/Aaron/$TS_lib/$self->{template}\n";
         exit(1);
     }
 
