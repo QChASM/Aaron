@@ -111,7 +111,6 @@ sub print_message {
 #print all job parameters to $ol
 sub print_params {
     my $version = INFO->{VERSION};
-    my $AARON_HOME = "$QCHASM/Aaron";
     my $method = $G_Key->{level}->method();
     my $high_method = $G_Key->{high_level}->method();
     my $low_method = $G_Key->{low_level}->method();
@@ -119,7 +118,7 @@ sub print_params {
     print $ol "----------------------------------------------------------------------------------\n";
     print $ol "Parameters\n";
     print $ol "----------------------------------------------------------------------------------\n";
-    print $ol " AARON_HOME          = $AARON_HOME\n";
+    print $ol " QCHASM              = $QCHASM\n";
     print $ol "  version            = $version\n";
     print $ol "\n Reaction parameters:\n";
     print $ol "  reaction_type      = $W_Key->{reaction_type}\n" if $W_Key->{reaction_type};
