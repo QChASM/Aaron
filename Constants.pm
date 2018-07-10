@@ -23,7 +23,7 @@ use constant MAXSTEP => {
 use constant OTHERS => {
     MAX_LAUNCH_FAILED => 5,
     MAX_CYCLE => 4,
-    SLEEP_TIME => 5,
+    SLEEP_TIME => 300,
     TS_LIB=>'TS_geoms',
 };
 
