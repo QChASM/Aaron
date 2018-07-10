@@ -9,6 +9,7 @@ use Data::Dumper;
 
 my $HOME = $ENV{'HOME'};
 my $QCHASM = $ENV{'QCHASM'};
+$QCHASM =~ s|/\z||;	#Strip trailing / from $QCHASM if it exists
 
 sub new {
     my $class = shift;
