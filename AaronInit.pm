@@ -5,6 +5,7 @@ use lib $ENV{'QCHASM'};
 
 my $HOME = $ENV{'HOME'};
 my $QCHASM = $ENV{'QCHASM'};
+$QCHASM =~ s|/\z||;	#Strip trailing / from $QCHASM if it exists
 
 use Aaron::Constants qw(INFO OTHERS);
 use AaronTools::Constants qw(NAMES);
@@ -155,6 +156,10 @@ sub read_params {
                     $lig->{$lig_ali} = {};
 
                     $lig->{$lig_ali}->{ligand} = $lig_new;
+                    #Check if ligand exists!
+                    if (! -f "$QCHASM/AaronTools/Ligands/$lig_new.xyz" and ! -f "$HOME/Aaron_libs/Ligands/$lig_new.xyz") {
+                      die "Requested ligand $lig_new that does not exist!  Please add this ligand to $HOME/Aaron_libs/Ligands.\n";
+                    }
                     my %substituents = split(/[=\s]/, $lig_sub);
                     $lig->{$lig_ali}->{substituents} = { map { $_ - 1 => $substituents{$_} }
                                                             keys %substituents };

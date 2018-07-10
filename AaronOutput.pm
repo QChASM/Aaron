@@ -14,6 +14,7 @@ our @EXPORT = qw(&init_log print_message print_params terminate_AARON
                  clean_up print_ee print_status close_log sleep_AARON);
 
 my $QCHASM = $ENV{'QCHASM'};
+$QCHASM =~ s|/\z||;	#Strip trailing / from $QCHASM if it exists
 my $ol;
 my $out_file;
 my $old_data;
