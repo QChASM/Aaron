@@ -3,8 +3,8 @@
 use strict;
 use lib $ENV{'QCHASM'};
 
-use AaronInit qw($W_Key $ligs_subs init_main);
-use AaronOutput qw(print_ee);
+use Aaron::AaronInit qw($W_Key $ligs_subs init_main);
+use Aaron::AaronOutput qw(print_ee);
 use AaronTools::G09Out;
 use Data::Dumper;
 use Getopt::Long;
