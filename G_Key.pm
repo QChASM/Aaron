@@ -15,21 +15,21 @@ sub new {
     my $class = shift;
     my %params = @_;
     my $self = {
-        solvent => $params{solvent},
-        temperature => $params{colvent},
-        denfit => $params{denfit},
-        charge => $params{charge},
-        mult => $params{mult},
-        solvent_model => $params{solvent_model},
-        n_procs => $params{n_procs},
-        wall => $params{wall},
-        short_procs => $params{short_procs},
-        short_wall => $params{short_wall},
-        node=> $params{node},
-        gen => $params{gen},
-        custom => $params{custom},
-        emp_disp => $params{emp_disp},
-        con_thres => $params{con_thres},
+        solvent => $params{solvent},            #solvent (gas, dichloromethane, etc)
+        temperature => $params{colvent},        #temperature
+        denfit => $params{denfit},              #Boolean for whether to use denfit
+        charge => $params{charge},              #charge
+        mult => $params{mult},                  #multiplicity
+        solvent_model => $params{solvent_model},#Solvent model (pcm, smd, etc)
+        n_procs => $params{n_procs},            #number of cores
+        wall => $params{wall},                  #walltime
+        short_procs => $params{short_procs},    #number of cores for short jobs
+        short_wall => $params{short_wall},      #walltime for short jobs
+        node=> $params{node},                   #Node type?
+        gen => $params{gen},                    #gen basis
+        custom => $params{custom},              #Custom default from .aaronrc
+        emp_disp => $params{emp_disp},          #Empirical dispersion
+        con_thres => $params{con_thres},        #connectivity threshold
     };
 
     bless $self, $class;
@@ -126,7 +126,7 @@ sub _read_key_from_input {
         }
 
         /^$/ && do {last if $hit};
-        /[Cc]ustome=(\S+)/ && do {$self->{custom} = $1; next;};
+        /[Cc]ustom=(\S+)/ && do {$self->{custom} = $1; next;};
         /^[gG]en=(\S+)/ && do {$self->{gen} = $1 unless $self->{gen}; next;};
 
         if ($hit) {
@@ -201,6 +201,8 @@ sub read_key_from_input {
 
     $self->{custom} //= 'Default';
 
+#This should read global defaults from $QCHASM/Aaron/.aaronrc and then overwrite any of these with personal defaults from $HOME/.aaronrc
+#This way people can just set their own defaults for the keywords that are different
     my $hit;
     if (-e "$HOME/.aaronrc") {
         $hit = $self->_read_key_from_input("$HOME/.aaronrc");
