@@ -359,7 +359,7 @@ sub analyze_result {
     my $data = ''; 
     $data .= '=' x 90 . "\n";
     for my $ligand (sort keys %{ $ligs_subs }) {
-        $data .= "Thermochemical data so far for $ligand:\n";
+        $data .= "Thermochemical data so far for $ligand (T = $G_Key->{temperature} K):\n";
         $data .= '~' x 90 . "\n";
         my @items = ($ligand, sort keys %{ $ligs_subs->{$ligand}->{substrate} });
         for my $item (@items) {
