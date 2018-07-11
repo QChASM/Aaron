@@ -10,8 +10,9 @@ our @EXPORT_OK = ('INFO', 'MAXSTEP', 'OTHERS');
 use constant INFO => {
     VERSION => 1.0,
     YEAR => 2018,
-    LASTUPDATE => '7/05/18',
+    LASTUPDATE => '7/11/18',
     AUTHORS => ["Yanfei Guan", "Victoria M. Ingman", "Benjamin J. Rooks", "Steven E. Wheeler"],
+    CONTRIBUTORS => ["Tony Schaefer"],
 };
 
 use constant MAXSTEP => {

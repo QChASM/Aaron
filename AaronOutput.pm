@@ -44,6 +44,7 @@ sub header {
     my $date = localtime;
     my $version = INFO->{VERSION};
     my @authors = @{ INFO->{AUTHORS} };
+    my @contributors = @{ INFO->{CONTRIBUTORS} };
     my $year = INFO->{YEAR};
 
     &print_message("Aaron job started on $date\n\n");
@@ -53,6 +54,10 @@ sub header {
     print $ol "                               Written by\n";
     foreach my $author (@authors) {
       print $ol "                            $author\n";
+    }
+    print $ol "                         with contributions from\n";
+    foreach my $contributor (@contributors) {
+      print $ol "                            $contributor\n";
     }
     print $ol "                          Texas A&M University\n";
     print $ol "                         September, 2013 - 2018\n\n";
@@ -497,7 +502,7 @@ sub terminate_AARON {
 
 
 sub sleep_AARON {
-    print  "Aaron will check for next cycle after $arg_parser{sleeptime} seconds\n" .
+    print  "Aaron will check status of all jobs after $arg_parser{sleeptime} seconds\n" .
            " Sleeping...\n";
     close ($ol);
 

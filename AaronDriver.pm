@@ -245,7 +245,7 @@ sub dir_tree {
 
     chdir($current_dir);
 
-    #make paths and initialize eevery geometry to be on step0 1st attempt
+    #make paths and initialize every geometry to be on step0 1st attempt
     foreach my $newdir (keys %{ $new_dir }) {
         my $cat_temp = $new_dir->{$newdir}->{catalysis};
 
