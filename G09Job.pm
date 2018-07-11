@@ -228,7 +228,7 @@ sub examine_connectivity {
 
     my $geometry = $self->{name};
 
-    my $filename = $self->file_name();
+    my $filename = "$geometry/" . $self->file_name();
 
     my $catalysis = $self->{catalysis};
 
