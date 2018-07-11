@@ -244,40 +244,40 @@ sub print_status {
 
         @start && do {$msg .= "\nThe following jobs are going to start:\n";};
         for my $geometry(@start) {
-            $msg .= "$geometry is starting the AARON workflow using the geometry from the TS library\n";
+            $msg .= " $geometry is starting the AARON workflow using the geometry from the TS library\n";
         }
 
         @done && do {$msg .= "\nThe following jobs are done:\n";};
         for my $geometry(@done) {
             my $job = &$_get_job($geometry);
             my $step_done = $job->{step} - 1;
-            $msg .= "$geometry step $step_done is done\n";
+            $msg .= " $geometry step $step_done is done\n";
         }
 
         @finished && do {$msg .= "\nThe following AARON are finished: \n";};
         for my $geometry(@finished) {
-            $msg .= "$geometry finished normally\n";
+            $msg .= " $geometry finished normally\n";
         }
 
         @running && do {$msg .= "\nThe following jobs are running:\n";};
         for my $geometry(@running) {
             my $job = &$_get_job($geometry);
             my $gradient = $job->{gout}->gradient();
-            $msg .= "$geometry step $job->{step} attempt $job->{attempt} " .
+            $msg .= " $geometry step $job->{step} attempt $job->{attempt} " .
                     "cycle $job->{cycle}. $gradient\n";
         }
 
         @pending && do {$msg .= "\nThe following jobs are pending:\n";};
         for my $geometry(@pending) {
             my $job = &$_get_job($geometry);
-            $msg .= "$geometry step $job->{step} attempt $job->{attempt}: ";
+            $msg .= " $geometry step $job->{step} attempt $job->{attempt}: ";
             $msg .= ($job->{msg} or "No msg recorded") . "\n";
         }
 
-        @restart && do {$msg .= "\nThe following jobs have been restarted for some reasons:\n";};
+        @restart && do {$msg .= "\nThe following jobs have been restarted due to errors:\n";};
         for my $geometry(@restart) {
             my $job = &$_get_job($geometry);
-            $msg .= "$geometry step $job->{step} " .
+            $msg .= " $geometry step $job->{step} " .
                     "restarted: ";
             if ($job->{msg}) {
                 $msg .= $job->{msg};
@@ -287,10 +287,10 @@ sub print_status {
             $msg .= "Now at attempt $job->{attempt}, cycle $job->{cycle}.\n";
         }
 
-        @skipped && do {$msg .= "\nThe following jobs are skipped due to some error during the calculation: \n";};
+        @skipped && do {$msg .= "\nThe following jobs have been skipped due to some error during the calculation: \n";};
         for my $geometry(@skipped) {
             my $job = &$_get_job($geometry);
-            $msg .= "$geometry step $job->{step} " .
+            $msg .= " $geometry step $job->{step} " .
                     "was skipped by reason: \n";
             if ($job->{msg}) {
                 $msg .= $job->{msg};
@@ -309,12 +309,12 @@ sub print_status {
         @repeated && do {$msg .= "\nThe following jobs are repeated conformers:\n";};
         for my $geometry(@repeated) {
             my $job = &$_get_job($geometry);
-            $msg .= "$geometry $job->{msg}\n";
+            $msg .= " $geometry $job->{msg}\n";
         }
 
-        @sleeping && do {$msg .= "\nThe following jobs have not been started and are awaiting other jobs:\n";};
+        @sleeping && do {$msg .= "\nThe following jobs have not been started and are awaiting other jobs to finish:\n";};
         for my $geometry(@sleeping) {
-            $msg .= "$geometry\n";
+            $msg .= " $geometry\n";
         }
 
         print_message('=' x 80);
