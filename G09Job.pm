@@ -741,6 +741,11 @@ sub build_com {
         $method .= " EmpiricalDispersion=$self->{Gkey}->{emp_dispersion}";
         $high_method .= " EmpiricalDispersion=$self->{Gkey}->{emp_dispersion}";
     }
+	#Enable different integration grids
+    if ($self->{Gkey}->{grid}) {
+        $method .= " int=(grid=$self->{Gkey}->{grid})";
+        $high_method .= " int=(grid=$self->{Gkey}->{grid})";
+    }
 
     my $step = $self->{step};
     my $error = $self->{error};
@@ -753,6 +758,7 @@ sub build_com {
         high_method => $high_method,
     );
 
+	#why is there both 'emp_disp' and 'emp_dispersion'?
     if ($self->{Gkey}->{emp_disp}) {
         $route .= " EmpiricalDispersion=$self->{Gkey}->{emp_disp}";
     }

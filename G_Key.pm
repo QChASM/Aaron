@@ -26,6 +26,7 @@ sub new {
         short_procs => $params{short_procs},    #number of cores for short jobs
         short_wall => $params{short_wall},      #walltime for short jobs
         node=> $params{node},                   #Node type?
+        grid=> $params{grid},                   #integration grid keyword
         gen => $params{gen},                    #gen basis
         custom => $params{custom},              #Custom default from .aaronrc
         emp_disp => $params{emp_disp},          #Empirical dispersion
@@ -65,6 +66,7 @@ sub read_key_from_com {
     ($solvent) = $command_line =~ /solvent=(\S+\))/;
     ($solvent_model) = $command_line =~ /scrf=\((\S+),/;
     ($self->{emp_disp}) = $command_line =~ /EmpiricalDispersion=(\S+)/;
+    ($self->{grid}) = $command_line =~ /int=(grid=(\S+)/;
 
     $temperature && do {$self->{temperature} = $temperature};
     $solvent && do {$self->{solvent} = $solvent};
@@ -150,6 +152,7 @@ sub _read_key_from_input {
             };
             #G09
             /emp_disp=(\S+)/  && do {$self->{emp_disp} = $1 unless $self->{emp_disp}; next;};
+            /grid=(\S+)/  && do {$self->{grid} = $1 unless $self->{grid}; next;};
             /\s*[sS]olvent=(\S+)/ && do {$self->{solvent} = $1 unless $self->{solvent}; next;};
             /\s*[sS]olvent_model=(\S+)/ && do {$self->{solvent_model} = $1 unless $self->{solvent_model}; next;};
 
