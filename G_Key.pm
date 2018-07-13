@@ -66,7 +66,7 @@ sub read_key_from_com {
     ($solvent) = $command_line =~ /solvent=(\S+\))/;
     ($solvent_model) = $command_line =~ /scrf=\((\S+),/;
     ($self->{emp_disp}) = $command_line =~ /EmpiricalDispersion=(\S+)/;
-    ($self->{grid}) = $command_line =~ /int=(grid=(\S+)/;
+    ($self->{grid}) = $command_line =~ /int=\(grid=(\S+)/;
 
     $temperature && do {$self->{temperature} = $temperature};
     $solvent && do {$self->{solvent} = $solvent};
