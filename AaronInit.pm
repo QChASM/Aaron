@@ -157,7 +157,7 @@ sub read_params {
 
                     $lig->{$lig_ali}->{ligand} = $lig_new;
                     #Check if ligand exists!
-                    if($lig_new !~ /ORIGIN/) {
+                    if($lig_new ne 'ORIGIN' && ($lig_new ne 'NONE')) {
                         if (! -f "$QCHASM/AaronTools/Ligands/$lig_new.xyz" and ! -f "$HOME/Aaron_libs/Ligands/$lig_new.xyz") {
                           die "Requested ligand $lig_new that does not exist!  Please add this ligand to $HOME/Aaron_libs/Ligands.\n";
                         }

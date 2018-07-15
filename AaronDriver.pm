@@ -39,6 +39,7 @@ my $LIGAND = NAMES->{LIGAND};
 my $hart_to_kcal = UNIT->{HART_TO_KCAL};
 
 my $queue_type = $ENV{'QUEUE_TYPE'};
+my $skip_step1;
 
 my $ts_found;
 my $min_found;
@@ -102,22 +103,19 @@ sub _make_directories {
 
         unless (%{ $ligs_subs->{$lig_ali}->{substrate} }) {
             if ($W_Key->{input_conformers_only}) {
-                my $msg = "If you want to search for different conformers for " .
-                          "the template transition states, please turn off the " .
-                          "input_conformers_only. Otherwise, Aaron has nothing " .
-                          "to do with $lig_ali orginal catalyst.\n";
+                my $msg = "Aaron will reoptimize template structures using your level of theory\n";
                 print_message($msg);
+                $skip_step1 = 1;
             }else{
-                if (!(-d $lig_ali)) {
-                    mkdir "$lig_ali";
-                    my $msg = "Aaron will search for conformers on the catalyst for " .
-                              "$lig_ali original catalyst.\n";
-                    print_message($msg);
-                }
-
-                &dir_tree( target => $W_Key->{TS_path} . "$W_Key->{template}",
-                           ligand => $lig_ali );
+                my $msg = "Initiating conformer searching for $lig_ali orginal catalyst.\n";
+                print_message($msg);
             }
+            if (!(-d $lig_ali)) {
+                mkdir "$lig_ali";
+            }
+            &dir_tree( target => $W_Key->{TS_path} . "$W_Key->{template}",
+                       ligand => $lig_ali,
+                  no_new_subs => $W_Key->{input_conformers_only} );
         }
     }else {
         if (!-d $lig_ali) {
@@ -289,6 +287,7 @@ sub dir_tree {
                         Gkey => $G_Key,
                         Wkey => $W_Key,
                         template_job => $template_job,
+                        skip_step1 => $skip_step1,
                     );
                 }elsif ($state =~ /^min/i) {
                     $status->{$head} = new Aaron::G09Job_MIN(
@@ -297,6 +296,7 @@ sub dir_tree {
                         Gkey => $G_Key,
                         Wkey => $W_Key,
                         template_job => $template_job,
+                        skip_step1 => $skip_step1,
                     );
                 }
             }elsif (%{$status->{$head}->{catalysis}}) {

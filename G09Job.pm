@@ -34,13 +34,14 @@ sub new {
 
     my ($name, $step, $cycle, $Wkey,
         $thermo, $attempt, $status, 
-        $catalysis, $Gkey, $template_job) = ($params{name}, $params{step}, 
-                                             $params{cycle}, $params{Wkey},
-                                             $params{thermo}, $params{attempt}, 
-                                             $params{status}, $params{catalysis}, 
-                                             $params{Gkey}, $params{template_job});
+        $catalysis, $Gkey, $template_job,
+        $skip_step1) = ($params{name}, $params{step}, 
+                        $params{cycle}, $params{Wkey},
+                        $params{thermo}, $params{attempt}, 
+                        $params{status}, $params{catalysis}, 
+                        $params{Gkey}, $params{template_job}, $params{skip_step1});
     $name //= '';
-    $step //= 1;
+    $step //= $skip_step1 ? 2: 1;
     $cycle //= 1;
     $attempt //= 1;
     $status //= 'start';
