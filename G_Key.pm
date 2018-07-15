@@ -183,10 +183,10 @@ sub _read_key_from_input {
                 /^\s*[hH]igh_basis=(.+)/ && do {$self->{high_level}->read_basis($1); next;};
             }
 
-            /\s*[dD]enfit=(\S+)/ && do {$self->{denfit} = $1 unless $self->{denfit}; next;};
-            /\s*[cC]harge=(\S+)/ && do {$self->{charge} = $1 unless $self->{charge}; next;};
-            /\s*[mM]ult=(\S+)/ && do {$self->{mult} = $1 unless $self->{mult}; next;}; 
-            /\s*[Cc]on_thres=(\S+)/ && do {$self->{con_thres} = $1 unless $self->{con_thres}; next;};
+            /\s*[dD]enfit=(\S+)/ && do {$self->{denfit} = $1 unless defined $self->{denfit}; next;};
+            /\s*[cC]harge=(\S+)/ && do {$self->{charge} = $1 unless defined $self->{charge}; next;};
+            /\s*[mM]ult=(\S+)/ && do {$self->{mult} = $1 unless defined $self->{mult}; next;}; 
+            /\s*[Cc]on_thres=(\S+)/ && do {$self->{con_thres} = $1 unless defined $self->{con_thres}; next;};
         }
     }
 
@@ -208,10 +208,10 @@ sub read_key_from_input {
 #This way people can just set their own defaults for the keywords that are different
     my $hit;
     if (-e "$HOME/.aaronrc") {
-        $hit = $self->_read_key_from_input("$HOME/.aaronrc");
+        $self->_read_key_from_input("$HOME/.aaronrc");
     }
 
-    if (-e "$QCHASM/Aaron/.aaronrc" && !$hit) {
+    if (-e "$QCHASM/Aaron/.aaronrc") {
         $self->_read_key_from_input("$QCHASM/Aaron/.aaronrc");
     }
 
