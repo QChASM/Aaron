@@ -29,7 +29,7 @@ sub new {
         grid=> $params{grid},                   #integration grid keyword
         gen => $params{gen},                    #gen basis
         custom => $params{custom},              #Custom default from .aaronrc
-        emp_disp => $params{emp_disp},          #Empirical dispersion
+        emp_dispersion => $params{emp_dispersion},          #Empirical dispersion
         con_thres => $params{con_thres},        #connectivity threshold
     };
 
@@ -65,7 +65,7 @@ sub read_key_from_com {
     ($temperature) = $command_line =~ /temperature=(\d+\.?\d+)/;
     ($solvent) = $command_line =~ /solvent=(\S+\))/;
     ($solvent_model) = $command_line =~ /scrf=\((\S+),/;
-    ($self->{emp_disp}) = $command_line =~ /EmpiricalDispersion=(\S+)/;
+    ($self->{emp_dispersion}) = $command_line =~ /EmpiricalDispersion=(\S+)/;
     ($self->{grid}) = $command_line =~ /int=\(grid=(\S+)/;
 
     $temperature && do {$self->{temperature} = $temperature};
@@ -151,7 +151,6 @@ sub _read_key_from_input {
                 $self->{node} = $1 unless $self->{node}; next;
             };
             #G09
-            /emp_disp=(\S+)/  && do {$self->{emp_disp} = $1 unless $self->{emp_disp}; next;};
             /grid=(\S+)/  && do {$self->{grid} = $1 unless $self->{grid}; next;};
             /\s*[sS]olvent=(\S+)/ && do {$self->{solvent} = $1 unless $self->{solvent}; next;};
             /\s*[sS]olvent_model=(\S+)/ && do {$self->{solvent_model} = $1 unless $self->{solvent_model}; next;};

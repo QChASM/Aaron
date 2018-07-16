@@ -759,11 +759,6 @@ sub build_com {
         high_method => $high_method,
     );
 
-	#why is there both 'emp_disp' and 'emp_dispersion'?
-    if ($self->{Gkey}->{emp_disp}) {
-        $route .= " EmpiricalDispersion=$self->{Gkey}->{emp_disp}";
-    }
-
     ERROR: {    
         if ($error eq 'CONV') {my $scf_change = $route =~ /scf=xqc/ ?
                                                 0 : ($route .= " scf=xqc");
