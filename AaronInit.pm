@@ -5,6 +5,7 @@ use lib $ENV{'QCHASM'};
 
 my $HOME = $ENV{'HOME'};
 my $QCHASM = $ENV{'QCHASM'};
+$QCHASM =~ s|/\z||;	#Strip trailing / from $QCHASM if it exists
 
 use Aaron::Constants qw(INFO OTHERS);
 use AaronTools::Constants qw(NAMES);
@@ -20,7 +21,6 @@ my $module = {};
 my $helpMsg = "\nAARON: An Automated Reaction Optimizer for new catalyst\n".
               "- Computational toolkit to aid in optimizing transition states with the Gaussian09 quantum chemistry software.\n\n".
               "Authors: @authors.\n\nLast Update: $lastupdate\n\n".
-              "AARON automates the optimization of transition states for a wide variety of metal-free asymmetric reactions.\n".
               "Based on a library of TS structures previously computed using model catalysts, \n".
               "AARON replaces the model catalyst with a user-supplied catalyst and then performs a prescribed series of \n".
               "constrained and uncontrained optimizations to arrive at final predicted structures and energies for all transition states.\n";
@@ -111,7 +111,7 @@ sub read_args{
     ($input_file) = grep { $_ =~ /\.in$/ } @ARGV;
 
     $input_file or pod2usage (
-        -msg => "A input file must be provided\n",
+        -msg => "An input file must be provided\n",
         -input => "$QCHASM/Aaron/pod_ref",
         -exitval => 1,
         -verbose => 0 );
@@ -156,6 +156,12 @@ sub read_params {
                     $lig->{$lig_ali} = {};
 
                     $lig->{$lig_ali}->{ligand} = $lig_new;
+                    #Check if ligand exists!
+                    if($lig_new ne 'ORIGIN' && ($lig_new ne 'NONE')) {
+                        if (! -f "$QCHASM/AaronTools/Ligands/$lig_new.xyz" and ! -f "$HOME/Aaron_libs/Ligands/$lig_new.xyz") {
+                          die "Requested ligand $lig_new that does not exist!  Please add this ligand to $HOME/Aaron_libs/Ligands.\n";
+                        }
+                    }
                     my %substituents = split(/[=\s]/, $lig_sub);
                     $lig->{$lig_ali}->{substituents} = { map { $_ - 1 => $substituents{$_} }
                                                             keys %substituents };

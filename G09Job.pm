@@ -34,13 +34,14 @@ sub new {
 
     my ($name, $step, $cycle, $Wkey,
         $thermo, $attempt, $status, 
-        $catalysis, $Gkey, $template_job) = ($params{name}, $params{step}, 
-                                             $params{cycle}, $params{Wkey},
-                                             $params{thermo}, $params{attempt}, 
-                                             $params{status}, $params{catalysis}, 
-                                             $params{Gkey}, $params{template_job});
+        $catalysis, $Gkey, $template_job,
+        $skip_step1) = ($params{name}, $params{step}, 
+                        $params{cycle}, $params{Wkey},
+                        $params{thermo}, $params{attempt}, 
+                        $params{status}, $params{catalysis}, 
+                        $params{Gkey}, $params{template_job}, $params{skip_step1});
     $name //= '';
-    $step //= 1;
+    $step //= $skip_step1 ? 2: 1;
     $cycle //= 1;
     $attempt //= 1;
     $status //= 'start';
@@ -228,7 +229,7 @@ sub examine_connectivity {
 
     my $geometry = $self->{name};
 
-    my $filename = $self->file_name();
+    my $filename = "$geometry/" . $self->file_name();
 
     my $catalysis = $self->{catalysis};
 
@@ -327,7 +328,7 @@ sub examine_connectivity {
 
         $self->{step} = 2;
         
-        print_message("bond changing uncorrectly, repeating step1 by fixing changed bond");
+        print_message("bond changing incorrectly, repeating step1 constraining problematic bond");
 
         $self->build_com( directory => '.');
 
@@ -686,9 +687,9 @@ sub submit {
 
         my $msg = "AARON has failed to submit jobs to queue more than " .
                   $MAX_LAUNCH_FAILED .
-                  " times. AARON believe you may run out of hours or " .
-                  "something wrong with the system. " .
-                  "AARON will just sleep for one hour and continue.\n" .
+                  " times. AARON believes you may have run out of hours or " .
+                  "that something is wrong with the cluster. " .
+                  "AARON will sleep for one hour and then continue.\n" .
                   "AARON will restart at $time\n" .
                   "sleeping...";
 
@@ -741,6 +742,11 @@ sub build_com {
         $method .= " EmpiricalDispersion=$self->{Gkey}->{emp_dispersion}";
         $high_method .= " EmpiricalDispersion=$self->{Gkey}->{emp_dispersion}";
     }
+	#Enable different integration grids
+    if ($self->{Gkey}->{grid}) {
+        $method .= " int=(grid=$self->{Gkey}->{grid})";
+        $high_method .= " int=(grid=$self->{Gkey}->{grid})";
+    }
 
     my $step = $self->{step};
     my $error = $self->{error};
@@ -752,10 +758,6 @@ sub build_com {
         method => $method,
         high_method => $high_method,
     );
-
-    if ($self->{Gkey}->{emp_disp}) {
-        $route .= " EmpiricalDispersion=$self->{Gkey}->{emp_disp}";
-    }
 
     ERROR: {    
         if ($error eq 'CONV') {my $scf_change = $route =~ /scf=xqc/ ?
@@ -781,7 +783,7 @@ sub build_com {
 
         if ($error eq 'QUOTA') { if ( ! $self->{Wkey}->{no_quota}) {
                                     my $msg = "\nAARON thinks you hit the disk quota. "  .
-                                           "Make more space or have quota increased. Then add " .
+                                           "Make more space or have your quota increased. Then add " .
                                            "\"-noquota\" in the command line to restart\n";
                                     print_message($msg);
                                     return 1;
@@ -807,7 +809,7 @@ sub build_com {
                                        unlink "$file_name.chk";
                                        $msg = "Problem with check point file, using calcfc\n";
                                    }else {
-                                       $msg = "No check point file was found in the directory, using calcfc\n";
+                                       $msg = "No checkpoint file was found in the directory, using calcfc\n";
                                    }
                                    $route =~ s/readfc/calcfc/;
                                    $self->{msg} = $msg;
@@ -828,8 +830,8 @@ sub build_com {
                                  }
                                }
         if ($error eq "CHARGEMULT") { my $msg = "The combination of multipicity is not correct " .
-                                                "AARON believe this is a fatal error so AARON quit " .
-                                                "at this point, after you fix the problem, restart AARON\n";
+                                                "AARON believes this is a fatal error so has quit " .
+                                                "Fix the problem and restart AARON\n";
                                       print_message($msg);
                                       return 1;
                                     }
@@ -865,11 +867,11 @@ sub build_com {
         my $fc_change = ($route =~ s/readfc/calcfc/);
         ($route, my $step_change) = &reduce_maxstep($route);
         if ($fc_change) {
-            $self->{msg} .= "calculate fc instead of read fc from .chk file.\n";
+            $self->{msg} .= "calculating force constants instead of reading from .chk file.\n";
             system("rm -fr $file_name.chk");
         }
         if ($step_change) {
-            $self->{msg} .= "using smaller step.\n";
+            $self->{msg} .= "using smaller step size.\n";
         }
     }
 
@@ -877,19 +879,19 @@ sub build_com {
         my $fc_change = ($route =~ s/readfc/calcfc/);
         ($route, my $step_change) = &reduce_maxstep($route);
         if ($step_change) {
-            $self->{msg} .= "using smaller step.\n";
+            $self->{msg} .= "using smaller step size.\n";
         }
         if ($self->{attempt} > 3) {
             unless ($route =~ /nonlinear/) {$route =~ s/opt=\(/opt=\(nolinear,/;}
             if ($fc_change) {
-                $self->{msg} .= "calculate fc instead of read fc from .chk file.\n";
+                $self->{msg} .= "calculating force-constants instead of reading from .chk file.\n";
                 system("rm -fr $file_name.chk");
             }
             if ($self->{attempt} > 4) {
                 my $fc_change = (($route =~ s/readfc/calcall/) || ($route =~ s/calcfc/calcall/));
                 if ($fc_change) {
-                    $self->{msg} .= "calculate fc before each optimization step, ".
-                                    "this can take long time.\n";
+                    $self->{msg} .= "calculating force constants before each optimization step, ".
+                                    "this could take long time.\n";
                     system("rm -fr $file_name.chk");
                 }
             }
@@ -1016,7 +1018,7 @@ sub check_reaction {
     my $filename = "$geometry/" . $self->file_name();
 
     my $catalysis = $self->{catalysis};
-    my $con = $catalysis->{constratins};
+    my $con = $catalysis->{constraints};
 
     my @failed = $catalysis->examine_constraints();
 
@@ -1170,7 +1172,7 @@ sub com_route_footer {
 
     SWITCH: {
         if ($step == 1) { $route .= "#$low_method opt nosym";
-                          #add constrats to substrate and old part of catalyst
+                          #add constraints to substrate and old part of catalyst
                           $print_flag = 1;
                           $footer = $self->{Gkey}->{low_level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
@@ -1363,7 +1365,7 @@ sub com_route_footer {
 
     SWITCH: {
         if ($step == 1) { $route .= "#$low_method opt nosym";
-                          #add constrats to substrate and old part of catalyst
+                          #add constraints to substrate and old part of catalyst
                           $print_flag = 1;
                           $footer = $self->{Gkey}->{low_level}->footer($catalysis) unless $self->{Wkey}->{debug}; 
                           last SWITCH; }
@@ -1655,7 +1657,7 @@ sub examine_connectivity {
 
         $self->{step} = 1;
         
-        print_message("bond changing uncorrectly, repeating step1 by fixing changed bond");
+        print_message("bond changing incorrectly, repeating step1 with constrains on the problematic bond");
 
         $self->build_com( directory => '.');
 
@@ -1663,7 +1665,7 @@ sub examine_connectivity {
 
         $self->{status} = '2submit';
 
-        $self->{msg} = "repeat step2 due to unexpected bond change, now waiting in the queue ";
+        $self->{msg} = "repeating step2 due to unexpected bond change, now waiting in the queue ";
     }
 }
 
@@ -1677,7 +1679,7 @@ sub check_reaction {
     my $filename = "$geometry/" . $self->file_name();
 
     my $catalysis = $self->{catalysis};
-    my $con = $catalysis->{constratins};
+    my $con = $catalysis->{constraints};
 
     my @failed = $catalysis->examine_constraints();
 

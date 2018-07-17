@@ -14,6 +14,7 @@ our @EXPORT = qw(&init_log print_message print_params terminate_AARON
                  clean_up print_ee print_status close_log sleep_AARON);
 
 my $QCHASM = $ENV{'QCHASM'};
+$QCHASM =~ s|/\z||;	#Strip trailing / from $QCHASM if it exists
 my $ol;
 my $out_file;
 my $old_data;
@@ -26,7 +27,7 @@ sub init_log {
 
     $job_name //= $jobname;
 
-    $out_file = $parent . '/' . $job_name . "_aaron.log";
+    $out_file = $parent . '/' . $job_name . ".log";
     if (-e $out_file) {
         open $ol, ">>$out_file" or die "Can't open $out_file\n";
         &restart_header($print_params);
@@ -43,6 +44,7 @@ sub header {
     my $date = localtime;
     my $version = INFO->{VERSION};
     my @authors = @{ INFO->{AUTHORS} };
+    my @contributors = @{ INFO->{CONTRIBUTORS} };
     my $year = INFO->{YEAR};
 
     &print_message("Aaron job started on $date\n\n");
@@ -53,10 +55,14 @@ sub header {
     foreach my $author (@authors) {
       print $ol "                            $author\n";
     }
+    print $ol "                         with contributions from\n";
+    foreach my $contributor (@contributors) {
+      print $ol "                            $contributor\n";
+    }
     print $ol "                          Texas A&M University\n";
     print $ol "                         September, 2013 - 2018\n\n";
     print $ol "                         University of Georgia\n";
-    print $ol "                         August, 2018 - \n\n";
+    print $ol "                               2018 - \n\n";
     print $ol "                                          /\\          /\\ \n";
     print $ol "                                         ( \\\\        // )\n";
     print $ol "                                          \\ \\\\      // / \n";
@@ -83,20 +89,8 @@ sub header {
     print $ol "                              New catalysts\n\n";
     print $ol "Citation:\n";
     print $ol "AARON, verson $version, Y. Guan, V. M. Ingman, B. J. Rooks, and S. E. Wheeler, Texas A&M University, $year.\n\n";
-    print $ol "The following should also be cited when AARON is used for bidentate Lewis-base catalyzed alkylation reactions:\n\n";
-    print $ol "1. T. Lu, M. A. Porterfield, and S. E. Wheeler, \"Explaining the Disparate Stereoselectivities
-of   N-Oxide Catalyzed Allylations and Propargylations of Aromatic Aldehydes\", Org. Lett. 14, 
-53  10 (2012).\n\n";
-    print $ol "2. T. Lu, R. Zhu, Y. An, and S. E. Wheeler, \"Origin of Enantioselectivity in the 
-Pr  opargylation of Aromatic Aldehydes Catalyzed by Helical N-Oxides\", J. Am. Chem. Soc. 134, 
-30  95 (2012).\n\n";
-    print $ol "3. D. Sepulveda, T. Lu, and S. E. Wheeler, \"Performance of DFT Methods and Origin of
-St  ereoselectivity in Bipyridine N,N\'-Dioxide Catalyzed Allylation and Propargylation Reactions\", 
-12  , 8346 (2014).\n\n";
-    print $ol "4. B. J. Rooks, M. R. Haas, D. Sepulveda, T. Lu, and S. E. Wheeler, \"Prospects for the
-Co  mputational Design of Bipyridine N,N\'-Dioxide Catalysts for Asymmetric Propargylations\" ACS Catalysis 
-5,   272 (2015).\n\n";
-    print $ol "The development of AARON is sponsored in part by the National Science Foundation,\nGrant CHE-1266022.\n\n\n";
+    print $ol "Y. Guan, V. M. Ingman, B. J. Rooks, and S. E. Wheeler, \"AARON: An Automated Reaction Optimizer for New Catlaysts\",\n J. Chem. Theory Comput. (submitted).\n\n";
+    print $ol "The development of AARON is sponsored in part by the National Science Foundation,Grants CHE-1266022 and CHE-1665407.\n\n\n";
 } #end sub header
 
 
@@ -122,7 +116,6 @@ sub print_message {
 #print all job parameters to $ol
 sub print_params {
     my $version = INFO->{VERSION};
-    my $AARON_HOME = "$QCHASM/Aaron";
     my $method = $G_Key->{level}->method();
     my $high_method = $G_Key->{high_level}->method();
     my $low_method = $G_Key->{low_level}->method();
@@ -130,7 +123,7 @@ sub print_params {
     print $ol "----------------------------------------------------------------------------------\n";
     print $ol "Parameters\n";
     print $ol "----------------------------------------------------------------------------------\n";
-    print $ol " AARON_HOME          = $AARON_HOME\n";
+    print $ol " QCHASM              = $QCHASM\n";
     print $ol "  version            = $version\n";
     print $ol "\n Reaction parameters:\n";
     print $ol "  reaction_type      = $W_Key->{reaction_type}\n" if $W_Key->{reaction_type};
@@ -251,40 +244,40 @@ sub print_status {
 
         @start && do {$msg .= "\nThe following jobs are going to start:\n";};
         for my $geometry(@start) {
-            $msg .= "$geometry is starting the AARON workflow using the geometry from the TS library\n";
+            $msg .= " $geometry is starting the AARON workflow using the geometry from the TS library\n";
         }
 
         @done && do {$msg .= "\nThe following jobs are done:\n";};
         for my $geometry(@done) {
             my $job = &$_get_job($geometry);
             my $step_done = $job->{step} - 1;
-            $msg .= "$geometry step $step_done is done\n";
+            $msg .= " $geometry step $step_done is done\n";
         }
 
         @finished && do {$msg .= "\nThe following AARON are finished: \n";};
         for my $geometry(@finished) {
-            $msg .= "$geometry finished normally\n";
+            $msg .= " $geometry finished normally\n";
         }
 
         @running && do {$msg .= "\nThe following jobs are running:\n";};
         for my $geometry(@running) {
             my $job = &$_get_job($geometry);
             my $gradient = $job->{gout}->gradient();
-            $msg .= "$geometry step $job->{step} attempt $job->{attempt} " .
+            $msg .= " $geometry step $job->{step} attempt $job->{attempt} " .
                     "cycle $job->{cycle}. $gradient\n";
         }
 
         @pending && do {$msg .= "\nThe following jobs are pending:\n";};
         for my $geometry(@pending) {
             my $job = &$_get_job($geometry);
-            $msg .= "$geometry step $job->{step} attempt $job->{attempt}: ";
+            $msg .= " $geometry step $job->{step} attempt $job->{attempt}: ";
             $msg .= ($job->{msg} or "No msg recorded") . "\n";
         }
 
-        @restart && do {$msg .= "\nThe following jobs have been restarted for some reasons:\n";};
+        @restart && do {$msg .= "\nThe following jobs have been restarted due to errors:\n";};
         for my $geometry(@restart) {
             my $job = &$_get_job($geometry);
-            $msg .= "$geometry step $job->{step} " .
+            $msg .= " $geometry step $job->{step} " .
                     "restarted: ";
             if ($job->{msg}) {
                 $msg .= $job->{msg};
@@ -294,10 +287,10 @@ sub print_status {
             $msg .= "Now at attempt $job->{attempt}, cycle $job->{cycle}.\n";
         }
 
-        @skipped && do {$msg .= "\nThe following jobs are skipped due to some error during the calculation: \n";};
+        @skipped && do {$msg .= "\nThe following jobs have been skipped due to some error during the calculation: \n";};
         for my $geometry(@skipped) {
             my $job = &$_get_job($geometry);
-            $msg .= "$geometry step $job->{step} " .
+            $msg .= " $geometry step $job->{step} " .
                     "was skipped by reason: \n";
             if ($job->{msg}) {
                 $msg .= $job->{msg};
@@ -316,12 +309,12 @@ sub print_status {
         @repeated && do {$msg .= "\nThe following jobs are repeated conformers:\n";};
         for my $geometry(@repeated) {
             my $job = &$_get_job($geometry);
-            $msg .= "$geometry $job->{msg}\n";
+            $msg .= " $geometry $job->{msg}\n";
         }
 
-        @sleeping && do {$msg .= "\nThe following jobs have not been started and are awaiting other jobs:\n";};
+        @sleeping && do {$msg .= "\nThe following jobs have not been started and are awaiting other jobs to finish:\n";};
         for my $geometry(@sleeping) {
-            $msg .= "$geometry\n";
+            $msg .= " $geometry\n";
         }
 
         print_message('=' x 80);
@@ -409,17 +402,17 @@ sub print_ee {
 
     if ($G_Key->{high_level}->method()) {
         if ($absolute_only || $arg_parser{multistep} || $absolute) {
-            $data .= sprintf "%19s%13s%13s%13s%13s%13s%13s%13s\n", 'E', 'H', 'G', 'G_Grimme',
-                                                    'E\'', 'H\'', 'G\'', 'G_Grimme\'';
+            $data .= sprintf "%19s%13s%13s%13s%13s%13s%13s%13s\n", 'E', 'H', 'G (RRHO)', 'G (quasi-RRHO)',
+                                                    'E\'', 'H\'', 'G (RRHO)\'', 'G (quasi-RRHO)\'';
         }else {
-            $data .= sprintf "%16s%10s%10s%10s%10s%10s%10s%10s\n", 'E', 'H', 'G', 'G_Grimme',
-                                                    'E\'', 'H\'', 'G\'', 'G_Grimme\'';
+            $data .= sprintf "%16s%10s%10s%10s%10s%10s%10s%10s\n", 'E', 'H', 'G (RRHO)', 'G (quasi-RRHO)',
+                                                    'E\'', 'H\'', 'G (RRHO)\'', 'G (quasi-RRHO)\'';
         }
     }else {
         if ($absolute_only || $arg_parser{multistep} || $absolute) {
-            $data .= sprintf "%19s%13s%13s%13s\n", 'E', 'H', 'G', 'G_Grimme',
+            $data .= sprintf "%19s%13s%13s%13s\n", 'E', 'H', 'G (RRHO)', 'G (quasi-RRHO)',
         }else {
-            $data .= sprintf "%16s%10s%10s%10s\n", 'E', 'H', 'G', 'G_Grimme',
+            $data .= sprintf "%16s%10s%10s%10s\n", 'E', 'H', 'G (RRHO)', 'G (quasi-RRHO)',
         }
     }
 
@@ -509,7 +502,7 @@ sub terminate_AARON {
 
 
 sub sleep_AARON {
-    print  "Aaron will check for next cycle after $arg_parser{sleeptime} seconds\n" .
+    print  "Aaron will check status of all jobs after $arg_parser{sleeptime} seconds\n" .
            " Sleeping...\n";
     close ($ol);
 

@@ -10,8 +10,9 @@ our @EXPORT_OK = ('INFO', 'MAXSTEP', 'OTHERS');
 use constant INFO => {
     VERSION => 1.0,
     YEAR => 2018,
-    LASTUPDATE => '7/05/18',
+    LASTUPDATE => '7/11/18',
     AUTHORS => ["Yanfei Guan", "Victoria M. Ingman", "Benjamin J. Rooks", "Steven E. Wheeler"],
+    CONTRIBUTORS => ["Tony Schaefer"],
 };
 
 use constant MAXSTEP => {
@@ -23,7 +24,7 @@ use constant MAXSTEP => {
 use constant OTHERS => {
     MAX_LAUNCH_FAILED => 5,
     MAX_CYCLE => 4,
-    SLEEP_TIME => 5,
+    SLEEP_TIME => 300,
     TS_LIB=>'TS_geoms',
 };
 
