@@ -324,7 +324,7 @@ sub examine_connectivity {
             return;
         }
 
-        $self->remove_later_than1();
+        $self->remove_later_than2();
 
         $self->{step} = 2;
         
