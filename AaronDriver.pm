@@ -103,11 +103,11 @@ sub _make_directories {
 
         unless (%{ $ligs_subs->{$lig_ali}->{substrate} }) {
             if ($W_Key->{input_conformers_only}) {
-                my $msg = "Aaron will reoptimize template structures using your level of theory\n";
+                my $msg = "Aaron will reoptimize template structures using the specified level of theory\n";
                 print_message($msg);
                 $skip_step1 = 1;
             }else{
-                my $msg = "Initiating conformer searching for $lig_ali orginal catalyst.\n";
+                my $msg = "Initiating conformer searching for $lig_ali (original catalyst).\n";
                 print_message($msg);
             }
             if (!(-d $lig_ali)) {
