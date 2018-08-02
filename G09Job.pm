@@ -900,6 +900,7 @@ sub build_com {
 
     my $com_file = "$file_name.$step.com";
     my $comment = "step $step (attempt $self->{attempt}) cycle $self->{cycle}";
+	print "$com_file\n";
 
     $self->{catalysis}->write_com( comment => $comment,
                                     route => $route,
@@ -939,6 +940,7 @@ use Cwd qw(cwd);
 use Aaron::AaronOutput qw(print_message);
 use AaronTools::G09Out;
 use AaronTools::JobControl;
+use Data::Dumper;
 
 our @ISA = qw(Aaron::G09Job);
 
@@ -1040,7 +1042,7 @@ sub check_reaction {
                                        by_distance => $distance );
         $self->{catalysis}->_update_geometry();
 
-        print_message("Changing the distance by $distance A\n");
+        print_message("Changing the distance between $con->[$i]->[0]->[0], $con->[$i]->[0]->[1] by $distance A\n");
 
         $self->{status} = '2submit';
         $self->{msg} = "reverted to step 2, now waiting in the queue ";
@@ -1169,7 +1171,18 @@ sub com_route_footer {
     }
 
     my $print_flag;
-
+	#NOTE this is only for summit cluster!
+    #if ($step != 1) {
+	#	my $mem = $self->{Gkey}->{n_procs} * 4;
+	#	$route .= "%mem=$mem"."GB\n";
+	#	$route .= "%nprocshared=$self->{Gkey}->{n_procs}\n";
+	#}else {
+	#	my $mem = $self->{Gkey}->{short_procs} * 4;
+	#	$route .= "%mem=$mem"."GB\n";
+	#	$route .= "%nprocshared=$self->{Gkey}->{short_procs}\n";
+	#}
+	####################################
+	
     SWITCH: {
         if ($step == 1) { $route .= "#$low_method opt nosym";
                           #add constraints to substrate and old part of catalyst
@@ -1188,7 +1201,7 @@ sub com_route_footer {
 
                           last SWITCH; }
 
-        if ($step == 3) { $route = "\%chk=$filename.chk\n";
+        if ($step == 3) { $route .= "\%chk=$filename.chk\n";
                           if (-f "$file_name.chk") {
                             $route .= "#$method opt=(readfc,ts,maxcyc=1000)";
                           }else {
@@ -1197,12 +1210,12 @@ sub com_route_footer {
                           $footer .= $self->{Gkey}->{level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
 
-        if ($step == 4) { $route = "\%chk=$filename.chk\n";
+        if ($step == 4) { $route .= "\%chk=$filename.chk\n";
                           $route .= "#$method freq=(hpmodes,noraman,temperature=$self->{Gkey}->{temperature})";
                           $footer .= $self->{Gkey}->{level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
 
-        if ($step == 5) { $route = "\%chk=$filename.chk\n";
+        if ($step == 5) { $route .= "\%chk=$filename.chk\n";
                           $route .= "#$high_method";
                           $footer .= $self->{Gkey}->{high_level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
@@ -1701,7 +1714,7 @@ sub check_reaction {
                                        by_distance => $distance );
         $self->{catalysis}->_update_geometry();
 
-        print_message("Changing the distance by $distance A\n");
+        print_message("Changing the distance between $con->[$i]->[0]->[0], $con->[$i]->[0]->[1] by $distance A\n");
 
         $self->{status} = '2submit';
         $self->{msg} = "reverted to step 1, now waiting in the queue ";

@@ -8,7 +8,7 @@ use AaronTools::Constants qw(PHYSICAL NAMES UNIT);
 use Aaron::AaronInit qw($G_Key %arg_parser $parent
                  $ligs_subs $template_job $W_Key);
 
-use Aaron::AaronOutput qw(print_message print_ee);
+use Aaron::AaronOutput qw(print_message print_ee print_to_thermo);
 use AaronTools::Catalysis;
 use Aaron::G09Job;
 
@@ -103,11 +103,11 @@ sub _make_directories {
 
         unless (%{ $ligs_subs->{$lig_ali}->{substrate} }) {
             if ($W_Key->{input_conformers_only}) {
-                my $msg = "Aaron will reoptimize template structures using your level of theory\n";
+                my $msg = "Aaron will reoptimize template structures using the specified level of theory\n";
                 print_message($msg);
                 $skip_step1 = 1;
             }else{
-                my $msg = "Initiating conformer searching for $lig_ali orginal catalyst.\n";
+                my $msg = "Initiating conformer searching for $lig_ali (original catalyst).\n";
                 print_message($msg);
             }
             if (!(-d $lig_ali)) {
@@ -369,7 +369,7 @@ sub analyze_result {
         }
         $data .= "\n" . '=' x 90 . "\n";
     }
-    print_message($data);
+    print_to_thermo($data);
 }
 
 
@@ -467,15 +467,11 @@ sub _analyze_result {
         }
     }
 
-    my $data = '';
-    unless ($W_Key->{multistep}) {
-        $data = print_ee($thermo);
-    }
+	my $data = "Relative thermo: ";
+    $data = print_ee($thermo);
 
-    if ($arg_parser{absthermo} || $W_Key->{multistep}) {
-        $data .= "Absolute thermo: ";
-        $data .= print_ee($thermo, 0, 1);
-    }
+    $data .= "Absolute thermo: ";
+    $data .= print_ee($thermo, 0, 1);
 
     return $data;
 }

@@ -6,7 +6,8 @@ use lib $ENV{'PERL_LIB'};
 
 use Aaron::AaronInit qw(init_main $parent write_status);
 use Aaron::AaronDriver qw(make_directories get_status_run analyze_result);
-use Aaron::AaronOutput qw(init_log print_status terminate_AARON sleep_AARON);
+use Aaron::AaronOutput qw(init_log print_status terminate_AARON sleep_AARON open_log_thermo 
+						  close_log_thermo);
 #initiate AARON, reading needed information from command line and input files
 init_main();
 init_log(print_params=>1);
@@ -15,12 +16,14 @@ init_log(print_params=>1);
 my $Aaron_running = 1;
 
 while ($Aaron_running) {
+	open_log_thermo();
     make_directories();
     get_status_run();
     $Aaron_running = print_status();
     analyze_result();
     write_status();
     last unless $Aaron_running;
+	close_log_thermo();
     sleep_AARON();
 }
 

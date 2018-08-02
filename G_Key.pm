@@ -137,13 +137,13 @@ sub _read_key_from_input {
                 $self->{n_procs} = $1 unless $self->{n_procs}; next;
             };
             
-            /^\s*[wW]all=(\d+)/ && do {
+            /^\s*[wW]all=(\S+)/ && do {
                 $self->{wall} = $1 unless $self->{wall}; next;};
             /^\s*[sS]hort_procs=(\d+)/ && do {
                 $self->{short_procs} = $1 unless $self->{short_procs}; next;
             };
 
-            /^\s*[sS]hort_wall=(\d+)/ && do {
+            /^\s*[sS]hort_wall=(\S+)/ && do {
                 $self->{short_wall} = $1 unless $self->{short_wall}; next;
             };
 
