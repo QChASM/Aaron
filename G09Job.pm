@@ -1172,15 +1172,15 @@ sub com_route_footer {
 
     my $print_flag;
 	#NOTE this is only for summit cluster!
-	if ($step != 1) {
-		my $mem = $self->{Gkey}->{n_procs} * 4;
-		$route .= "%mem=$mem"."GB\n";
-		$route .= "%nprocshared=$self->{Gkey}->{n_procs}\n";
-	}else {
-		my $mem = $self->{Gkey}->{short_procs} * 4;
-		$route .= "%mem=$mem"."GB\n";
-		$route .= "%nprocshared=$self->{Gkey}->{short_procs}\n";
-	}
+    #if ($step != 1) {
+	#	my $mem = $self->{Gkey}->{n_procs} * 4;
+	#	$route .= "%mem=$mem"."GB\n";
+	#	$route .= "%nprocshared=$self->{Gkey}->{n_procs}\n";
+	#}else {
+	#	my $mem = $self->{Gkey}->{short_procs} * 4;
+	#	$route .= "%mem=$mem"."GB\n";
+	#	$route .= "%nprocshared=$self->{Gkey}->{short_procs}\n";
+	#}
 	####################################
 	
     SWITCH: {

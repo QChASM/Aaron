@@ -467,7 +467,7 @@ sub _analyze_result {
         }
     }
 
-	$data = "Relative thermo: ";
+	my $data = "Relative thermo: ";
     $data = print_ee($thermo);
 
     $data .= "Absolute thermo: ";

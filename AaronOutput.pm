@@ -33,7 +33,7 @@ sub init_log {
     $job_name //= $jobname;
 
     $out_file = $parent . '/' . $job_name . ".log";
-	$thermo_file = $parent . '/' . $job_name . "thermo.dat";
+	$thermo_file = $parent . '/' . $job_name . "_thermo.dat";
     if (-e $out_file) {
         open $ol, ">>$out_file" or die "Can't open $out_file\n";
         &restart_header($print_params);
@@ -510,7 +510,7 @@ sub close_log_thermo {
 
 sub terminate_AARON {
     print_message("Aaron finished, terminated normally\n");
-    clean_up($parent)
+    clean_up($parent);
     my $date = localtime;
     print $ol "AARON stopped $date\n";
     &close_log_thermo();

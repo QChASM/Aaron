@@ -23,8 +23,8 @@ while ($Aaron_running) {
     analyze_result();
     write_status();
     last unless $Aaron_running;
-    sleep_AARON();
 	close_log_thermo();
+    sleep_AARON();
 }
 
 terminate_AARON();
