@@ -8,7 +8,7 @@ use AaronTools::Constants qw(PHYSICAL NAMES UNIT);
 use Aaron::AaronInit qw($G_Key %arg_parser $parent
                  $ligs_subs $template_job $W_Key);
 
-use Aaron::AaronOutput qw(print_message print_ee);
+use Aaron::AaronOutput qw(print_message print_ee print_to_thermo);
 use AaronTools::Catalysis;
 use Aaron::G09Job;
 
@@ -369,7 +369,7 @@ sub analyze_result {
         }
         $data .= "\n" . '=' x 90 . "\n";
     }
-    print_message($data);
+    print_to_thermo($data);
 }
 
 
@@ -467,15 +467,11 @@ sub _analyze_result {
         }
     }
 
-    my $data = '';
-    unless ($W_Key->{multistep}) {
-        $data = print_ee($thermo);
-    }
+	$data = "Relative thermo: ";
+    $data = print_ee($thermo);
 
-    if ($arg_parser{absthermo} || $W_Key->{multistep}) {
-        $data .= "Absolute thermo: ";
-        $data .= print_ee($thermo, 0, 1);
-    }
+    $data .= "Absolute thermo: ";
+    $data .= print_ee($thermo, 0, 1);
 
     return $data;
 }

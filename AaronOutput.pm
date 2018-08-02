@@ -11,23 +11,29 @@ use Cwd;
 use Exporter qw(import);
 
 our @EXPORT = qw(&init_log print_message print_params terminate_AARON 
-                 clean_up print_ee print_status close_log sleep_AARON);
+                 clean_up print_ee print_status close_log sleep_AARON open_log_thermo
+				 close_log_thermo print_to_thermo);
 
 my $QCHASM = $ENV{'QCHASM'};
 $QCHASM =~ s|/\z||;	#Strip trailing / from $QCHASM if it exists
+my $job_name;
 my $ol;
+my $thermo;
 my $out_file;
+my $thermo_file;
 my $old_data;
 my $queue = $ENV{'QUEUE_TYPE'};
 
 sub init_log {
     my %params = @_;
-    my ($job_name, $print_params) = ($params{job_name}, $params{print_params});
+	$job_name = $params{job_name};
+	my $print_params = $params{print_params};
     $print_params //= 0;
 
     $job_name //= $jobname;
 
     $out_file = $parent . '/' . $job_name . ".log";
+	$thermo_file = $parent . '/' . $job_name . "thermo.dat";
     if (-e $out_file) {
         open $ol, ">>$out_file" or die "Can't open $out_file\n";
         &restart_header($print_params);
@@ -36,7 +42,14 @@ sub init_log {
         &header();
         &print_params() if $print_params;;
     }
+	close($ol);
 }
+
+sub open_log_thermo {
+	open $ol, ">>$out_file" or warn "Can't open $out_file\n";
+	open $thermo, ">$thermo_file" or warn "Can't open $thermo_file\n";
+}
+	
 
 #Prints Aaron header to $ol.  open STDOUT as $ol to write to screen
 sub header {
@@ -106,12 +119,14 @@ sub restart_header {
     }
 }
 
-
 sub print_message {
     print "$_[0]";
     print $ol "$_[0]";
 }
 
+sub print_to_thermo {
+	print $thermo "$_[0]";
+}
 
 #print all job parameters to $ol
 sub print_params {
@@ -487,17 +502,18 @@ sub clean_up {
 } #End clean_up
 
 
-sub close_log {
-    my $date = localtime;
-    print $ol "AARON stopped $date\n";
+sub close_log_thermo {
     close ($ol);
+	close ($thermo);
 }
 
 
 sub terminate_AARON {
     print_message("Aaron finished, terminated normally\n");
     clean_up($parent)
-    &close_log();
+    my $date = localtime;
+    print $ol "AARON stopped $date\n";
+    &close_log_thermo();
 }
 
 
