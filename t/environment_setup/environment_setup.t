@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/perl -w
 
 # Test that necessary configuration files are found
 
@@ -8,6 +8,7 @@ use warnings;
 use Test::More;
 
 my $QCHASM = $ENV{QCHASM};
+$QCHASM =~ s/(.*)\/?$/$1/;
 ok( -f "$QCHASM/AaronTools/template.job",
     "$QCHASM/AaronTools/template.job should exist (see tutorial)." );
 
