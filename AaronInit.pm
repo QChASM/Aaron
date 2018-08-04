@@ -172,7 +172,7 @@ sub read_params {
         /^\&[Ss]ubstrates/ && do {
             while(<$in_h>) {
                 /^\&$/ && do {last;};
-                /^(Sub\d+)\:\s+(.*)/ && do {
+                /^\s*(\S+)\:\s+(.*)/ && do {	#Changing to handle any substrate name
                     my $sub_ali = $1;
                     my $sub_sub = $2;
                     my %substituents = split(/[=\s]/, $sub_sub);
