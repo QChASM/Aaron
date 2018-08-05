@@ -144,8 +144,6 @@ sub print_params {
     print $ol "  reaction_type      = $W_Key->{reaction_type}\n" if $W_Key->{reaction_type};
     print $ol "  solvent            = $G_Key->{solvent}\n";
     print $ol "  temperature        = $G_Key->{temperature} K\n";
-    print $ol "  MaxRTS             = $W_Key->{MaxRTS}\n" if $W_Key->{MaxRTS};
-    print $ol "  MaxSTS             = $W_Key->{MaxSTS}\n" if $W_Key->{MaxSTS};
     print $ol "  TS_path            = $W_Key->{TS_path}\n" if $W_Key->{TS_path};
     print $ol "\n Methods:\n";
     print $ol "  method = $method\n";

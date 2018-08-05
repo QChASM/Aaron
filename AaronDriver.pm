@@ -55,19 +55,21 @@ $imitate = sub {
     opendir(DIR, '.') or die "Unable to open dir $working_dir: $!\n";
     my @names = sort readdir(DIR) or die "Unable to read $working_dir: $!\n";
     closedir(DIR);
-    my $find_folder;
+
+    my %step_names = map{ $_ => 1 } @{ $W_Key->{step} };
+    my @names_in_step = grep { exists $step_names{$_} } @names; 
+    @names_in_step && do { @names = @names_in_step };
+
     foreach my $name (@names) {
         next if ($name eq '.');
         next if ($name eq '..');
 
         if (-d $name) {
             &$imitate($name, $f_file, $f_dir);
-            $find_folder = 1;
             next;
         }
         &$f_file($name);
     }
-    $f_dir && &$f_dir($find_folder);
     chdir($start_dir);
 };  #end of $imitate
 
