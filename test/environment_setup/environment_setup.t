@@ -1,19 +1,28 @@
 #!/usr/bin/perl -w
 
-# Test that necessary configuration files are found
+# Test environmental variables are set appropriately
+# and that necessry configuration files are found
 
 use strict;
 use warnings;
 
 use Test::More;
 
-my $QCHASM = $ENV{QCHASM};
-$QCHASM =~ s/(.*)\/?$/$1/;
-ok( -f "$QCHASM/AaronTools/template.job",
-    "$QCHASM/AaronTools/template.job should exist (see tutorial)." );
+ok( $ENV{QCHASM},
+    "QCHASM environmental variable should be set to QCHASM path." );
 
-ok( $ENV{QUEUE_TYPE},
-    "QUEUE_TYPE environmental variable should be set to the queue type" );
+my $QCHASM = $ENV{QCHASM};
+ok( -f "$QCHASM/Aaron/.aaronrc",
+    "$QCHASM/Aaron/.aaronrc should exist for storing group-specific configuration details."
+);
+
+if ( -f "$ENV{HOME}/.aaronrc" ) {
+    pass("$ENV{HOME}/.aaronrc exists");
+} else {
+    diag(
+        "WARNING: $ENV{HOME}/.aaronrc not found. " .
+		"This is optional, but useful for storing user-specific configuration details."
+    );
+}
 
 done_testing();
-

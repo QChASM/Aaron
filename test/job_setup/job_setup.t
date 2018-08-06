@@ -36,7 +36,7 @@ ok( defined $wall, "Read walltime" );
 my $n_procs = $Gkey->{n_procs};
 ok( defined $n_procs, "Read number of cores" );
 my $node = $Gkey->{node};
-#ok( defined $node, "Read node" );
+# ok( defined $node, "Read node" );
 
 my $template_job;
 eval {
@@ -64,7 +64,7 @@ if ($submit_fail) {
     sleep(10);
 }
 
-my $job_found = findJob("$ENV{PWD}");
+my ($job_found) = findJob("$ENV{PWD}");
 ok( $job_found, "Find job" );
 if ($job_found) {
 	my $failed_to_kill;
@@ -72,8 +72,8 @@ if ($job_found) {
         killJob($job_found);
         pass("Killing job $job_found...");
         sleep(5);
-		$failed_to_kill = findJob("$QCHASM/t/job_setup");
-		$failed_to_kill ? 0 : 1;
+		($failed_to_kill) = findJob("$QCHASM/Aaron/test/job_setup");
+		($failed_to_kill) ? 0 : 1;
     } or do {
         fail(   "Cound not kill job submitted to the queue. "
               . "Please find the job and kill it manually. "

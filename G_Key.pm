@@ -129,7 +129,7 @@ sub _read_key_from_input {
 
         /^$/ && do {last if $hit};
         /[Cc]ustom=(\S+)/ && do {$self->{custom} = $1; next;};
-        /^[gG]en=(\S+)/ && do {$self->{gen} = $1 unless $self->{gen}; next;};
+        /^\s*[gG]en=(\S+)/ && do {$self->{gen} = $1 unless $self->{gen}; next;};
 
         if ($hit) {
             #system
