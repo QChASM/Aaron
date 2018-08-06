@@ -319,7 +319,7 @@ sub examine {
         exit(1);
     }
 
-    if (@{ $self->{step} }) {
+    if (@{ $self->{step} } > 1) {
         $self->{multistep} = 1;
     }
 
