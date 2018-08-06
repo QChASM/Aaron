@@ -1,0 +1,5 @@
+TS structures for the propargylation of benzaldehyde catalyzed by (S)-5,5'-di(t-Bu)-2,2'-bipyridine-N,N'-dioxide (Cat 3a from Ref below)
+
+See A. C. Doney, B. J. Rooks, T. Lu, and S. E. Wheeler, "Design of Organocatalysts for Asymmetric Propargylations through Computational Screening ", ACS Catal. 6, 7948 (2016).
+
+Note:  Assumes ligand is C2-symmetric!

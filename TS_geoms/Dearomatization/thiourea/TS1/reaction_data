@@ -1,6 +1,0 @@
-Name=dearomatization
-Description=Dearomatization of XXX by XXX (see DOI XXX)
-bond_constraint=11,18;
-first_cat_atom=28
-key_atoms=29,30,31;66,47;
-key_atoms_description=two hydrogen bonding nitrogens and amine nitrogen, starting with nitrogen farthest from amine

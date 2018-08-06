@@ -144,8 +144,6 @@ sub print_params {
     print $ol "  reaction_type      = $W_Key->{reaction_type}\n" if $W_Key->{reaction_type};
     print $ol "  solvent            = $G_Key->{solvent}\n";
     print $ol "  temperature        = $G_Key->{temperature} K\n";
-    print $ol "  MaxRTS             = $W_Key->{MaxRTS}\n" if $W_Key->{MaxRTS};
-    print $ol "  MaxSTS             = $W_Key->{MaxSTS}\n" if $W_Key->{MaxSTS};
     print $ol "  TS_path            = $W_Key->{TS_path}\n" if $W_Key->{TS_path};
     print $ol "\n Methods:\n";
     print $ol "  method = $method\n";
@@ -257,24 +255,24 @@ sub print_status {
        }
 
 
-        @start && do {$msg .= "\nThe following jobs are going to start:\n";};
+        @start && do {$msg .= "\nStarting jobs:\n";};
         for my $geometry(@start) {
             $msg .= " $geometry is starting the AARON workflow using the geometry from the TS library\n";
         }
 
-        @done && do {$msg .= "\nThe following jobs are done:\n";};
+        @done && do {$msg .= "\nCompleted jobs:\n";};
         for my $geometry(@done) {
             my $job = &$_get_job($geometry);
             my $step_done = $job->{step} - 1;
             $msg .= " $geometry step $step_done is done\n";
         }
 
-        @finished && do {$msg .= "\nThe following AARON are finished: \n";};
+        @finished && do {$msg .= "\nCompleted optimizations: \n";};
         for my $geometry(@finished) {
             $msg .= " $geometry finished normally\n";
         }
 
-        @running && do {$msg .= "\nThe following jobs are running:\n";};
+        @running && do {$msg .= "\nRunning jobs:\n";};
         for my $geometry(@running) {
             my $job = &$_get_job($geometry);
             my $gradient = $job->{gout}->gradient();
@@ -282,14 +280,14 @@ sub print_status {
                     "cycle $job->{cycle}. $gradient\n";
         }
 
-        @pending && do {$msg .= "\nThe following jobs are pending:\n";};
+        @pending && do {$msg .= "\nPending jobs:\n";};
         for my $geometry(@pending) {
             my $job = &$_get_job($geometry);
             $msg .= " $geometry step $job->{step} attempt $job->{attempt}: ";
             $msg .= ($job->{msg} or "No msg recorded") . "\n";
         }
 
-        @restart && do {$msg .= "\nThe following jobs have been restarted due to errors:\n";};
+        @restart && do {$msg .= "\nRestarted jobs due to errors:\n";};
         for my $geometry(@restart) {
             my $job = &$_get_job($geometry);
             $msg .= " $geometry step $job->{step} " .
@@ -302,7 +300,7 @@ sub print_status {
             $msg .= "Now at attempt $job->{attempt}, cycle $job->{cycle}.\n";
         }
 
-        @skipped && do {$msg .= "\nThe following jobs have been skipped due to some error during the calculation: \n";};
+        @skipped && do {$msg .= "\nJobs skipped due to some error during the calculation: \n";};
         for my $geometry(@skipped) {
             my $job = &$_get_job($geometry);
             $msg .= " $geometry step $job->{step} " .
@@ -314,20 +312,20 @@ sub print_status {
             }
         }
 
-        @killed && do {$msg .= "\nThe following jobs are stopped:\n";};
+        @killed && do {$msg .= "\nStopped jobs:\n";};
         for my $geometry(@killed) {
             my $job = &$_get_job($geometry);
             $msg .= "$geometry\n step $job->{step} attemp $job->{attempt}: ";
             $msg .= ($job->{msg} or "No msg recorded") . "\n";
         }
 
-        @repeated && do {$msg .= "\nThe following jobs are repeated conformers:\n";};
+        @repeated && do {$msg .= "\nRepeated conformers:\n";};
         for my $geometry(@repeated) {
             my $job = &$_get_job($geometry);
             $msg .= " $geometry $job->{msg}\n";
         }
 
-        @sleeping && do {$msg .= "\nThe following jobs have not been started and are awaiting other jobs to finish:\n";};
+        @sleeping && do {$msg .= "\nJobs that have not been started and are awaiting other jobs to finish:\n";};
         for my $geometry(@sleeping) {
             $msg .= " $geometry\n";
         }

@@ -1,0 +1,15 @@
+Rh-catalyzed asymmetric hydrogenation of &beta;-aryl-N-acetyl enamides using BIBOP ligand.
+
+Geometries from Y. Guan and S. E. Wheeler, "Automated Quantum Mechanical Predictions of Enantioselectivity in a Rh-Catalyzed Asymmetric Hydrogenation", Angew. Chem. Int. Ed. 56, 9101 (2017).
+
+TS structures are for the two H-transfer steps, and are named as in Scheme 2 from the reference above, with 'a' replacing &alpha; and 'b' replacing &beta;.
+
+For example, 
+
+TS1&beta;1 is in TS1/tsb1.xyz
+
+TS1&beta;2 and TS1&alpha;2 are excluded from the library because they tend to be very high in energy.
+
+For experiments, see G. Liu, X. Liu, Z. Cai, G. Jiao, G. Xu, W. Tang, Angew. Chem. Int. Ed.  2013, 52, 4235-4238.
+
+Note: Assumes C2-symmetric ligand!

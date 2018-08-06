@@ -234,9 +234,8 @@ sub new {
     my %params = @_;
     my $self = {
         reaction_type => $params{reaction_type},
-        MaxRTS => $params{MaxRTS},
-        MaxSTS => $params{MaxSTS},
         template => $params{template},
+        step => $params{step},
         input_conformers_only => $params{input_conformers_only},
         full_conformers => $params{full_conformers},
         selectivity => $params{selectivity},
@@ -251,9 +250,8 @@ sub new {
    bless $self, $class;
 
    $self->{reaction_type} //= '';
-   $self->{MaxRTS} //= 1;
-   $self->{MaxSTS} //= 1;
    $self->{template} //= '';
+   $self->{step} //= [];
    $self->{input_conformers_only} //= 0;
    $self->{full_conformers} //= 0;
    $self->{selectivity} //= ['R', 'S'];
@@ -277,6 +275,7 @@ sub read_input {
     while(<IN>) {
         /[rR]eaction_type=(\S+)/ && do {$self->{reaction_type} = $1; next;};
         /[tT]emplate=(\S+)/ && do {$self->{template} = $1; next;};
+        /[sS]tep=(\S+)/ && do {$self->{step} = [split(/;/, $1)]; next;};
         /[Ii]nput_conformers_only=(\d+)/ && do {$self->{input_conformers_only} = $1; next;};
         /[Ff]ull_conformers=(\d+)/ && do {$self->{full_conformers} = $1; next;};
         /[Ss]electivity=(\S+)/ && do {$self->{selectivity} = [split(/;/, $1)];next;};
@@ -318,6 +317,10 @@ sub examine {
         print "Can't find $self->{template} in either user defined TS library: ".
               "$HOME/Aaron_libs/$TS_lib/ or the built_in library: $QCHASM/Aaron/$TS_lib/$self->{template}\n";
         exit(1);
+    }
+
+    if (@{ $self->{step} } > 1) {
+        $self->{multistep} = 1;
     }
 
     $self->{TS_path} = $TS_path;
