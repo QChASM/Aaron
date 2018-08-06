@@ -417,6 +417,7 @@ sub _analyze_result {
     }
 
     my $thermo = {};
+	my $abs_thermo = {};
 
     for my $n (0..$#stereo_geo) {
         my $key = $no_sele ? 'NONE' : $W_Key->{selectivity}->[$n];
@@ -424,21 +425,24 @@ sub _analyze_result {
         $thermo->{$key}->{sum} = [];
         $thermo->{$key}->{geos} = {};
 
+        $abs_thermo->{$key} = {};
+        $abs_thermo->{$key}->{geos} = {};
+
         my @geos = @{ $stereo_geo[$n] };
 
         for my $geo (@geos) {
             if ($jobs->{$geo}->{conformers}) {
                 $thermo->{$key}->{geos}->{$geo}->{conformers} = {};
+                $abs_thermo->{$key}->{geos}->{$geo}->{conformers} = {};
                 my $thermo_cf_exp = [];
+				
                 for my $cf (sort keys %{ $jobs->{$geo}->{conformers} }) {
                     my $job = $jobs->{$geo}->{conformers}->{$cf};
 
                     ! @{$job->{thermo}} && do { next; };
 
                     my @thermo_rel;
-                    if ($W_Key->{multistep}) {
-                        @thermo_rel = @{ $job->{thermo} };
-                    }else {
+                    if (! $W_Key->{multistep}) {
                         @thermo_rel = map { ($job->{thermo}->[$_] - $min[$_]) * $hart_to_kcal }
                                           (0..$#{ $job->{thermo} });
                     }
@@ -446,19 +450,23 @@ sub _analyze_result {
                     for my $i (0..$#thermo_rel) {
                         $thermo_cf_exp->[$i] += exp(-$thermo_rel[$i]/$RT);
                     }
-                    $thermo->{$key}->{geos}->{$geo}->{conformers}->{$cf} = [@thermo_rel];
+
+                    $thermo->{$key}->{geos}->{$geo}->{conformers}->{$cf} = [@thermo_rel] if @thermo_rel;
+                    $abs_thermo->{$key}->{geos}->{$geo}->{conformers}->{$cf} = [@{ $job->{thermo} }];
+                    $abs_thermo->{$key}->{found} = 1;
                 }
-                my @thermo_cf = map { -1*$RT*log($_) } @$thermo_cf_exp;
-                $thermo->{$key}->{geos}->{$geo}->{thermo} = [@thermo_cf];
+                my @thermo_cf = map { -1*$RT*log($_) } @$thermo_cf_exp if @$thermo_cf_exp;
+                $thermo->{$key}->{geos}->{$geo}->{thermo} = [@thermo_cf] if @$thermo_cf_exp;
             }else {
                 for my $i (0..$#{ $jobs->{$geo}->{thermo} }) {
-                    if ($W_Key->{multistep}) {
-                        $thermo->{$key}->{geos}->{$geo}->{thermo}->[$i] =
-                            $jobs->{$geo}->{thermo}->[$i];
-                    }else {
+                    if (! $W_Key->{multistep}) {
                         $thermo->{$key}->{geos}->{$geo}->{thermo}->[$i] = 
                             ($jobs->{$geo}->{thermo}->[$i] - $min[$i]) * $hart_to_kcal;
                     }
+                }
+                $abs_thermo->{$key}->{geos}->{$geo}->{thermo} =  [@{ $jobs->{$geo}->{thermo} }];
+                if (@{ $jobs->{$geo}->{thermo} } ) {
+                    $thermo->{$key}->{found} = 1;
                 }
             }
 
@@ -473,7 +481,7 @@ sub _analyze_result {
     $data = print_ee($thermo);
 
     $data .= "Absolute thermo: ";
-    $data .= print_ee($thermo, 0, 1);
+    $data .= print_ee($abs_thermo, 1);
 
     return $data;
 }

@@ -38,7 +38,6 @@ $input_file or pod2usage (
 
 #initiate AARON, reading needed information from command line and input files
 init_main();
-&analyze_result();
 &grab_coords();
 
 
