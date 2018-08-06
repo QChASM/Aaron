@@ -36,7 +36,7 @@ ok( defined $wall, "Read walltime" );
 my $n_procs = $Gkey->{n_procs};
 ok( defined $n_procs, "Read number of cores" );
 my $node = $Gkey->{node};
-ok( defined $node, "Read node" );
+#ok( defined $node, "Read node" );
 
 my $template_job;
 eval {
