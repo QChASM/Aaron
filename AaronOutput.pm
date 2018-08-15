@@ -177,7 +177,6 @@ sub print_status {
 
     my $msg = "Status for all jobs...($date1)\n";
 
-
     for my $ligand (keys %{ $ligs_subs }) {
 
         my @start;
@@ -330,15 +329,16 @@ sub print_status {
             $msg .= " $geometry\n";
         }
 
-        print_message('=' x 80);
-        print_message("\n$msg\n\n");
-
     #write status into .sta file
 
         if (@done || @running || @pending || @restart || @start) {
             $running = 1;
         }
     }
+
+    print_message('=' x 80);
+    print_message("\n$msg\n\n");
+
     return $running;
 }
 

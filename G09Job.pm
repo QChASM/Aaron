@@ -900,7 +900,6 @@ sub build_com {
 
     my $com_file = "$file_name.$step.com";
     my $comment = "step $step (attempt $self->{attempt}) cycle $self->{cycle}";
-	print "$com_file\n";
 
     $self->{catalysis}->write_com( comment => $comment,
                                     route => $route,
