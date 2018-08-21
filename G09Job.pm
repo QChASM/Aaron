@@ -33,12 +33,12 @@ sub new {
     my %params = @_;
 
     my ($name, $step, $cycle, $Wkey,
-        $thermo, $attempt, $status, 
+        $thermo, $attempt, $status,
         $catalysis, $Gkey, $template_job,
-        $skip_step1) = ($params{name}, $params{step}, 
+        $skip_step1) = ($params{name}, $params{step},
                         $params{cycle}, $params{Wkey},
-                        $params{thermo}, $params{attempt}, 
-                        $params{status}, $params{catalysis}, 
+                        $params{thermo}, $params{attempt},
+                        $params{status}, $params{catalysis},
                         $params{Gkey}, $params{template_job}, $params{skip_step1});
     $name //= '';
     $step //= $skip_step1 ? 2: 1;
@@ -96,7 +96,7 @@ sub set_catalysis {
     my ($catalysis) = @_;
 
     $self->{catalysis} = $catalysis;
-} 
+}
 
 
 sub set_status {
@@ -152,7 +152,7 @@ sub check_status_run {
 sub _skip_geometry {
     my $self = shift;
 
-    my ($check_finished) = @_; 
+    my ($check_finished) = @_;
 
     my @status = ('repeated', 'killed');
 
@@ -183,7 +183,7 @@ sub _check_step {
 
     my $jobrunning = AaronTools::JobControl::findJob($path);
     my $step = $maxstep;
-    
+
     my $check_reaction;
     my $output;
     while($step >= 0) {
@@ -327,10 +327,10 @@ sub examine_connectivity {
         $self->remove_later_than2();
 
         $self->{step} = 2;
-        
+
         print_message("bond changing incorrectly, repeating step1 constraining problematic bond");
 
-        $self->build_com( directory => '.');
+        $self->build_com();
 
         $self->{constraints} = [grep {$_->[1]} @{ $self->{constraints} }];
 
@@ -343,9 +343,9 @@ sub examine_connectivity {
 
 sub check_conformers {
     my $self = shift;
-   
+
     my @cf = grep { $self->{conformers}->{$_}->{status} ne 'sleeping' &&
-                    ($self->{conformers}->{$_}->{status} ne 'repeated') && 
+                    ($self->{conformers}->{$_}->{status} ne 'repeated') &&
                     ($self->{conformers}->{$_}->{status} ne 'pending') }
                   keys %{ $self->{conformers} };
 
@@ -380,9 +380,9 @@ sub check_conformers {
                         if ($job_i->{step} < $job_j->{step}) {
                             $slow_geo = $i;
                         }elsif ($job_i->{step} == $job_j->{step}) {
-                            my $converged_i = grep { $job_i->{gout}->{gradient}->{$_}->{converged} eq 
+                            my $converged_i = grep { $job_i->{gout}->{gradient}->{$_}->{converged} eq
                                                      'YES' } keys %{ $job_i->{gout}->{gradient} };
-                            my $converged_j = grep { $job_j->{gout}->{gradient}->{$_}->{converged} eq 
+                            my $converged_j = grep { $job_j->{gout}->{gradient}->{$_}->{converged} eq
                                                      'YES' } keys %{ $job_j->{gout}->{gradient} };
                             if ($converged_i < $converged_j) {
                                 $slow_geo = $i;
@@ -463,7 +463,7 @@ sub generate_conformers {
             my $conf_num = ($cf_num - 1) % $num_conf + 1;
 
             my $body_num = $cf_num - $conf_num;;
-    
+
             my $array = $cf_obj->{catalysis}->conf_array( number => $conf_num );
 
             my @label_changed = grep { $array->[$_] > 1 } (0..$#{ $array });
@@ -536,7 +536,7 @@ sub run_stepX {
 
             $self->{catalysis}->update_geometry($com);
         }
-    
+
         $self->{attempt} ++;
         if ($self->{attempt} > 5) {
             $self->{status} = 'killed';
@@ -614,7 +614,7 @@ sub higher_level_thermo {
 
     unless ($#{ $self->{thermo} } == 7) {
         for my $i (0..$#{ $self->{thermo} }) {
-            $self->{thermo}->[$i+4] = $self->{gout}->energy() + 
+            $self->{thermo}->[$i+4] = $self->{gout}->energy() +
                                       $self->{thermo}->[$i] - $self->{thermo}->[0];
         }
     }
@@ -672,7 +672,7 @@ sub submit {
     }
 
     unless($self->{Wkey}->{nosub}) {
-        $launch_failed += AaronTools::JobControl::submit_job( 
+        $launch_failed += AaronTools::JobControl::submit_job(
                                  directory => $geometry,
                                   com_file => "$filename.$step.com",
                                   walltime => $wall,
@@ -752,17 +752,17 @@ sub build_com {
     my $error = $self->{error};
     my $catalysis = $self->{catalysis};
 
-    my ($route, $footer, $print_flag) = $self->com_route_footer( 
+    my ($route, $footer, $print_flag) = $self->com_route_footer(
         filename => $filename,
         low_method => $low_method,
         method => $method,
         high_method => $high_method,
     );
 
-    ERROR: {    
+    ERROR: {
         if ($error eq 'CONV') {my $scf_change = $route =~ /scf=xqc/ ?
                                                 0 : ($route .= " scf=xqc");
-            
+
                                 my $message = " SCF convergence problems with $filename ";
                                 if ($scf_change) {
                                     $message .= "...scf=xqc is in use\n";
@@ -793,7 +793,7 @@ sub build_com {
                                }
 
         if ($error eq "CHK" ||
-            $error eq 'OPTSTEP') { open COM, "<$file_name.$step.com" or do { 
+            $error eq 'OPTSTEP') { open COM, "<$file_name.$step.com" or do {
                                        my $msg = "$filename CHK problem, " .
                                                  "while Aaron cannot open $filename.$step.com. " .
                                                  "Aaron has skipped this, check that.\n";
@@ -821,7 +821,7 @@ sub build_com {
                                     $msg .= "Aaron failed to remove clash, please try manually\n";
                                     $self->{msg} = $msg;
                                     $self->{status} = 'skipped';
-                                    
+
                                     return 0;
                                  }else {
                                      $msg .= "Aaron has removed the clash, the job is restarted. ";
@@ -913,7 +913,7 @@ sub build_com {
 
 
 
-#subroutine reduce maxstep from maxstep 
+#subroutine reduce maxstep from maxstep
 sub reduce_maxstep {
     my ($route_temp) = @_ ;
     my $step_change;
@@ -945,7 +945,7 @@ our @ISA = qw(Aaron::G09Job);
 
 sub new {
     my $class = shift;
-     
+
     my $self = new Aaron::G09Job(@_);
 
     bless $self, $class;
@@ -965,7 +965,7 @@ sub new_conformer {
 
     $self->{conformers} = {} unless $self->{conformers};
 
-    $self->{conformers}->{$cf} = new Aaron::G09Job_TS( 
+    $self->{conformers}->{$cf} = new Aaron::G09Job_TS(
               name => $self->{name} . "/$cf",
               step => $params{step},
              cycle => $params{cycle},
@@ -1055,7 +1055,7 @@ sub check_reaction {
             return;
         }
 
-        $self->remove_later_than2(); 
+        $self->remove_later_than2();
         $self->{step} = 2;
         $self->{attempt} = 1;
         $self->build_com();
@@ -1146,10 +1146,10 @@ sub com_route_footer {
 
     my %params = @_;
 
-    my ($low_method, $method, 
+    my ($low_method, $method,
         $high_method, $filename) = ( $params{low_method},
-                                     $params{method}, 
-                                     $params{high_method}, 
+                                     $params{method},
+                                     $params{high_method},
                                      $params{filename} );
 
     my $dir //= $self->{name};
@@ -1181,7 +1181,7 @@ sub com_route_footer {
 	#	$route .= "%nprocshared=$self->{Gkey}->{short_procs}\n";
 	#}
 	####################################
-	
+
     SWITCH: {
         if ($step == 1) { $route .= "#$low_method opt nosym";
                           #add constraints to substrate and old part of catalyst
@@ -1190,7 +1190,7 @@ sub com_route_footer {
                           last SWITCH; }
 
         if ($step == 2) { $route .= "#$method opt=(modredundant,maxcyc=1000)";
-                            
+
                           for my $constraint (@{ $catalysis->{constraints} }) {
                               my @bond = map { $_ + 1 } @{$constraint->[0]};
                               $footer .= "B $bond[0] $bond[1] F\n";
@@ -1260,7 +1260,7 @@ sub new_conformer {
 
     $self->{conformers} = {} unless $self->{conformers};
 
-    $self->{conformers}->{$cf} = new Aaron::G09Job_MIN( 
+    $self->{conformers}->{$cf} = new Aaron::G09Job_MIN(
               name => $self->{name} . "/$cf",
               step => $params{step},
              cycle => $params{cycle},
@@ -1350,10 +1350,10 @@ sub com_route_footer {
 
     my %params = @_;
 
-    my ($low_method, $method, 
+    my ($low_method, $method,
         $high_method, $filename) = ( $params{low_method},
-                                     $params{method}, 
-                                     $params{high_method}, 
+                                     $params{method},
+                                     $params{high_method},
                                      $params{filename} );
 
     my $dir //= $self->{name};
@@ -1379,7 +1379,7 @@ sub com_route_footer {
         if ($step == 1) { $route .= "#$low_method opt nosym";
                           #add constraints to substrate and old part of catalyst
                           $print_flag = 1;
-                          $footer = $self->{Gkey}->{low_level}->footer($catalysis) unless $self->{Wkey}->{debug}; 
+                          $footer = $self->{Gkey}->{low_level}->footer($catalysis) unless $self->{Wkey}->{debug};
                           last SWITCH; }
 
         if ($step == 2) { $route = "\%chk=$filename.chk\n";
@@ -1427,7 +1427,7 @@ sub new {
     bless $self, $class;
 
     $self->{maxstep} = $MAXSTEP->{TS_SINGLE};
-    
+
     return $self;
 }
 
@@ -1440,7 +1440,7 @@ sub new_conformer {
 
     $self->{conformers} = {} unless $self->{conformers};
 
-    $self->{conformers}->{$cf} = new Aaron::G09Job_TS_Single( 
+    $self->{conformers}->{$cf} = new Aaron::G09Job_TS_Single(
               name => $self->{name} . "/$cf",
               step => $params{step},
              cycle => $params{cycle},
@@ -1460,7 +1460,7 @@ sub new_conformer {
 sub _copy {
     my $self = shift;
 
-    my $new = new Aaron::G09Job_TS_Single( 
+    my $new = new Aaron::G09Job_TS_Single(
         name => $self->{name},
         step => $self->{step},
        cycle => $self->{cycle},
@@ -1505,10 +1505,10 @@ sub com_route_footer {
 
     my %params = @_;
 
-    my ($low_method, $method, 
+    my ($low_method, $method,
         $high_method, $filename) = ( $params{low_method},
-                                     $params{method}, 
-                                     $params{high_method}, 
+                                     $params{method},
+                                     $params{high_method},
                                      $params{filename} );
 
     my $dir //= $self->{name};
@@ -1531,7 +1531,7 @@ sub com_route_footer {
     SWITCH: {
         if ($step == 1) { $route = "\%chk=$filename.chk\n";
                           $route .= "#$method opt=(modredundant,maxcyc=1000)";
-                            
+
                           for my $constraint (@{ $catalysis->{constraints} }) {
                               my @bond = map { $_ + 1 } @{$constraint->[0]};
                               $footer .= "B $bond[0] $bond[1] F\n";
@@ -1668,7 +1668,7 @@ sub examine_connectivity {
         $self->remove_later_than1();
 
         $self->{step} = 1;
-        
+
         print_message("bond changing incorrectly, repeating step1 with constrains on the problematic bond");
 
         $self->build_com( directory => '.');
@@ -1727,7 +1727,7 @@ sub check_reaction {
             return;
         }
 
-        $self->remove_later_than1(); 
+        $self->remove_later_than1();
         $self->{step} = 1;
         $self->{attempt} = 1;
         $self->build_com();
@@ -1780,7 +1780,7 @@ sub job_running {
         ($self->{status} eq 'finished')) {
         $running = 0;
     }
-    
+
     return $running;
 }
 
@@ -1845,7 +1845,7 @@ sub _check_step {
     my $path = cwd;
 
     my $step = $maxstep;
-    
+
     my $check_reaction;
     my $output;
     while($step >= 0) {
@@ -1905,7 +1905,7 @@ sub submit {
     }
 
     unless($self->{Wkey}->{nosub}) {
-        AaronTools::JobControl::call_g09( 
+        AaronTools::JobControl::call_g09(
                 com_file => "$filename.$step.com",
                 walltime => $wall,
                 numprocs => $nprocs,
@@ -1918,11 +1918,11 @@ sub submit {
 sub print_status {
     my $self = shift;
 
-    my $time =localtime; 
+    my $time =localtime;
 
     my $msg = "Status at $time:\n";
     $msg .= "$self->{name} at cycle $self->{cycle}, step $self->{step}, attempt $self->{attempt}\n";
-    
+
     if ($self->{error}) {
         $msg .= "Error found in job: $self->{msg}\n";
     }
