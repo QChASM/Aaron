@@ -22,7 +22,7 @@ use strict; use warnings;
 
 use Cwd qw(cwd);
 use File::Path qw(make_path);
-use Aaron::AaronOutput qw(print_message close_log);
+use Aaron::AaronOutput qw(print_message close_log_thermo);
 use AaronTools::G09Out;
 use AaronTools::JobControl;
 use Data::Dumper;
@@ -547,7 +547,7 @@ sub run_stepX {
         my $quit = $self->build_com();
         if ($quit) {
             chdir($parent);
-            close_log();
+            close_log_thermo();
             exit 0;
         }
         $self->submit();
@@ -1414,7 +1414,7 @@ package Aaron::G09Job_TS_Single;
 use strict; use warnings;
 
 use Cwd qw(cwd);
-use Aaron::AaronOutput qw(print_message close_log);
+use Aaron::AaronOutput qw(print_message close_log_thermo);
 use Data::Dumper;
 
 our @ISA = qw(Aaron::G09Job);
@@ -1819,7 +1819,7 @@ sub run_stepX {
         my $quit = $self->build_com( directory => '.');
         if ($quit) {
             chdir($parent);
-            close_log();
+            close_log_thermo();
             exit 0;
         }
         $self->submit();
