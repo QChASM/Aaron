@@ -415,17 +415,17 @@ sub print_ee {
 
     if ($G_Key->{high_level}->method()) {
         if ($absolute_only || $arg_parser{multistep} || $absolute) {
-            $data .= sprintf "%19s%13s%13s%13s%13s%13s%13s%13s\n", 'E', 'H', 'G (RRHO)', 'G (quasi-RRHO)',
-                                                    'E\'', 'H\'', 'G (RRHO)\'', 'G (quasi-RRHO)\'';
+            $data .= sprintf "%19s%13s%13s%13s%13s%13s%13s%13s\n", 'E', 'H', 'G(RRHO)', 'G(quasi-RRHO)',
+                                                    'E\'', 'H\'', 'G(RRHO)\'', 'G(quasi-RRHO)\'';
         }else {
-            $data .= sprintf "%16s%10s%10s%10s%10s%10s%10s%10s\n", 'E', 'H', 'G (RRHO)', 'G (quasi-RRHO)',
-                                                    'E\'', 'H\'', 'G (RRHO)\'', 'G (quasi-RRHO)\'';
+            $data .= sprintf "%16s%10s%10s%10s%10s%10s%10s%10s\n", 'E', 'H', 'G(RRHO)', 'Gr( quasi-RRHO)',
+                                                    'E\'', 'H\'', 'G(RRHO)\'', 'G(quasi-RRHO)\'';
         }
     }else {
         if ($absolute_only || $arg_parser{multistep} || $absolute) {
-            $data .= sprintf "%19s%13s%13s%13s\n", 'E', 'H', 'G (RRHO)', 'G (quasi-RRHO)',
+            $data .= sprintf "%19s%13s%13s%13s\n", 'E', 'H', 'G(RRHO)', 'G(quasi-RRHO)',
         }else {
-            $data .= sprintf "%16s%10s%10s%10s\n", 'E', 'H', 'G (RRHO)', 'G (quasi-RRHO)',
+            $data .= sprintf "%16s%10s%10s%10s\n", 'E', 'H', 'G(RRHO)', 'G(quasi-RRHO)',
         }
     }
 
