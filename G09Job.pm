@@ -729,7 +729,7 @@ sub build_com {
 
     my $low_method = $self->{Gkey}->{low_level}->method() if $self->{Gkey}->{low_level};
     my $method = $self->{Gkey}->{level}->method();
-    my $high_method = $self->{Gkey}->{high_level}->{method} if $self->{Gkey}->{high_level};
+    my $high_method = $self->{Gkey}->{high_level}->method() if $self->{Gkey}->{high_level}->{method};
 
     if ($self->{Wkey}->{debug}) {
         $method = $low_method;
