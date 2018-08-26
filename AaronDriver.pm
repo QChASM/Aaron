@@ -210,7 +210,7 @@ sub dir_tree {
                 my $head = $newdir; $head =~ s/\/Cf\d+$//;
 
                 unless ($cata_read->{$newdir}) {
-                    print "  Preparing data structures for $newdir...\n";
+                    print "  Checking $newdir...\n";
                     #make distance hashes for each geometry
                     my $catalysis = new AaronTools::Catalysis( name => $extend,
                                                        substituents => $substituents,
