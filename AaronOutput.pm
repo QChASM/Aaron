@@ -10,7 +10,7 @@ use Aaron::AaronInit qw($G_Key %arg_parser $W_Key $parent $jobname $ligs_subs);
 use Cwd;
 use Exporter qw(import);
 
-our @EXPORT = qw(&init_log print_message print_params terminate_AARON 
+our @EXPORT = qw(&init_log print_message print_params terminate_AARON
                  clean_up print_ee print_status close_log sleep_AARON open_log_thermo
 				 close_log_thermo print_to_thermo);
 
@@ -49,7 +49,7 @@ sub open_log_thermo {
 	open $ol, ">>$out_file" or warn "Can't open $out_file\n";
 	open $thermo, ">$thermo_file" or warn "Can't open $thermo_file\n";
 }
-	
+
 
 #Prints Aaron header to $ol.  open STDOUT as $ol to write to screen
 sub header {
@@ -172,7 +172,7 @@ sub print_status {
     print "\033[2J";                                              #clear the screen
     print "\033[0;0H";                                    #jump to 0,0
     my $date1=localtime;                          #current date
-    
+
     my $running = 0;
 
     my $msg = "Status for all jobs...($date1)\n";
@@ -324,10 +324,16 @@ sub print_status {
             $msg .= " $geometry $job->{msg}\n";
         }
 
-        @sleeping && do {$msg .= "\nJobs that have not been started and are awaiting other jobs to finish:\n";};
-        for my $geometry(@sleeping) {
-            $msg .= " $geometry\n";
-        }
+		@sleeping && do {$msg .= "\nJobs that have not been started and are awaiting other jobs to finish:\n";};
+		my $ncolumns = 3;
+		for ( my $i = 0; $i < @sleeping; $i++ ){
+			$msg .= " $sleeping[$i] ";
+			if ($i % $ncolumns == $ncolumns - 1){
+				$msg .= "\n";
+			}
+		}
+		if ( $#sleeping % $ncolumns != $ncolumns - 1 ){ $msg .= "\n"; }
+
 
     #write status into .sta file
 
@@ -380,7 +386,7 @@ sub print_ee {
         return $data;
     }
 
-    my $ee = []; 
+    my $ee = [];
     my $er = {};
     if (keys %{ $thermo } == 2) {
         my ($sum1, $sum2) = map { $thermo->{$_}->{sum} } sort keys %{ $thermo };
@@ -464,7 +470,7 @@ sub print_ee {
             if ($absolute_only && $thermo_geo->{conformers}) {
                 $data .= sprintf "%-6s\n", $geo;
             }else {
-                &$print_thermo( name => $geo, 
+                &$print_thermo( name => $geo,
                               thermo => $thermo_geo->{thermo}) if @{ $thermo_geo->{thermo} };
             }
 
