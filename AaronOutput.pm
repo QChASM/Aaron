@@ -336,7 +336,6 @@ sub print_status {
         }
     }
 
-    print_message('=' x 80);
     print_message("\n$msg\n\n");
 
     return $running;
