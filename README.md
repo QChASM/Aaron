@@ -3,7 +3,7 @@ AARON 1.0, An Automated Reaction Optimizer for New catalysts
 
 We are currently merging several development branches of AARON and AaronTools, to be released soon as along with accompanying documentation.
 
-<b>Please check back in mid-August!</b>
+<b>Please check back at the end of August!</b>
 
 Installation instructions and basic tutorials are available <a href="http://github.com/QChASM/Aaron/wiki">here</a>.
 
