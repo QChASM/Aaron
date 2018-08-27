@@ -35,11 +35,12 @@ sub new {
     my ($name, $step, $cycle, $Wkey,
         $thermo, $attempt, $status,
         $catalysis, $Gkey, $template_job,
-        $skip_step1) = ($params{name}, $params{step},
-                        $params{cycle}, $params{Wkey},
-                        $params{thermo}, $params{attempt},
-                        $params{status}, $params{catalysis},
-                        $params{Gkey}, $params{template_job}, $params{skip_step1});
+        $skip_step1, $maxstep) = ($params{name}, $params{step},
+                                  $params{cycle}, $params{Wkey},
+                                  $params{thermo}, $params{attempt},
+                                  $params{status}, $params{catalysis},
+                                  $params{Gkey}, $params{template_job}, 
+                                  $params{skip_step1}, $params{maxstep});
     $name //= '';
     $step //= $skip_step1 ? 2: 1;
     $cycle //= 1;
@@ -47,6 +48,7 @@ sub new {
     $status //= 'start';
     $catalysis //= {};
     $thermo //= [];
+    $maxstep //='';
 
     my $self = {
         name => $name,
@@ -61,6 +63,7 @@ sub new {
         Gkey => $Gkey,
         Wkey => $Wkey,
         template_job => $template_job,
+        maxstep => $maxstep,
     };
 
     bless $self, $class;
@@ -726,7 +729,7 @@ sub build_com {
 
     my $low_method = $self->{Gkey}->{low_level}->method() if $self->{Gkey}->{low_level};
     my $method = $self->{Gkey}->{level}->method();
-    my $high_method = $self->{Gkey}->{high_level}->method() if $self->{Gkey}->{high_level};
+    my $high_method = $self->{Gkey}->{high_level}->method() if $self->{Gkey}->{high_level}->{method};
 
     if ($self->{Wkey}->{debug}) {
         $method = $low_method;
@@ -949,10 +952,10 @@ sub new {
     my $self = new Aaron::G09Job(@_);
 
     bless $self, $class;
-
-    $self->{maxstep} = $MAXSTEP->{TS};
-    $self->{maxstep}-- unless $self->{Gkey}->{high_method};
-
+    if (! $self->{maxstep}) {
+        $self->{maxstep} = $MAXSTEP->{TS};
+        $self->{maxstep}-- unless $self->{Gkey}->{high_level}->{method};
+    }
     return $self;
 }
 
@@ -992,6 +995,7 @@ sub _copy {
                            status => $self->{status},
                               msg => $self->{msg},
                            thermo => [@{ $self->{thermo} }],
+                          maxstep => $self->{maxstep},
                             error => $self->{error} );
     return $new;
 }
@@ -1075,7 +1079,7 @@ sub move_forward {
     if ($self->{step} >= 4) {
         $self->get_thermo();
         if ($self->{step} == $self->maxstep()) {
-            $self->higher_level_thermo() if $self->{Gkey}->{high_method};
+            $self->higher_level_thermo() if $self->{Gkey}->{high_level}->{method};
             $self->{status} = 'finished';
             $finished = 1;
         }
@@ -1244,10 +1248,11 @@ sub new {
     my $self = new Aaron::G09Job(@_);
 
     bless $self, $class;
-
-    $self->{maxstep} = $MAXSTEP->{INT};
-    $self->{maxstep}-- unless $self->{Gkey}->{high_method};
-
+    
+    unless ($self->{maxstep}) {
+        $self->{maxstep} = $MAXSTEP->{INT};
+        $self->{maxstep}-- unless $self->{Gkey}->{high_level}->{method};
+    }
     return $self;
 }
 
@@ -1287,6 +1292,7 @@ sub _copy {
                             status => $self->{status},
                                msg => $self->{msg},
                             thermo => [@{ $self->{thermo} }],
+                           maxstep => $self->{maxstep},
                              error => $self->{error} );
     return $new;
 }
@@ -1315,7 +1321,7 @@ sub move_forward {
     if ($self->{step} >= 3) {
         $self->get_thermo();
         if ($self->{step} == $self->maxstep()) {
-            $self->higher_level_thermo() if $self->{Gkey}->{high_method};
+            $self->higher_level_thermo() if $self->{Gkey}->{high_level}->{method};
             $self->{status} = 'finished';
             $finished = 1;
         }
@@ -1425,9 +1431,10 @@ sub new {
     my $self = new Aaron::G09Job(@_);
 
     bless $self, $class;
-
-    $self->{maxstep} = $MAXSTEP->{TS_SINGLE};
-
+    
+    unless ($self->{maxstep}) {
+        $self->{maxstep} = $MAXSTEP->{TS_SINGLE};
+    }
     return $self;
 }
 
@@ -1467,6 +1474,7 @@ sub _copy {
       attemp => $self->{attempt},
       status => $self->{status},
          msg => $self->{msg},
+     maxstep => $self->{maxstep},
       thermo => [@{ $self->{thermo} }],
        error => $self->{error} );
     return $new;

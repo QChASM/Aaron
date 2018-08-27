@@ -210,7 +210,7 @@ sub dir_tree {
                 my $head = $newdir; $head =~ s/\/Cf\d+$//;
 
                 unless ($cata_read->{$newdir}) {
-                    print "  Preparing data structures for $newdir...\n";
+                    print "  Checking $newdir...\n";
                     #make distance hashes for each geometry
                     my $catalysis = new AaronTools::Catalysis( name => $extend,
                                                        substituents => $substituents,
@@ -359,17 +359,14 @@ sub get_status_run {
 sub analyze_result {
    
     my $data = ''; 
-    $data .= '=' x 90 . "\n";
     for my $ligand (sort keys %{ $ligs_subs }) {
-        $data .= "Thermochemical data so far for $ligand (T = $G_Key->{temperature} K):\n";
-        $data .= '~' x 90 . "\n";
+        $data .= "Available thermochemical data for $ligand (T = $G_Key->{temperature} K):\n";
         my @items = ($ligand, sort keys %{ $ligs_subs->{$ligand}->{substrate} });
         for my $item (@items) {
-            $data .= "$item: ";
+            $data .= "$item:\n";
             $data .= &_analyze_result($ligs_subs->{$ligand}->{jobs}, $item);
-            $data .= '~' x 90 . "\n";
         }
-        $data .= "\n" . '=' x 90 . "\n";
+        $data .= "\n";
     }
     print_to_thermo($data);
 }
@@ -467,6 +464,7 @@ sub _analyze_result {
                 $abs_thermo->{$key}->{geos}->{$geo}->{thermo} =  [@{ $jobs->{$geo}->{thermo} }];
                 if (@{ $jobs->{$geo}->{thermo} } ) {
                     $thermo->{$key}->{found} = 1;
+                    $abs_thermo->{$key}->{found} = 1;
                 }
             }
 
@@ -477,10 +475,10 @@ sub _analyze_result {
         }
     }
 
-	my $data = "Relative thermo: ";
-    $data = print_ee($thermo);
+    my $data = "Relative thermochemistry (kcal/mol)\n";
+    $data .= print_ee($thermo);
 
-    $data .= "Absolute thermo: ";
+    $data .= "Absolute thermochemistry (hartees)\n";
     $data .= print_ee($abs_thermo, 1);
 
     return $data;

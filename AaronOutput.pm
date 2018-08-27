@@ -102,7 +102,7 @@ sub header {
     print $ol "                              New catalysts\n\n";
     print $ol "Citation:\n";
     print $ol "AARON, verson $version, Y. Guan, V. M. Ingman, B. J. Rooks, and S. E. Wheeler, Texas A&M University, $year.\n\n";
-    print $ol "Y. Guan, V. M. Ingman, B. J. Rooks, and S. E. Wheeler, \"AARON: An Automated Reaction Optimizer for New Catlaysts\",\n J. Chem. Theory Comput. (submitted).\n\n";
+    print $ol "Y. Guan, V. M. Ingman, B. J. Rooks, and S. E. Wheeler, \"AARON: An Automated Reaction Optimizer for New Catlaysts\",\n J. Chem. Theory Comput. (2018). DOI: 10.1021/acs.jctc.8b00578\n\n";
     print $ol "The development of AARON is sponsored in part by the National Science Foundation,Grants CHE-1266022 and CHE-1665407.\n\n\n";
 } #end sub header
 
@@ -385,11 +385,7 @@ sub print_ee {
     unless (@data_keys) {
         $data .= "No data yet...\n";
         return $data;
-    }else {
-        $data .= "\n" . '~' x 90 . "\n";
     }
-
-
 
     my $ee = [];
     my $er = {};
@@ -421,17 +417,17 @@ sub print_ee {
 
     if ($G_Key->{high_level}->method()) {
         if ($absolute_only || $arg_parser{multistep} || $absolute) {
-            $data .= sprintf "%19s%13s%13s%13s%13s%13s%13s%13s\n", 'E', 'H', 'G(RRHO)', 'G(quasi-RRHO)',
+            $data .= sprintf "%90s\n%110s\n%19s%13s%13s%13s%13s%13s%13s%13s\n", 'High level', '-' x 50, 'E', 'H', 'G(RRHO)', 'G(quasi-RRHO)',
                                                     'E\'', 'H\'', 'G(RRHO)\'', 'G(quasi-RRHO)\'';
         }else {
-            $data .= sprintf "%16s%10s%10s%10s%10s%10s%10s%10s\n", 'E', 'H', 'G(RRHO)', 'Gr( quasi-RRHO)',
+            $data .= sprintf "%76s\n%92s\n%16s%10s%10s%10s%10s%10s%10s%10s\n", 'High level', '-' x 42, 'E', 'H', 'G(RRHO)', 'G(quasi-RRHO)',
                                                     'E\'', 'H\'', 'G(RRHO)\'', 'G(quasi-RRHO)\'';
         }
     }else {
         if ($absolute_only || $arg_parser{multistep} || $absolute) {
-            $data .= sprintf "%19s%13s%13s%13s\n", 'E', 'H', 'G(RRHO)', 'G(quasi-RRHO)',
+            $data .= sprintf "%19s%13s%13s%13s\n", 'E', 'H', 'G(RRHO)', 'G(quasi-RRHO)';
         }else {
-            $data .= sprintf "%16s%10s%10s%10s\n", 'E', 'H', 'G(RRHO)', 'G(quasi-RRHO)',
+            $data .= sprintf "%16s%10s%10s%10s\n", 'E', 'H', 'G(RRHO)', 'G(quasi-RRHO)';
         }
     }
 
@@ -446,7 +442,20 @@ sub print_ee {
     for my $key (@data_keys ) {
         $data .= sprintf "%-6s", $key;
         $data .= "\n";
-        $data .= '-' x 86 . "\n";
+        if($absolute_only) {
+          if($G_Key->{high_level}->method()) {
+              $data .= '-' x 110 . "\n";
+          } else {
+              $data .= '-' x 60 . "\n";
+          }
+        } else {
+          if($G_Key->{high_level}->method()) {
+              $data .= '-' x 92 . "\n";
+          } else {
+              $data .= '-' x 50 . "\n";
+          }
+        }
+
         if (%{ $er }) {
             for my $e (@{ $er->{$key} }) {
                 $data .= sprintf "%9.1f%%", $e;
@@ -473,7 +482,13 @@ sub print_ee {
                                        cf => 1) if @{ $thermo_geo->{conformers}->{$cf} };
                 }
             }
-            $data .= '-' x 86 . "\n" if (!$absolute_only && @{ $thermo_geo->{thermo} });
+            if (!$absolute_only && @{ $thermo_geo->{thermo} }) {
+                if($G_Key->{high_level}->method()) {
+                    $data .= '-' x 92 . "\n";
+                } else {
+                    $data .= '-' x 50 . "\n";
+                }
+            }
         }
         $data .= "\n";
     }
@@ -508,7 +523,7 @@ sub clean_up {
 
 sub close_log_thermo {
     close ($ol);
-	close ($thermo);
+    close ($thermo);
 }
 
 
