@@ -12,15 +12,13 @@ use Pod::Usage;
 
 my $helpMsg = "\nThis utility helps users to prepare supporting information.\n" .
               "Please run this utility under directory where you run AARON.\n" .
-              "Two files will be created, thermochemistry file and geometry file.\n";
+              "The file geometry_SI.xyz will be created containing all optimized structures.\n";
 
-my $thermo_file = "thermo_SI.dat";
-my $xyz_file = "geometry_SI.xyz";
+my $xyz_file = "SI_geometries.xyz";
 my $help;
 GetOptions(
     'help|h' => \$help,
-    'thermo_SI|t=s' => \$thermo_file,
-    'geometry_SI|g=s' => \$xyz_file,
+    'output|o=s' => \$xyz_file,
 ) or pod2usage (
     -exitval => 1,
     -verbose => 1 );
@@ -36,30 +34,12 @@ $input_file or pod2usage (
     -exitval => 1,
     -verbose => 0 );
 
+#delete $xyz_file if it already exists!
+system('rm -f $xyz_file');
 #initiate AARON, reading needed information from command line and input files
 init_main();
 &grab_coords();
-
-
-sub analyze_result {
-   
-    my $data = ''; 
-    $data .= '=' x 90 . "\n";
-    for my $ligand (sort keys %{ $ligs_subs }) {
-        $data .= "Thermochemistry data for $ligand:\n";
-        $data .= '~' x 90 . "\n";
-        my @items = ($ligand, sort keys %{ $ligs_subs->{$ligand}->{substrate} });
-        my $jobs = $ligs_subs->{$ligand}->{jobs};
-        for my $item (@items) {
-            $data .= "$item: ";
-            $data .= &_analyze_result($jobs, $item);
-            $data .= '~' x 90 . "\n";
-        }
-        $data .= "\n" . '=' x 90 . "\n";
-    }
-    open THERMO, ">$thermo_file" or die "Cannot open $thermo_file:$!\n";
-    print THERMO $data;
-}
+print "All optimized geometries written to $xyz_file\n";
 
 sub grab_coords {
     for my $ligand (sort keys %{ $ligs_subs }) {
@@ -85,66 +65,13 @@ sub grab_coords {
                         my $geo = $g09_out->geometry();
                         $name =~ s/\./_/g;
                         $geo->{name}=$name;
-                        $geo->printXYZ($xyz_file);
+                        $geo->printXYZ($xyz_file, $name, 0);
                     }
                 }
             }
         }
     }
 }
-
-
-sub _analyze_result {
-
-    my ($jobs, $item) = @_;
-
-    my @geo = grep{ $_ =~ /^$item\// } sort keys %{$jobs};
-
-    my @stereo_geo;
-    for my $geo (@{ $W_Key->{selectivity} }) {
-        if (my @geo_temp = grep {$_ =~ /\/$geo\//i} @geo) {
-            push (@stereo_geo, [@geo_temp]);
-        }
-    }
-
-    my $no_sele;
-    unless (@stereo_geo) {
-        @stereo_geo = ([@geo]);
-        $no_sele = 1;
-    }
-
-    my $thermo = {};
-
-    for my $n (0..$#stereo_geo) {
-        my $key = $no_sele ? 'NONE' : $W_Key->{selectivity}->[$n];
-
-        $thermo->{$key} = {};
-        $thermo->{$key}->{geos} = {};
-
-        my @geos = @{ $stereo_geo[$n] };
-
-        for my $geo (@geos) {
-            if ($jobs->{$geo}->{conformers}) {
-                $thermo->{$key}->{geos}->{$geo}->{conformers} = {};
-                for my $cf (sort keys %{ $jobs->{$geo}->{conformers} }) {
-                    my $job = $jobs->{$geo}->{conformers}->{$cf};
-
-                    ! @{$job->{thermo}} && do { next; };
-
-                    $thermo->{$key}->{geos}->{$geo}->{conformers}->{$cf} = [@{ $job->{thermo} }];
-                    $thermo->{$key}->{found} = 1;
-                }
-            }else {
-                $thermo->{$key}->{geos}->{$geo}->{thermo} =  [@{ $jobs->{$geo}->{thermo} }];
-                if (@{ $jobs->{$geo}->{thermo} } ) {
-                    $thermo->{$key}->{found} = 1;
-                }
-            }
-        }
-    }
-    return print_ee($thermo, 1);
-}
-
 
 =pod
 
@@ -156,11 +83,7 @@ $QCHASM/Aaron/utility/print_SI [options] input.in
 
 =over
 
-=item B<-t THEMO_FILE_NAME>, B<--thermo_SI THERMO_FILE_NAME>
-
-Write thermo data in FILE_NAME rather than thermo_SI.dat
-
-=item B<-g GEOMETRY_FILE_NAME>, B<--geometry_SI GEOMETRY_FILE_NAME>
+=item B<-o GEOMETRY_FILE_NAME>, B<--output GEOMETRY_FILE_NAME>
 
 Write geometry data in FILE_NAME rather than geometry_SI.dat
 
