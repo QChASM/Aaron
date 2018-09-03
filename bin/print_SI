@@ -35,7 +35,7 @@ $input_file or pod2usage (
     -verbose => 0 );
 
 #delete $xyz_file if it already exists!
-system('rm -f $xyz_file');
+system("rm -f $xyz_file");
 #initiate AARON, reading needed information from command line and input files
 init_main();
 &grab_coords();
@@ -62,11 +62,25 @@ sub grab_coords {
                         $name =~ s/\//\./g;
                         my $log_file = $name . ".$job->{step}.log";
                         my $g09_out = new AaronTools::G09Out(file=>"$dir/$log_file");
-                        my $geo = $g09_out->geometry();
+                        my $geometry = $g09_out->geometry();
                         $name =~ s/\./_/g;
-                        $geo->{name}=$name;
-                        $geo->printXYZ($xyz_file, $name, 0);
+                        $geometry->{name}=$name;
+                        $geometry->printXYZ($xyz_file, $name, 0);
                     }
+                } else {	#geometries with no conformations
+                    my $job = $jobs->{$geo};
+
+                    ! @{$job->{thermo}} && do { next;};
+
+                    my $dir = $ligand . '/' . $job->{name};
+                    my $name = $job->{name};
+                    $name =~ s/\//\./g;
+                    my $log_file = $name . ".$job->{step}.log";
+                    my $g09_out = new AaronTools::G09Out(file=>"$dir/$log_file");
+                    my $geometry = $g09_out->geometry();
+                    $name =~ s/\./_/g;
+                    $geometry->{name}=$name;
+                    $geometry->printXYZ($xyz_file, $name, 0);
                 }
             }
         }
