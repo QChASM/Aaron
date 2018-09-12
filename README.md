@@ -3,8 +3,6 @@ AARON 1.0, An Automated Reaction Optimizer for New catalysts
 
 We are currently merging several development branches of AARON and AaronTools, to be released soon as along with accompanying documentation.
 
-<b>Please check back at the end of August!</b>
-
 Installation instructions and basic tutorials are available <a href="http://github.com/QChASM/Aaron/wiki">here</a>.
 
 AARON is a computational toolkit to automate the QM-based geometry optimization of transition state and intermediate structures for homogeneous catalytic reactions. It is built using <a href="https://github.com/QChASM/AaronTools/wiki">AaronTools</a>.
