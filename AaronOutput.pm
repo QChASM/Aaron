@@ -164,18 +164,33 @@ sub print_params {
         print $ol "\n command-line flags  = @ARGV\n";
     }
     print $ol "----------------------------------------------------------------------------------\n\n";
-} #end sub print_params
+}
 
 
 sub print_status {
 
-    print "\033[2J";                                              #clear the screen
-    print "\033[0;0H";                                    #jump to 0,0
-    my $date1=localtime;                          #current date
+    print "\033[2J";             #clear the screen
+    print "\033[0;0H";           #jump to 0,0
+    my $date1=localtime;         #current date
 
     my $running = 0;
 
     my $msg = "Status for all jobs...($date1)\n";
+
+	sub multicol {
+		my $ncolumns = shift;
+		my @list = @_;
+		my $msg = '';
+		my $colwidth = int(80 / $ncolumns);
+		for ( my $i = 0; $i < @list; $i++ ){
+			$msg .= sprintf("%-*s", $colwidth, $list[$i]);
+			if ($i % $ncolumns == $ncolumns - 1){
+				$msg .= "\n";
+			}
+		}
+		if ( $#list % $ncolumns != $ncolumns - 1 ){ $msg .= "\n"; }
+		return $msg;
+	}
 
     for my $ligand (keys %{ $ligs_subs }) {
 
@@ -267,9 +282,7 @@ sub print_status {
         }
 
         @finished && do {$msg .= "\nCompleted optimizations: \n";};
-        for my $geometry(@finished) {
-            $msg .= " $geometry finished normally\n";
-        }
+		$msg .= &multicol(3, @finished);
 
         @running && do {$msg .= "\nRunning jobs:\n";};
         for my $geometry(@running) {
@@ -325,14 +338,7 @@ sub print_status {
         }
 
 		@sleeping && do {$msg .= "\nJobs that have not been started and are awaiting other jobs to finish:\n";};
-		my $ncolumns = 3;
-		for ( my $i = 0; $i < @sleeping; $i++ ){
-			$msg .= " $sleeping[$i] ";
-			if ($i % $ncolumns == $ncolumns - 1){
-				$msg .= "\n";
-			}
-		}
-		if ( $#sleeping % $ncolumns != $ncolumns - 1 ){ $msg .= "\n"; }
+		$msg .= &multicol(3, @sleeping);
 
 
     #write status into .sta file

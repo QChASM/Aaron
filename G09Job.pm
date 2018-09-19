@@ -39,7 +39,7 @@ sub new {
                                   $params{cycle}, $params{Wkey},
                                   $params{thermo}, $params{attempt},
                                   $params{status}, $params{catalysis},
-                                  $params{Gkey}, $params{template_job}, 
+                                  $params{Gkey}, $params{template_job},
                                   $params{skip_step1}, $params{maxstep});
     $name //= '';
     $step //= $skip_step1 ? 2: 1;
@@ -641,7 +641,7 @@ sub kill_running {
     my $path = cwd;
     $path .= "/$self->{name}";
 
-    for my $job(AaronTools::JobControl::findJob($path)) {
+    for my $job (AaronTools::JobControl::findJob($path)) {
         AaronTools::JobControl::killJob($job);
     }
 }
@@ -675,6 +675,7 @@ sub submit {
     }
 
     unless($self->{Wkey}->{nosub}) {
+		$self->kill_running();
         $launch_failed += AaronTools::JobControl::submit_job(
                                  directory => $geometry,
                                   com_file => "$filename.$step.com",
@@ -847,7 +848,7 @@ sub build_com {
                                   if ($self->{Wkey}->{record}) {
                                       system("mv $file_name.$step.log $file_name.log.$step");
                                   }else{
-                                      system("rm -fr $file_name.$step.*");
+									  system("mv $file_name.$step.log $file_name.$step.log.bkp");;
                                   }
                                 }
 
@@ -860,7 +861,7 @@ sub build_com {
                                    if ($self->{Wkey}->{record}) {
                                        system("mv $file_name.$step.log $file_name.log.$step");
                                    }else{
-                                       system("rm -fr $file_name.$step.*");
+									   system("mv $file_name.$step.log $file_name.$step.log.bkp");
                                    }
                                  }
 
@@ -1132,7 +1133,7 @@ sub remove_later_than2 {
             if ($self->{Wkey}->{record}) {
                 system("mv $filename.$later_step.log $filename.$later_step.log.$later_step");
             }else {
-                system("rm -fr $filename.$later_step.log");
+				system("mv $filename.$later_step.log $filename.$later_step.log.bkp");
             }
         }
 
@@ -1248,7 +1249,7 @@ sub new {
     my $self = new Aaron::G09Job(@_);
 
     bless $self, $class;
-    
+
     unless ($self->{maxstep}) {
         $self->{maxstep} = $MAXSTEP->{INT};
         $self->{maxstep}-- unless $self->{Gkey}->{high_level}->{method};
@@ -1431,7 +1432,7 @@ sub new {
     my $self = new Aaron::G09Job(@_);
 
     bless $self, $class;
-    
+
     unless ($self->{maxstep}) {
         $self->{maxstep} = $MAXSTEP->{TS_SINGLE};
     }
@@ -1767,7 +1768,7 @@ sub remove_later_than1 {
                 my $saved_log = $filename . "_cycle$self->{cycle}_attempt$self->{attempt}.$later_step.log";
                 system("mv $filename.$later_step.log $saved_log");
             }else {
-                system("rm -fr $filename.$later_step.log");
+				system("mv $filename.$later_step.log $filename.$later_step.log.bkp");
             }
         }
 
@@ -1879,7 +1880,9 @@ sub _check_step {
                 if ($self->{Wkey}->{record}) {
                     my $saved_log = $file_name . "_cycle$self->{cycle}_attempt$self->{attempt}.$step.log";
                     system("mv $file_name.$step.log $saved_log");
-                }
+                }else{
+					system("mv $file_name.$step.log $file_name.$step.log.bkp")
+				}
             }
             last;
         }elsif (-e "$file_name.$step.com") {
