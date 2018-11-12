@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 
 # Test environmental variables are set appropriately
 # and that necessry configuration files are found
