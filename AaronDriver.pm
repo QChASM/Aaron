@@ -328,10 +328,19 @@ sub dir_tree {
                         my ($num_cf) = $extend_temp =~ /Cf(\d+)/;
                         my $catalysis = $status->{$head}->{conformers}->{$extend_temp}->{catalysis};
                         $catalysis->make_conformer( new_number => $i + 1 );
-                        $catalysis->remove_clash();
+                        #try to remove clashes in new conformers by wiggling atoms that are too close together
+                        my $no_clash = $catalysis->remove_clash();
 
                         $status->{$head}->{conformers}->{$extend_temp}->build_com();
-                        $status->{$head}->{conformers}->{$extend_temp}->set_status('2submit');
+
+                        #if the clash was removed, mark this conformer for submission
+                        #otherwise, skip it
+                        if( $no_clash ) {
+                            $status->{$head}->{conformers}->{$extend_temp}->set_status('2submit');
+                        } else {
+                            $status->{$head}->{conformers}->{$extend_temp}->set_status('skipped');
+                            $status->{$head}->{conformers}->{$extend_temp}->set_msg("could not remove clash\n");
+                        }        
                     }
                 }
             }
