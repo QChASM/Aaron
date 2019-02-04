@@ -20,7 +20,7 @@ my $short_wall = SHORT_WALL;
 package Aaron::G09Job;
 use strict; use warnings;
 
-use Cwd qw(cwd);
+use Cwd qw(cwd realpath);
 use File::Path qw(make_path);
 use Aaron::AaronOutput qw(print_message close_log_thermo);
 use AaronTools::G09Out;
@@ -121,7 +121,6 @@ sub set_msg {
 sub check_status_run {
     my $self = shift;
 
-
     if ($self->{conformers}) {
         my $lib = $self->{lib};
 
@@ -212,7 +211,11 @@ sub _check_step {
                 $self->{err_msg} = $output->{error_msg};
             }
             last;
-        }elsif (-e "$file_name.$step.com") {
+        }elsif (-e "$file_name.$step.com" and 
+                #we don't want to accidentally change the status to 2submit if we killed this conformer
+               ($self->{status} !~ /skipped/ or 
+                $self->{status} !~ /stopped/ or 
+                $self->{status} !~ /repeated/)) {
             $self->{step} = $step;
             if ($jobrunning) {
                 $self->{status} = 'pending';
@@ -491,14 +494,22 @@ sub generate_conformers {
                         if ($self->{conformers}->{$new_cf}->{status} eq 'sleeping') {
                             $cf_obj->{catalysis}->make_conformer( new_array => $array_new,
                                                                 current_array => $current_array );
-                            $cf_obj->{catalysis}->remove_clash();
+                            #try to remove clashes in the new conformer
+                            my $no_clash = $cf_obj->{catalysis}->remove_clash();
                             $current_array = [@$array_new];
 
                             $cf_obj->{catalysis}->{conf_num} = $new_cf_num;
-                            $self->{conformers}->{$new_cf}->{status} = '2submit';
                             $self->{conformers}->{$new_cf}->{step} = 2;
                             $self->{conformers}->{$new_cf}->build_com();
-                            $self->{conformers}->{$new_cf}->{msg} = 'new conformer just started';
+                            if( $no_clash ) {
+                                #if there are no clashing atoms, run the conformer
+                                $self->{conformers}->{$new_cf}->{status} = '2submit';
+                                $self->{conformers}->{$new_cf}->{msg} = 'new conformer just started';
+                            } else {
+                                #otherwise, skip it
+                                $self->{conformers}->{$new_cf}->{status} = 'skipped';
+                                $self->{conformers}->{$new_cf}->{msg} = "clash could not be removed\n";
+                            } 
                         }
                     }
                 }
