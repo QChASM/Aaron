@@ -316,7 +316,7 @@ sub print_status {
         for my $geometry(@skipped) {
             my $job = &$_get_job($geometry);
             $msg .= " $geometry step $job->{step} " .
-                    "was skipped by reason: \n";
+                    "was skipped by reason: ";
             if ($job->{msg}) {
                 $msg .= $job->{msg};
             }else {
