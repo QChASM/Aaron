@@ -167,6 +167,12 @@ sub dir_tree {
     my $new_ligand;
     my $status = $ligs_subs->{$ligand}->{jobs};
 
+    my $submission_template = $template_job;
+    #use the default $QCHASM/AaronTools/template.job unless a submission template was specified in the input file
+    if( $W_Key->{submission_template} ) {
+        $submission_template = $W_Key->{submission_template_o};
+    }
+
     if ($substrate) {
         if (! -d $substrate) {
             mkdir $substrate;
@@ -288,7 +294,7 @@ sub dir_tree {
                         catalysis => $new_dir->{$newdir}->{catalysis} ,
                         Gkey => $G_Key,
                         Wkey => $W_Key,
-                        template_job => $template_job,
+                        template_job => $submission_template,
                         skip_step1 => $skip_step1,
                     );
                 }elsif ($state =~ /^min/i) {
@@ -297,7 +303,7 @@ sub dir_tree {
                         catalysis => $new_dir->{$newdir}->{catalysis},
                         Gkey => $G_Key,
                         Wkey => $W_Key,
-                        template_job => $template_job,
+                        template_job => $submission_template,
                         skip_step1 => $skip_step1,
                     );
                 }

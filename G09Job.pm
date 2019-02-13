@@ -50,6 +50,12 @@ sub new {
     $thermo //= [];
     $maxstep //='';
 
+    my $submission_template = $template_job;
+    #use template.job in $QCHASM/AaronTools unless a template was specified in the input files
+    if( $Wkey->{submission_template} ){
+        $submission_template = $Wkey->{submission_template_o};
+    }
+
     my $self = {
         name => $name,
         step => $step,
@@ -62,7 +68,7 @@ sub new {
         error => '',
         Gkey => $Gkey,
         Wkey => $Wkey,
-        template_job => $template_job,
+        template_job => $submission_template,
         maxstep => $maxstep,
     };
 
@@ -1236,8 +1242,12 @@ sub com_route_footer {
                           last SWITCH; }
     }
 
-    if ($self->{Gkey}->{solvent} ne "gas" && $step > 1) {
+    if ($step == 5 && $self->{Gkey}->{high_solvent} ne "gas") {
+        $route .= " scrf=($self->{Gkey}->{high_solvent_model},solvent=$self->{Gkey}->{high_solvent})";
+        #if we're on step 5, add the high solvent to the route
+    } elsif ($self->{Gkey}->{solvent} ne "gas" && $step > 1) {
         $route .= " scrf=($self->{Gkey}->{solvent_model},solvent=$self->{Gkey}->{solvent})";
+        #for steps 2-4, add the solvent stuff to the route
     }
 
     return ($route, $footer, $print_flag);
@@ -1420,8 +1430,12 @@ sub com_route_footer {
                           last SWITCH; }
     }
 
-    if ($self->{Gkey}->{solvent} ne "gas" && $step > 1) {
+    if ($step == 5 && $self->{Gkey}->{high_solvent} ne "gas") {
+        $route .= " scrf=($self->{Gkey}->{high_solvent_model},solvent=$self->{Gkey}->{high_solvent})";
+        #if we're on step 5, add the high solvent to the route
+    } elsif ($self->{Gkey}->{solvent} ne "gas" && $step > 1) {
         $route .= " scrf=($self->{Gkey}->{solvent_model},solvent=$self->{Gkey}->{solvent})";
+        #for steps 2-4, add the solvent stuff to the route
     }
 
     return ($route, $footer, $print_flag);
@@ -1576,8 +1590,12 @@ sub com_route_footer {
                           last SWITCH; }
     }
 
-    if ($self->{Gkey}->{solvent} ne "gas" && $step > 1) {
+    if ($step == 5 && $self->{Gkey}->{high_solvent} ne "gas") {
+        $route .= " scrf=($self->{Gkey}->{high_solvent_model},solvent=$self->{Gkey}->{high_solvent})";
+        #if we're on step 5, add the high solvent to the route
+    } elsif ($self->{Gkey}->{solvent} ne "gas" && $step > 1) {
         $route .= " scrf=($self->{Gkey}->{solvent_model},solvent=$self->{Gkey}->{solvent})";
+        #for steps 2-4, add the solvent stuff to the route
     }
 
     return ($route, $footer, $print_flag);

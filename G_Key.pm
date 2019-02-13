@@ -151,10 +151,13 @@ sub _read_key_from_input {
                 $self->{node} = $1 unless $self->{node}; next;
             };
             #G09
-            /grid=(\S+)/  && do {$self->{grid} = $1 unless $self->{grid}; next;};
-            /\s*[sS]olvent=(\S+)/ && do {$self->{solvent} = $1 unless $self->{solvent}; next;};
-            /\s*[sS]olvent_model=(\S+)/ && do {$self->{solvent_model} = $1 unless $self->{solvent_model}; next;};
-
+            /grid=(\S+)/ && do {$self->{grid} = $1 unless $self->{grid}; next;};
+            /\b[sS]olvent=(\S+)/ && do {$self->{solvent} = $1 unless $self->{solvent}; next;};
+            /\b[sS]olvent_model=(\S+)/ && do {$self->{solvent_model} = $1 unless $self->{solvent_model}; next;};
+            /\b[hH]igh_solvent=(\S+)/ && do {$self->{high_solvent} = $1 unless $self->{high_solvent}; next;};
+            #input file line for using a solvent for the high-level single point is high_solvent=X
+            /\b[hH]igh_solvent_model=(\S+)/ && do {$self->{high_solvent_model} = $1 unless $self->{high_solvent_model}; next;};
+            #solvent model for high-level single point
             /\s*[tT]emperature=(\S+)/ && do {
                 $self->{temperature} = $1 unless $self->{temperature}; next;
             };
@@ -185,8 +188,9 @@ sub _read_key_from_input {
             /\s*[dD]enfit=(\S+)/ && do {$self->{denfit} = $1 unless defined $self->{denfit}; next;};
             /\s*[cC]harge=(\S+)/ && do {$self->{charge} = $1 unless defined $self->{charge}; next;};
             /\s*[mM]ult=(\S+)/ && do {$self->{mult} = $1 unless defined $self->{mult}; next;}; 
-            /\s*[Cc]on_thres=(\S+)/ && do {$self->{con_thres} = $1 unless defined $self->{con_thres}; next;};
+            /\s*[cC]on_thres=(\S+)/ && do {$self->{con_thres} = $1 unless defined $self->{con_thres}; next;};
         }
+        
     }
 
     close INPUT;
@@ -219,9 +223,14 @@ sub read_key_from_input {
     }
 
     $self->{solvent} //= 'gas';
+    #solvent defaults to gas if none is given
+    $self->{high_solvent} //= $self->{solvent};
+    #high_solvent defaults to solvent if none is given
     $self->{con_thres} //= 0.5;
 
     $self->{solvent_model} //= $self->{solvent} =~ /^[Gg]as$/ ? '' : 'pcm'; 
+    #solvent model defaults to PCM if a solvent is given
+    $self->{high_solvent_model} //= $self->{high_solvent} =~ /^[Gg]as$/ ? '' : 'pcm'; 
 }
         
 
@@ -274,12 +283,14 @@ sub read_input {
 
     while(<IN>) {
         /[rR]eaction_type=(\S+)/ && do {$self->{reaction_type} = $1; next;};
-        /[tT]emplate=(\S+)/ && do {$self->{template} = $1; next;};
+        /\b[tT]emplate=(\S+)/ && do {$self->{template} = $1; next;};
         /[sS]tep=(\S+)/ && do {$self->{step} = [split(/;/, $1)]; next;};
         /[Ii]nput_conformers_only=(\d+)/ && do {$self->{input_conformers_only} = $1; next;};
         /[Ff]ull_conformers=(\d+)/ && do {$self->{full_conformers} = $1; next;};
         /[Ss]electivity=(\S+)/ && do {$self->{selectivity} = [split(/;/, $1)];next;};
         /[Mm]ultistep=(\d+)/ && do {$self->{multistep} = $1; next;};
+        #non-default job submission template
+        /[sS]ubmission_template=(\S+)/ && do {$self->{submission_template} = $1; next; };
     }
 
     close IN;

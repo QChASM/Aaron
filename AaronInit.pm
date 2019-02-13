@@ -187,6 +187,11 @@ sub read_params {
     $G_Key->read_key_from_input($input_file);
     $W_Key->read_input($input_file);
 
+    if( $W_Key->{submission_template} ){
+        #if a specific submission file template is requested, go get it
+        $W_Key->{submission_template_o} = get_job_template($W_Key->{submission_template});
+    }
+
     #combine ligand and sub information;
     for my $ligand (keys %{ $lig }) {
         $ligs_subs->{$ligand} = {};
