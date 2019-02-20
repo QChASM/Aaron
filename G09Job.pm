@@ -52,9 +52,6 @@ sub new {
 
     my $submission_template = $template_job;
     #use template.job in $QCHASM/AaronTools unless a template was specified in the input files
-    if( $Wkey->{submission_template} ){
-        $submission_template = $Wkey->{submission_template_o};
-    }
 
     my $self = {
         name => $name,

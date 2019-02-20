@@ -189,6 +189,7 @@ sub read_params {
 
     if( $W_Key->{submission_template} ){
         #if a specific submission file template is requested, go get it
+        print "loading $W_Key->{submission_template}\n";
         $W_Key->{submission_template_o} = get_job_template($W_Key->{submission_template});
     }
 
@@ -271,6 +272,11 @@ sub read_status {
 
         eval $string;
 
+        my $submission_template = $template_job;
+        if( $W_Key->{submission_template} ) {
+            $submission_template = $W_Key->{submission_template_o};
+        }
+
         for my $key (keys %{ $STATUS }) {
             my ($head) = split(/\//, $key);
             ($head) = split(/\-/, $head);
@@ -279,13 +285,13 @@ sub read_status {
     
             $ligs_subs->{$head}->{jobs}->{$key}->{Gkey} = $G_Key;
             $ligs_subs->{$head}->{jobs}->{$key}->{Wkey} = $W_Key;
-            $ligs_subs->{$head}->{jobs}->{$key}->{template_job} = $template_job;
+            $ligs_subs->{$head}->{jobs}->{$key}->{template_job} = $submission_template;
             
             if ($ligs_subs->{$head}->{jobs}->{$key}->{conformers}) {
                 for my $cf (sort keys %{ $ligs_subs->{$head}->{jobs}->{$key}->{conformers} }) {
                     $ligs_subs->{$head}->{jobs}->{$key}->{conformers}->{$cf}->{Gkey} = $G_Key;
                     $ligs_subs->{$head}->{jobs}->{$key}->{conformers}->{$cf}->{Wkey} = $W_Key;
-                    $ligs_subs->{$head}->{jobs}->{$key}->{conformers}->{$cf}->{template_job} = $template_job;
+                    $ligs_subs->{$head}->{jobs}->{$key}->{conformers}->{$cf}->{template_job} = $submission_template;
                 }
             }
         }
