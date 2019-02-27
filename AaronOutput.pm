@@ -178,12 +178,23 @@ sub print_status {
     my $msg = "Status for all jobs...($date1)\n";
 
 	sub multicol {
-		my $ncolumns = shift;
 		my @list = @_;
 		my $msg = '';
-		my $colwidth = int(80 / $ncolumns);
+
+		if (@list < 1){
+			return $msg;
+		}
+
+		my $colwidth = 0;
+		for my $l (@list){
+			if (length($l) > $colwidth){
+				$colwidth = length($l);
+			}
+		}
+		my $ncolumns = int(160 / $colwidth);
+
 		for ( my $i = 0; $i < @list; $i++ ){
-			$msg .= sprintf("%-*s", $colwidth, $list[$i]);
+			$msg .= sprintf("%-*s ", $colwidth, $list[$i]);
 			if ($i % $ncolumns == $ncolumns - 1){
 				$msg .= "\n";
 			}
@@ -282,7 +293,7 @@ sub print_status {
         }
 
         @finished && do {$msg .= "\nCompleted optimizations: \n";};
-		$msg .= &multicol(3, @finished);
+		$msg .= &multicol(@finished);
 
         @running && do {$msg .= "\nRunning jobs:\n";};
         for my $geometry(@running) {
@@ -338,7 +349,7 @@ sub print_status {
         }
 
 		@sleeping && do {$msg .= "\nJobs that have not been started and are awaiting other jobs to finish:\n";};
-		$msg .= &multicol(3, @sleeping);
+		$msg .= &multicol(@sleeping);
 
 
     #write status into .sta file

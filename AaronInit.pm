@@ -79,12 +79,12 @@ sub check_modules {
     print $msg;
 
     exit (1) if $quit;
-    
-    print "Necessary Perl modules found. Starting AARON...\n"; 
+
+    print "Necessary Perl modules found. Starting AARON...\n";
 }
 
 
-        
+
 
 sub read_args{
     GetOptions(
@@ -122,10 +122,10 @@ sub read_args{
 
 #read arguments from input file
 sub read_params {
-   
+
     open my $in_h, "< $input_file" or die "Can't open $input_file:$!\n";
 
-    ($jobname) = $input_file =~ /(\S+)\.in/; 
+    ($jobname) = $input_file =~ /(\S+)\.in/;
 
     my $lig = {};
     my $sub = {};
@@ -146,7 +146,7 @@ sub read_params {
                     }elsif ($lig_info =~ /^[Ll]igand=(\S+)(\s+(.*))?/) {
                         $lig_new = $1;
                         $lig_sub = $3;
-                    }else{ 
+                    }else{
                         $lig_new = $LIG_OLD;
                         $lig_sub = $lig_info;
                     }
@@ -183,9 +183,14 @@ sub read_params {
         };
     }
     close $in_h;
-    
+
     $G_Key->read_key_from_input($input_file);
     $W_Key->read_input($input_file);
+
+	# pull job template file from custom default files
+	if ( $G_Key->{submission_template} ){
+		$W_Key->{submission_template} = $G_Key->{submission_template};
+	}
 
     if( $W_Key->{submission_template} ){
         #if a specific submission file template is requested, go get it
@@ -196,7 +201,7 @@ sub read_params {
     #combine ligand and sub information;
     for my $ligand (keys %{ $lig }) {
         $ligs_subs->{$ligand} = {};
-        my @explicit_sub = grep { $_ =~ /^\d+$/ } 
+        my @explicit_sub = grep { $_ =~ /^\d+$/ }
                                keys %{ $lig->{$ligand}->{substituents} };
         my @inexplicit_sub = grep { $_ !~ /^\d+$/ }
                                 keys %{ $lig->{$ligand}->{substituents} };
@@ -212,7 +217,7 @@ sub read_params {
         while (<$fh>) {
             chomp;
             if ($_ =~ /[0-9a-zA-Z]/) {
-                $subs_record{$_} = 1;    
+                $subs_record{$_} = 1;
             }
         }
 
@@ -282,11 +287,11 @@ sub read_status {
             ($head) = split(/\-/, $head);
 
             $ligs_subs->{$head}->{jobs}->{$key} = $STATUS->{$key};
-    
+
             $ligs_subs->{$head}->{jobs}->{$key}->{Gkey} = $G_Key;
             $ligs_subs->{$head}->{jobs}->{$key}->{Wkey} = $W_Key;
             $ligs_subs->{$head}->{jobs}->{$key}->{template_job} = $submission_template;
-            
+
             if ($ligs_subs->{$head}->{jobs}->{$key}->{conformers}) {
                 for my $cf (sort keys %{ $ligs_subs->{$head}->{jobs}->{$key}->{conformers} }) {
                     $ligs_subs->{$head}->{jobs}->{$key}->{conformers}->{$cf}->{Gkey} = $G_Key;

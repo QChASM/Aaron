@@ -73,7 +73,7 @@ if ($job_found) {
 		# status is exit status of qdel, etc.
 		# should be 0 if success, non 0 otherwise
         ok( !$status, "Killing job $job_found..." );
-		($failed_to_kill) = findJob("$QCHASM/AaronTools/test/job_setup");
+		($failed_to_kill) = findJob("$ENV{PWD}");
 		# if job still found in the queue, FAIL
 		# else, if $status != 0, FAIL
 		# else, PASS

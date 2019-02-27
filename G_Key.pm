@@ -92,7 +92,7 @@ sub read_key_from_com {
     my $footer = '';
     my $hit_constraint;
     while (<COM>) {
-        /^B\s\d+\s\d+\sF/ && do { 
+        /^B\s\d+\s\d+\sF/ && do {
             while (<COM>) {
                 /^$/ && do {last};
             }
@@ -136,7 +136,7 @@ sub _read_key_from_input {
             /^\s*[nN]_procs=(\d+)/ && do{
                 $self->{n_procs} = $1 unless $self->{n_procs}; next;
             };
-            
+
             /^\s*[wW]all=(\S+)/ && do {
                 $self->{wall} = $1 unless $self->{wall}; next;};
             /^\s*[sS]hort_procs=(\d+)/ && do {
@@ -150,6 +150,10 @@ sub _read_key_from_input {
             /^\s*[nN]ode=(\s)/ && do {
                 $self->{node} = $1 unless $self->{node}; next;
             };
+
+			/[sS]ubmission_template=(\S+)/ && do {
+				$self->{submission_template} = $1 unless $self->{submission_template}; next;
+			};
             #G09
             /grid=(\S+)/ && do {$self->{grid} = $1 unless $self->{grid}; next;};
             /\b[sS]olvent=(\S+)/ && do {$self->{solvent} = $1 unless $self->{solvent}; next;};
@@ -187,10 +191,10 @@ sub _read_key_from_input {
 
             /\s*[dD]enfit=(\S+)/ && do {$self->{denfit} = $1 unless defined $self->{denfit}; next;};
             /\s*[cC]harge=(\S+)/ && do {$self->{charge} = $1 unless defined $self->{charge}; next;};
-            /\s*[mM]ult=(\S+)/ && do {$self->{mult} = $1 unless defined $self->{mult}; next;}; 
+            /\s*[mM]ult=(\S+)/ && do {$self->{mult} = $1 unless defined $self->{mult}; next;};
             /\s*[cC]on_thres=(\S+)/ && do {$self->{con_thres} = $1 unless defined $self->{con_thres}; next;};
         }
-        
+
     }
 
     close INPUT;
@@ -202,7 +206,7 @@ sub read_key_from_input {
     my $self = shift;
 
     my ($input) = @_;
- 
+
     $self->_read_key_from_input($input) if $input;
 
     $self->{custom} //= 'Default';
@@ -228,11 +232,11 @@ sub read_key_from_input {
     #high_solvent defaults to solvent if none is given
     $self->{con_thres} //= 0.5;
 
-    $self->{solvent_model} //= $self->{solvent} =~ /^[Gg]as$/ ? '' : 'pcm'; 
+    $self->{solvent_model} //= $self->{solvent} =~ /^[Gg]as$/ ? '' : 'pcm';
     #solvent model defaults to PCM if a solvent is given
-    $self->{high_solvent_model} //= $self->{high_solvent} =~ /^[Gg]as$/ ? '' : 'pcm'; 
+    $self->{high_solvent_model} //= $self->{high_solvent} =~ /^[Gg]as$/ ? '' : 'pcm';
 }
-        
+
 
 package Aaron::Workflow_Key;
 use strict; use warnings;
@@ -270,7 +274,7 @@ sub new {
    $self->{record} //= 0;
    $self->{short} //= 0;
    $self->{no_quota} //= 0;
-   
+
    return $self;
 }
 
@@ -304,13 +308,13 @@ sub examine {
     for my $key (keys %{ $self }) {
         chomp($self->{$key});
     }
-    
+
     #examine arguments;
     if ($#{$self->{selectivity}} == 0 &&
         ($self->{selectivity}->[0] eq 'NONE')) {
         $self->{selectivity} = [];
     }
-    
+
     unless ($self->{template}) {
         print "A template must be given explicitly in the <jobname>.in file " .
               "by template=xxxxx, \n" .
@@ -321,7 +325,7 @@ sub examine {
     }
 
     my $TS_path = (-d "$HOME/Aaron_libs/$TS_lib/$self->{reaction_type}/$self->{template}") ?
-                    "$HOME/Aaron_libs/$TS_lib/$self->{reaction_type}/" : 
+                    "$HOME/Aaron_libs/$TS_lib/$self->{reaction_type}/" :
                     "$QCHASM/Aaron/$TS_lib/$self->{reaction_type}/";
 
     unless (-d $TS_path) {
@@ -353,7 +357,7 @@ sub new {
 
     my %params = @_;
 
-    my $self = { 
+    my $self = {
         basis => {},
         gen_basis => [],
         method => $params{method},
@@ -478,7 +482,7 @@ sub check_gen {
                     }else {
                         push (@correct_gen_basis, $file);
                     }
-                    
+
                     for (keys %{ $self->{basis} }) {
                         delete $self->{basis}->{$_} if ($self->{basis}->{$_} eq $file);
                     }
@@ -551,7 +555,7 @@ sub method {
     return $method;
 }
 
-    
+
 sub unique_basis {
     my $self = shift;
 
