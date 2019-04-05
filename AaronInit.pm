@@ -90,6 +90,7 @@ sub read_args{
     GetOptions(
         'debug' => \$W_Key->{debug},
         'nosub' => \$W_Key->{nosub},
+		'skip1' => \$W_Key->{skip_step1},
         'help|h' => \$arg_parser{help},
         'restart' => \$arg_parser{restart},
         'record' => \$W_Key->{record},

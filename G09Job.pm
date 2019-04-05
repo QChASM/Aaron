@@ -67,6 +67,7 @@ sub new {
         Wkey => $Wkey,
         template_job => $submission_template,
         maxstep => $maxstep,
+		skip_step1 => $skip_step1,
     };
 
     bless $self, $class;
@@ -214,10 +215,10 @@ sub _check_step {
                 $self->{err_msg} = $output->{error_msg};
             }
             last;
-        }elsif (-e "$file_name.$step.com" and 
+        }elsif (-e "$file_name.$step.com" and
                 #we don't want to accidentally change the status to 2submit if we killed this conformer
-               ($self->{status} !~ /skipped/ or 
-                $self->{status} !~ /stopped/ or 
+               ($self->{status} !~ /skipped/ or
+                $self->{status} !~ /stopped/ or
                 $self->{status} !~ /repeated/)) {
             $self->{step} = $step;
             if ($jobrunning) {
@@ -512,7 +513,7 @@ sub generate_conformers {
                                 #otherwise, skip it
                                 $self->{conformers}->{$new_cf}->{status} = 'skipped';
                                 $self->{conformers}->{$new_cf}->{msg} = "clash could not be removed\n";
-                            } 
+                            }
                         }
                     }
                 }
@@ -991,7 +992,8 @@ sub new_conformer {
              Gkey => $self->{Gkey},
            template_job => $self->{template_job},
            attempt => $params{attempt},
-         catalysis => $self->{catalysis}
+         catalysis => $self->{catalysis},
+		 skip_step1 => $self->{skip_step1}
     );
 
     $self->{conformers}->{$cf}->set_status('sleeping');
@@ -1011,6 +1013,7 @@ sub _copy {
                               msg => $self->{msg},
                            thermo => [@{ $self->{thermo} }],
                           maxstep => $self->{maxstep},
+						  skip_step1 => $self->{skip_step1},
                             error => $self->{error} );
     return $new;
 }
@@ -1292,7 +1295,8 @@ sub new_conformer {
              Gkey => $self->{Gkey},
            template_job => $self->{template_job},
            attempt => $params{attempt},
-         catalysis => $self->{catalysis}
+         catalysis => $self->{catalysis},
+		 skip_step1 => $self->{skip_step1}
     );
 
     $self->{conformers}->{$cf}->set_status('sleeping');
@@ -1312,6 +1316,7 @@ sub _copy {
                                msg => $self->{msg},
                             thermo => [@{ $self->{thermo} }],
                            maxstep => $self->{maxstep},
+						   skip_step1=> $self->{skip_step1},
                              error => $self->{error} );
     return $new;
 }
@@ -1478,7 +1483,8 @@ sub new_conformer {
              Gkey => $self->{Gkey},
            template_job => $self->{template_job},
            attempt => $params{attempt},
-         catalysis => $self->{catalysis}
+         catalysis => $self->{catalysis},
+		 skip_step1 => $self->{skip_step1}
     );
 
     $self->{conformers}->{$cf}->set_status('sleeping');
@@ -1499,6 +1505,7 @@ sub _copy {
          msg => $self->{msg},
      maxstep => $self->{maxstep},
       thermo => [@{ $self->{thermo} }],
+	  skip_step1 => $self->{skip_step1},
        error => $self->{error} );
     return $new;
 }

@@ -57,7 +57,7 @@ $imitate = sub {
     closedir(DIR);
 
     my %step_names = map{ $_ => 1 } @{ $W_Key->{step} };
-    my @names_in_step = grep { exists $step_names{$_} } @names; 
+    my @names_in_step = grep { exists $step_names{$_} } @names;
     @names_in_step && do { @names = @names_in_step };
 
     foreach my $name (@names) {
@@ -90,14 +90,14 @@ sub _make_directories {
         mkdir "$lig_ali";
     }
     chdir($lig_ali) or die "Unable to change into $lig_ali: $!\n";
-    
+
     if ($ligs_subs->{$lig_ali}->{ligand} eq $LIG_NONE) {
         for my $sub (keys %{ $ligs_subs->{$lig_ali}->{substrate} }) {
             if (!(-d $sub)) {
                 mkdir "$sub";
             }
 
-            &dir_tree( target => $W_Key->{TS_path} . "$W_Key->{template}", 
+            &dir_tree( target => $W_Key->{TS_path} . "$W_Key->{template}",
                        substrate => $sub,
                        ligand => $lig_ali,
                   no_new_subs => $W_Key->{input_conformers_only} );
@@ -123,7 +123,7 @@ sub _make_directories {
         if (!-d $lig_ali) {
             mkdir "$lig_ali";
         }
-        &dir_tree( target => $W_Key->{TS_path} . "$W_Key->{template}", 
+        &dir_tree( target => $W_Key->{TS_path} . "$W_Key->{template}",
                    ligand => $lig_ali,
               no_new_subs => $W_Key->{input_conformers_only} );
 
@@ -133,7 +133,7 @@ sub _make_directories {
             }
 
             my $top_dir_tar = "$parent/$lig_ali/$lig_ali" . "_XYZ";
-            &dir_tree( target => $top_dir_tar, 
+            &dir_tree( target => $top_dir_tar,
                        substrate => $sub,
                        ligand => $lig_ali,
                    no_new_subs => 1);
@@ -151,7 +151,7 @@ sub dir_tree {
     #constraints for each gemotry;
     #status for each geometry;
     my %params = @_;
-    my ($top_dir_tar, $substrate, 
+    my ($top_dir_tar, $substrate,
         $ligand, $no_new_subs) = ( $params{target},
                                    $params{substrate},
                                    $params{ligand},
@@ -178,7 +178,7 @@ sub dir_tree {
             mkdir $substrate;
         }
         $top_dir_make = "$substrate";
-        $substituents->{substrate} = 
+        $substituents->{substrate} =
             $ligs_subs->{$ligand}->{substrate}->{$substrate};
     }else {
         if (! -d $ligand) {
@@ -188,10 +188,10 @@ sub dir_tree {
         if ($ligs_subs->{$ligand}->{ligand} ne $LIG_OLD &&
             ($ligs_subs->{$ligand}->{ligand} ne $LIG_NONE)) {
             $new_ligand = $ligs_subs->{$ligand}->{ligand};
-            $substituents_ligand = 
+            $substituents_ligand =
                 $ligs_subs->{$ligand}->{exp_sub};
         }else {
-            $substituents->{ligand} = 
+            $substituents->{ligand} =
                 $ligs_subs->{$ligand}->{exp_sub};
         }
         $inexp_sub = $ligs_subs->{$ligand}->{inexp_sub};
@@ -211,7 +211,7 @@ sub dir_tree {
             $min_found = 1 if ($extend =~ /^min/i);
 
             if ($tempdir =~ /$top_dir_tar(\S+)?/) {
-                
+
                 my $newdir = $1 ? $top_dir_make . $1 . "/$extend" : $top_dir_make . "/$extend";
                 my $head = $newdir; $head =~ s/\/Cf\d+$//;
 
@@ -274,9 +274,9 @@ sub dir_tree {
         for my $i (0..$#extends_new) {
             my $extend_temp = $extends_new[$i];
             my $new = $newdir;
-            
+
             my ($extend_partern) = $extend =~ /(\D+)/;
-            my ($extend_temp_partern) = $extend_temp =~ /(\D+)/; 
+            my ($extend_temp_partern) = $extend_temp =~ /(\D+)/;
             if ($extend_partern ne $extend_temp_partern) {
                 $new .= "/$extend_temp";
             }else {
@@ -288,14 +288,16 @@ sub dir_tree {
                 my @pattern = split('/', $head);
                 my $state = $pattern[-1];
 
+				$W_Key->{skip_step1} //= $skip_step1;
+
                 if ($state =~ /^ts/i) {
-                    $status->{$head} = new Aaron::G09Job_TS( 
+                    $status->{$head} = new Aaron::G09Job_TS(
                         name => $head,
                         catalysis => $new_dir->{$newdir}->{catalysis} ,
                         Gkey => $G_Key,
                         Wkey => $W_Key,
                         template_job => $submission_template,
-                        skip_step1 => $skip_step1,
+                        skip_step1 => $W_Key->{skip_step1},
                     );
                 }elsif ($state =~ /^min/i) {
                     $status->{$head} = new Aaron::G09Job_MIN(
@@ -304,7 +306,7 @@ sub dir_tree {
                         Gkey => $G_Key,
                         Wkey => $W_Key,
                         template_job => $submission_template,
-                        skip_step1 => $skip_step1,
+                        skip_step1 => $W_Key->{skip_step1},
                     );
                 }
             }elsif (%{$status->{$head}->{catalysis}}) {
@@ -327,7 +329,7 @@ sub dir_tree {
                         $status->{$head}->{catalysis};
                 }
 
-                if (! -d $new && 
+                if (! -d $new &&
                     ($status->{$head}->{conformers}->{$extend_temp}->{status} ne 'repeated')) {
                     make_path($new);
                     if ($i == 0 || ($W_Key->{full_conformers})) {
@@ -346,7 +348,7 @@ sub dir_tree {
                         } else {
                             $status->{$head}->{conformers}->{$extend_temp}->set_status('skipped');
                             $status->{$head}->{conformers}->{$extend_temp}->set_msg("could not remove clash\n");
-                        }        
+                        }
                     }
                 }
             }
@@ -372,8 +374,8 @@ sub get_status_run {
 
 
 sub analyze_result {
-   
-    my $data = ''; 
+
+    my $data = '';
     for my $ligand (sort keys %{ $ligs_subs }) {
         $data .= "Available thermochemical data for $ligand (T = $G_Key->{temperature} K):\n";
         my @items = ($ligand, sort keys %{ $ligs_subs->{$ligand}->{substrate} });
@@ -400,7 +402,7 @@ sub _analyze_result {
             if (my $conf_hash = $jobs->{$geo}->{conformers}) {
                 my @conformers = grep { $conf_hash->{$_}->{thermo}->[$i] }
                                     sort keys %{ $conf_hash };
-                my @thermo = sort { $a <=> $b } 
+                my @thermo = sort { $a <=> $b }
                              map {$conf_hash->{$_}->{thermo}->[$i]} @conformers;
 
                 $min[$i] = $thermo[0] < $min[$i] ? $thermo[0] : $min[$i] if @thermo;
@@ -447,7 +449,7 @@ sub _analyze_result {
                 $thermo->{$key}->{geos}->{$geo}->{conformers} = {};
                 $abs_thermo->{$key}->{geos}->{$geo}->{conformers} = {};
                 my $thermo_cf_exp = [];
-				
+
                 for my $cf (sort keys %{ $jobs->{$geo}->{conformers} }) {
                     my $job = $jobs->{$geo}->{conformers}->{$cf};
 
@@ -472,7 +474,7 @@ sub _analyze_result {
             }else {
                 for my $i (0..$#{ $jobs->{$geo}->{thermo} }) {
                     if (! $W_Key->{multistep}) {
-                        $thermo->{$key}->{geos}->{$geo}->{thermo}->[$i] = 
+                        $thermo->{$key}->{geos}->{$geo}->{thermo}->[$i] =
                             ($jobs->{$geo}->{thermo}->[$i] - $min[$i]) * $hart_to_kcal;
                     }
                 }
@@ -484,7 +486,7 @@ sub _analyze_result {
             }
 
             for my $i (0.. $#{ $thermo->{$key}->{geos}->{$geo}->{thermo} }) {
-                $thermo->{$key}->{sum}->[$i] += 
+                $thermo->{$key}->{sum}->[$i] +=
                     exp(-$thermo->{$key}->{geos}->{$geo}->{thermo}->[$i]/$RT);
             }
         }
@@ -498,7 +500,7 @@ sub _analyze_result {
 
     return $data;
 }
-            
+
 
 sub get_flags {
     my ($file) = @_;

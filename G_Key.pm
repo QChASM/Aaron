@@ -258,6 +258,7 @@ sub new {
         record => $params{record},
         short => $params{short},
         no_quota => $params{no_quota},
+		skip_step1 => $params{skip_step1},
    };
 
    bless $self, $class;
@@ -274,6 +275,7 @@ sub new {
    $self->{record} //= 0;
    $self->{short} //= 0;
    $self->{no_quota} //= 0;
+   $self->{skip_step1} //= 0;
 
    return $self;
 }

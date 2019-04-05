@@ -12,6 +12,10 @@ $QCHASM/Aaron/Aaron [options] jobname.in
 
 Runs all optimizations using the PM6 semi-empirical method with a wall time of 2 hours
 
+=item B<--skip1>
+
+Skips step 1, using template files only to do TS search
+
 =item B<--nosub>
 
 Builds .com files for the current step without submitting anything
