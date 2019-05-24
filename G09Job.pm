@@ -547,19 +547,19 @@ sub run_stepX {
             $self->submit();
         }
     }elsif ($self->{status} eq 'failed') {
+        if ($self->{attempt} >= 5) {
+            $self->{status} = 'killed';
+            $self->{msg} = 'killed because of too many attempts';
+            return;
+        }
+        $self->{attempt} ++;
+
         if ($self->{gout}->{geometry}) {
             $self->{catalysis}->conformer_geometry($self->{gout}->{geometry});
         }else {
             my $com = "$file_name.$self->{step}.com";
 
             $self->{catalysis}->update_geometry($com);
-        }
-
-        $self->{attempt} ++;
-        if ($self->{attempt} > 5) {
-            $self->{status} = 'killed';
-            $self->{msg} = 'killed because of too many attempts';
-            return;
         }
 
         my $quit = $self->build_com();
@@ -928,7 +928,7 @@ sub build_com {
                                     print_flag => $print_flag,
                                     filename => $com_file );
     return 0;
-} #End build new com file
+}
 
 
 
@@ -1056,6 +1056,8 @@ sub check_reaction {
 
         next unless $failed[$i];
 
+		# this is just $distance = 1*0.1 or -1*0.1
+		# depending on if they are too far or to close together
         my $distance = $failed[$i] * 0.1;
 
         $self->{catalysis}->change_distance( atom1 => $con->[$i]->[0]->[0],
@@ -1070,12 +1072,12 @@ sub check_reaction {
     }
 
     if ($failed) {
-        $self->{cycle}++;
-        if ($self->{cycle} > $MAXCYCLE) {
+        if ($self->{cycle} >= $MAXCYCLE) {
             $self->{status} = 'killed';
             $self->{msg} = "killed because of too many cycles. ";
             return;
         }
+        $self->{cycle}++;
 
         $self->remove_later_than2();
         $self->{step} = 2;
@@ -1090,14 +1092,21 @@ sub move_forward {
 
     my $finished = 0;
 
-    if ($self->{step} == 3) {
+    if ( $self->{step} == 3 ) {
         $self->update_lib();
     }
 
-    if ($self->{step} >= 4) {
+    if ( $self->{step} >= 4 ) {
         $self->get_thermo();
-        if ($self->{step} == $self->maxstep()) {
-            $self->higher_level_thermo() if $self->{Gkey}->{high_level}->{method};
+        if ( $self->n_imaginary() != 1 ) {
+            $self->remove_later_than2();
+            $self->{step}    = 2;
+            $self->{attempt} = 1;
+			$self->{cycle}++;
+            $self->build_com();
+        } elsif ( $self->{step} == $self->maxstep() ) {
+            $self->higher_level_thermo()
+              if $self->{Gkey}->{high_level}->{method};
             $self->{status} = 'finished';
             $finished = 1;
         }
@@ -1106,6 +1115,16 @@ sub move_forward {
     return $finished;
 }
 
+sub n_imaginary {
+    my $self      = shift;
+    my $directory = $self->{name};
+    my $filename  = "$directory/" . $self->file_name();
+    my $out       = new AaronTools::G09Out( file => "$filename.4.log" );
+    my $freq      = $out->frequency();
+    my $img       = $freq->imaginary_frequencies();
+
+	return $#img + 1;
+}
 
 sub get_thermo {
     my $self = shift;
