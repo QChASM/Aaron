@@ -1121,9 +1121,9 @@ sub n_imaginary {
     my $filename  = "$directory/" . $self->file_name();
     my $out       = new AaronTools::G09Out( file => "$filename.4.log" );
     my $freq      = $out->frequency();
-    my $img       = $freq->imaginary_frequencies();
+    my @img       = $freq->imaginary_frequencies();
 
-	return $#img + 1;
+	return scalar @img;
 }
 
 sub get_thermo {
