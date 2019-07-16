@@ -289,7 +289,7 @@ sub read_input {
 
     while(<IN>) {
         /[rR]eaction_type=(\S+)/ && do {$self->{reaction_type} = $1; next;};
-        /\b[tT]emplate=(\S+)/ && do {$self->{template} = $1; next;};
+        /^\s*[tT]emplate=(\S+)/ && do {$self->{template} = $1; next;};
         /[sS]tep=(\S+)/ && do {$self->{step} = [split(/;/, $1)]; next;};
         /[Ii]nput_conformers_only=(\d+)/ && do {$self->{input_conformers_only} = $1; next;};
         /[Ff]ull_conformers=(\d+)/ && do {$self->{full_conformers} = $1; next;};
