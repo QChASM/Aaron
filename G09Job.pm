@@ -201,7 +201,9 @@ sub _check_step {
             my $geometry = $output->geometry();
 
             if ($output->finished_normal()) {
-                $self->{status} = 'done';
+                if ($self->{status} !~ /restart/) {
+                    $self->{status} = 'done';
+                }
                 #update the catalysis geometry
                 $self->{catalysis}->conformer_geometry($geometry);
                 $check_reaction = 1;
@@ -792,10 +794,15 @@ sub build_com {
                                 last ERROR;
                               }
 
-        if ($error eq 'EIGEN') { $route =~ s/opt=\(/opt=\(noeigen,/;
+        if ($error eq 'EIGEN') { 
                                  my $message = "Wrong number of negative eigenvalues for $filename. ";
-                                 $message .= "...Adding noeigen.\n";
+                                 $message .= "...Going back to step 2.\n";
                                  $self->{msg} = $message;
+                                 $self->remove_later_than2();
+                                 $self->{step}    = 2;
+                                 $self->{attempt} = 1;
+                       	         $self->{cycle}++;
+                                 $self->build_com();
                                  $self->{status} = 'restart';
                                  last ERROR;
                                }
@@ -1098,12 +1105,18 @@ sub move_forward {
 
     if ( $self->{step} >= 4 ) {
         $self->get_thermo();
+        my $asdf = $self->n_imaginary();
         if ( $self->n_imaginary() != 1 ) {
+            #if there's multiple (or no) imaginary modes, go back through optimization steps
+            my $message = "Wrong number of negative eigenvalues for $filename. ";
+            $message .= "...Going back to step 2.\n";
+            $self->{msg} = $message;
             $self->remove_later_than2();
             $self->{step}    = 2;
             $self->{attempt} = 1;
 			$self->{cycle}++;
             $self->build_com();
+            $self->{status} = 'restart';
         } elsif ( $self->{step} == $self->maxstep() ) {
             $self->higher_level_thermo()
               if $self->{Gkey}->{high_level}->{method};
@@ -1918,7 +1931,9 @@ sub _check_step {
             my $geometry = $output->geometry();
 
             if ($output->finished_normal()) {
-                $self->{status} = 'done';
+                if ($self->{status} !~ /restart/) {
+                    $self->{status} = 'done';
+                }
                 #update the catalysis geometry
                 $self->{catalysis}->conformer_geometry($geometry);
                 $check_reaction = 1;
