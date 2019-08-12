@@ -1103,9 +1103,10 @@ sub move_forward {
         $self->update_lib();
     }
 
+    my $filename = $self->{name};
+
     if ( $self->{step} >= 4 ) {
         $self->get_thermo();
-        my $asdf = $self->n_imaginary();
         if ( $self->n_imaginary() != 1 ) {
             #if there's multiple (or no) imaginary modes, go back through optimization steps
             my $message = "Wrong number of negative eigenvalues for $filename. ";
