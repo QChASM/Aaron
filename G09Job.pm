@@ -800,9 +800,9 @@ sub build_com {
                                  $self->{msg} = $message;
                                  $self->remove_later_than2();
                                  $self->{step}    = 2;
+                                 $step            = 2;
                                  $self->{attempt} = 1;
                        	         $self->{cycle}++;
-                                 $self->build_com();
                                  $self->{status} = 'restart';
                                  last ERROR;
                                }
