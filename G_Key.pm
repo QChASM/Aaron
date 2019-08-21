@@ -9,7 +9,7 @@ use Data::Dumper;
 
 my $HOME = $ENV{'HOME'};
 my $QCHASM = $ENV{'QCHASM'};
-$QCHASM =~ s|/\z||;	#Strip trailing / from $QCHASM if it exists
+$QCHASM =~ s|/\z||;    #Strip trailing / from $QCHASM if it exists
 
 sub new {
     my $class = shift;
@@ -151,9 +151,17 @@ sub _read_key_from_input {
                 $self->{node} = $1 unless $self->{node}; next;
             };
 
-			/[sS]ubmission_template=(\S+)/ && do {
-				$self->{submission_template} = $1 unless $self->{submission_template}; next;
-			};
+            /[sS]ubmission_template=(\S+)/ && do {
+                $self->{submission_template} = $1 unless $self->{submission_template}; next;
+            };
+
+            /[rR]msd_cutoff=(\S+)/ && do {
+                $self->{rmsd_cutoff} = $1 unless $self->{rmsd_cutoff}; next;
+            };
+
+            /[dD]_cutoff=(\S+)/ && do {
+                $self->{d_cutoff} = $1 unless $self->{d_cutoff}; next;
+            };
             #G09
             /grid=(\S+)/ && do {$self->{grid} = $1 unless $self->{grid}; next;};
             /\b[sS]olvent=(\S+)/ && do {$self->{solvent} = $1 unless $self->{solvent}; next;};
@@ -241,6 +249,7 @@ sub read_key_from_input {
 package Aaron::Workflow_Key;
 use strict; use warnings;
 use Data::Dumper;
+use AaronTools::Constants qw(CUTOFF);
 
 sub new {
     my $class =shift;
@@ -258,7 +267,9 @@ sub new {
         record => $params{record},
         short => $params{short},
         no_quota => $params{no_quota},
-		skip_step1 => $params{skip_step1},
+        skip_step1 => $params{skip_step1},
+        rmsd_cutoff => $params{rmsd_cutoff},
+        d_cutoff => $params{d_cutoff}
    };
 
    bless $self, $class;
@@ -276,6 +287,8 @@ sub new {
    $self->{short} //= 0;
    $self->{no_quota} //= 0;
    $self->{skip_step1} //= 0;
+   $self->{rmsd_cutoff} //= CUTOFF->{RMSD_CUTOFF}; 
+   $self->{d_cutoff} //= CUTOFF->{CUTOFF_D}; 
 
    return $self;
 }
@@ -297,6 +310,8 @@ sub read_input {
         /[Mm]ultistep=(\d+)/ && do {$self->{multistep} = $1; next;};
         #non-default job submission template
         /[sS]ubmission_template=(\S+)/ && do {$self->{submission_template} = $1; next; };
+        /[rR]msd_cutoff=(\S+)/ && do {$self->{rmsd_cutoff} = $1; next; };
+        /[dD]_cutoff=(\S+)/ && do {$self->{d_cutoff} = $1; next; };
     }
 
     close IN;

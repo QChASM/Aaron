@@ -199,6 +199,16 @@ sub read_params {
         $W_Key->{submission_template_o} = get_job_template($W_Key->{submission_template});
     }
 
+    # use d_cutoff that the user specified
+	if ( $G_Key->{d_cutoff} ){
+		$W_Key->{d_cutoff} = $G_Key->{d_cutoff};
+	}
+
+    # use rmsd_cutoff that the user specified
+	if ( $G_Key->{rmsd_cutoff} ){
+		$W_Key->{rmsd_cutoff} = $G_Key->{rmsd_cutoff};
+	}
+
     #combine ligand and sub information;
     for my $ligand (keys %{ $lig }) {
         $ligs_subs->{$ligand} = {};

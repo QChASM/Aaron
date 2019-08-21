@@ -381,10 +381,10 @@ sub check_conformers {
                     my $job_j = $self->{conformers}->{$cf[$j]};
                     my $energy_j = $job_j->{gout}->{energy};
                     my $geometry_j = $job_j->{gout}->{geometry};
-
+                    
                     if (abs($energy_i - $energy_j)*$HART_TO_KCAL < $CUTOFF->{E_CUTOFF}) {
                         my $rmsd = $job_i->{catalysis}->conformer_rmsd(ref_cata => $geometry_j);
-                        if ($rmsd >= $CUTOFF->{RMSD_CUTOFF}) {next;}
+                        if ($rmsd >= $self->{Wkey}->{rmsd_cutoff}) {next;}
 
                         #determine which one to kill
                         my $slow_geo = $j;
@@ -1050,7 +1050,7 @@ sub check_reaction {
     my $catalysis = $self->{catalysis};
     my $con = $catalysis->{constraints};
 
-    my @failed = $catalysis->examine_constraints();
+    my @failed = $catalysis->examine_constraints($self->{Wkey}->{d_cutoff});
 
     my $failed;
     if (grep {$_ != 0} @failed) {
@@ -1768,7 +1768,7 @@ sub check_reaction {
     my $catalysis = $self->{catalysis};
     my $con = $catalysis->{constraints};
 
-    my @failed = $catalysis->examine_constraints();
+    my @failed = $catalysis->examine_constraints($self->{Wkey}->{d_cutoff});
 
     my $failed;
     if (grep {$_ != 0} @failed) {
