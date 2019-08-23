@@ -899,6 +899,9 @@ sub build_com {
         if ($step_change) {
             $self->{msg} .= "using smaller step size.\n";
         }
+    } elsif ($self->{cycle} > $MAXCYCLE) {
+        $self->{status} = 'killed';
+        $self->{msg} = "killed because of too many cycles. ";
     }
 
     if ($self->{attempt} > 2) {
