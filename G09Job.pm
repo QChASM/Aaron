@@ -82,6 +82,17 @@ sub maxstep {
     return $self->{maxstep};
 }
 
+sub change_status {
+    #change_status(self, new_status)
+    #if self->{status} is not killed, set self->{status} to new_status
+    my $self = shift;
+    my $new_status = shift;
+    
+    if ( not $self->{status} =~ /killed/ ) {
+        $self->{status} = $new_status;
+    }
+
+}
 
 sub copy {
     my $self = shift;
@@ -179,6 +190,13 @@ sub _check_step {
 
     if ($self->{status} eq 'finished' && $self->{gout}) {return};
 
+    #should check for other errors when Aaron starts
+    if ( $self->{cycle} > $MAXCYCLE ) {
+        $self->change_status('killed');
+    } elsif ( $self->{attempt} > 5 ) {
+        $self->change_status('killed');
+    }
+
     my $geometry = $self->{name};
 
     my $file_name = "$geometry/" . $self->file_name();
@@ -202,17 +220,17 @@ sub _check_step {
 
             if ($output->finished_normal()) {
                 if ($self->{status} !~ /restart/) {
-                    $self->{status} = 'done';
+                    $self->change_status('done');
                 }
                 #update the catalysis geometry
                 $self->{catalysis}->conformer_geometry($geometry);
                 $check_reaction = 1;
             }elsif ($jobrunning) {
-                $self->{status} = 'running';
+                $self->change_status('running');
                 $self->{catalysis}->conformer_geometry($geometry);
                 $check_reaction = 1;
             }elsif ($output->error()) {
-                $self->{status} = 'failed';
+                $self->change_status('failed');
                 $self->{error} = $output->error();
                 $self->{err_msg} = $output->{error_msg};
             }
@@ -224,9 +242,9 @@ sub _check_step {
                 $self->{status} !~ /repeated/)) {
             $self->{step} = $step;
             if ($jobrunning) {
-                $self->{status} = 'pending';
+                $self->change_status('pending');
             }else {
-                $self->{status} = '2submit';
+                $self->change_status('2submit');
             }
             last;
         }
@@ -331,7 +349,7 @@ sub examine_connectivity {
         #workflow
         $self->{attempt} ++;
         if ($self->{attempt} > $self->{maxstep}) {
-            $self->{status} = 'killed';
+            $self->change_status('killed');
             $self->{msg} = 'killed because of too many attempts';
             return;
         }
@@ -346,7 +364,7 @@ sub examine_connectivity {
 
         $self->{constraints} = [grep {$_->[1]} @{ $self->{constraints} }];
 
-        $self->{status} = '2submit';
+        $self->change_status('2submit');
 
         $self->{msg} = "repeat step2 due to unexpected bond change, now waiting in the queue ";
     }
@@ -435,7 +453,7 @@ sub _repeated_cf {
 
     my ($repeating_cf) = @_;
 
-    $self->{status} = 'repeated';
+    $self->change_status('repeated');
     $self->{msg} = "repeat with $repeating_cf";
 
     $self->kill_running();
@@ -534,7 +552,7 @@ sub run_stepX {
 
     if ($self->{status} eq '2submit') {
         $self->submit();
-        $self->{status} = 'pending';
+        $self->change_status('pending');
     }elsif ($self->{status} eq 'done') {
         $self->{catalysis}->conformer_geometry($self->{gout}->{geometry});
 
@@ -550,7 +568,7 @@ sub run_stepX {
         }
     }elsif ($self->{status} eq 'failed') {
         if ($self->{attempt} >= 5) {
-            $self->{status} = 'killed';
+            $self->change_status('killed');
             $self->{msg} = 'killed because of too many attempts';
             return;
         }
@@ -574,7 +592,7 @@ sub run_stepX {
     }elsif ($self->{status} eq 'start') {
         $self->build_com();
         $self->submit();
-        $self->{status} = 'pending';
+        $self->change_status('pending');
     }
 
 }
@@ -790,7 +808,7 @@ sub build_com {
                                 }
 
                                 $self->{msg} = $message;
-                                $self->{status} = 'restart';
+                                $self->change_status('restart');
                                 last ERROR;
                               }
 
@@ -803,7 +821,7 @@ sub build_com {
                                  $step            = 2;
                                  $self->{attempt} = 1;
                        	         $self->{cycle}++;
-                                 $self->{status} = 'restart';
+                                 $self->change_status('restart');
                                  last ERROR;
                                }
 
@@ -824,7 +842,7 @@ sub build_com {
                                                  "while Aaron cannot open $filename.$step.com. " .
                                                  "Aaron has skipped this, check that.\n";
                                        $self->{msg} = $msg;
-                                       $self->{status} = 'skipped';
+                                       $self->change_status('skipped');
                                        close COM;
                                        last ERROR;
                                    };
@@ -839,20 +857,20 @@ sub build_com {
                                    }
                                    $route =~ s/readfc/calcfc/;
                                    $self->{msg} = $msg;
-                                   $self->{status} = 'restart';
+                                   $self->change_status('restart');
                                    last ERROR;
                                  }
         if ($error eq "CLASH") { my $msg = "Atoms too crowded in $filename.$step.com. ";
                                  unless ($catalysis->remove_clash()) {
                                     $msg .= "Aaron failed to remove clash, please try manually\n";
                                     $self->{msg} = $msg;
-                                    $self->{status} = 'skipped';
+                                    $self->change_status('skipped');
 
                                     return 0;
                                  }else {
                                      $msg .= "Aaron has removed the clash, the job is restarted. ";
                                      $self->{msg} = $msg;
-                                     $self->{status} = 'restart';
+                                     $self->change_status('restart');
                                  }
                                }
         if ($error eq "CHARGEMULT") { my $msg = "The combination of multipicity is not correct " .
@@ -866,7 +884,7 @@ sub build_com {
                                             "Aaron will restart this job.\n";
 
                                   $self->{msg} = $msg;
-                                  $self->{status} = 'restart';
+                                  $self->change_status('restart');
                                   if ($self->{Wkey}->{record}) {
                                       system("mv $file_name.$step.log $file_name.log.$step");
                                   }else{
@@ -879,7 +897,7 @@ sub build_com {
                                    $msg .= "Please also check $filename.$step.log manually\n";
 
                                    $self->{msg} = $msg;
-                                   $self->{status} = 'restart';
+                                   $self->change_status('restart');
                                    if ($self->{Wkey}->{record}) {
                                        system("mv $file_name.$step.log $file_name.log.$step");
                                    }else{
@@ -899,11 +917,8 @@ sub build_com {
         if ($step_change) {
             $self->{msg} .= "using smaller step size.\n";
         }
-    } elsif ($self->{cycle} > $MAXCYCLE) {
-        $self->{status} = 'killed';
-        $self->{msg} = "killed because of too many cycles. ";
     }
-
+    
     if ($self->{attempt} > 2) {
         my $fc_change = ($route =~ s/readfc/calcfc/);
         ($route, my $step_change) = &reduce_maxstep($route);
@@ -937,6 +952,13 @@ sub build_com {
                                     footer => $footer,
                                     print_flag => $print_flag,
                                     filename => $com_file );
+    
+    if ($self->{cycle} > $MAXCYCLE) {
+        $self->change_status('killed');
+        $self->{msg} = "killed because of too many cycles. ";
+        return 'killed';
+    }
+
     return 0;
 }
 
@@ -1077,13 +1099,13 @@ sub check_reaction {
 
         print_message("Changing the distance between $con->[$i]->[0]->[0], $con->[$i]->[0]->[1] by $distance A\n");
 
-        $self->{status} = '2submit';
+        $self->change_status('2submit');
         $self->{msg} = "reverted to step 2, now waiting in the queue ";
     }
 
     if ($failed) {
         if ($self->{cycle} >= $MAXCYCLE) {
-            $self->{status} = 'killed';
+            $self->change_status('killed');
             $self->{msg} = "killed because of too many cycles. ";
             return;
         }
@@ -1120,11 +1142,11 @@ sub move_forward {
             $self->{attempt} = 1;
 			$self->{cycle}++;
             $self->build_com();
-            $self->{status} = 'restart';
+            $self->change_status('restart');
         } elsif ( $self->{step} == $self->maxstep() ) {
             $self->higher_level_thermo()
               if $self->{Gkey}->{high_level}->{method};
-            $self->{status} = 'finished';
+            $self->change_status('finished');
             $finished = 1;
         }
     }
@@ -1382,7 +1404,7 @@ sub move_forward {
         $self->get_thermo();
         if ($self->{step} == $self->maxstep()) {
             $self->higher_level_thermo() if $self->{Gkey}->{high_level}->{method};
-            $self->{status} = 'finished';
+            $self->change_status('finished');
             $finished = 1;
         }
     }
@@ -1566,7 +1588,7 @@ sub move_forward {
 
     if ($self->{step} == 3) {
         $finished = 1;
-        $self->{status} = 'finished';
+        $self->change_status('finished');
     }
 
     return $finished;
@@ -1738,7 +1760,7 @@ sub examine_connectivity {
         #workflow
         $self->{attempt} ++;
         if ($self->{attempt} > $self->{maxstep}) {
-            $self->{status} = 'killed';
+            $self->change_status('killed');
             $self->{msg} = 'killed because of too many attempts';
             return;
         }
@@ -1753,7 +1775,7 @@ sub examine_connectivity {
 
         $self->{constraints} = [grep {$_->[1]} @{ $self->{constraints} }];
 
-        $self->{status} = '2submit';
+        $self->change_status('2submit');
 
         $self->{msg} = "repeating step2 due to unexpected bond change, now waiting in the queue ";
     }
@@ -1793,14 +1815,14 @@ sub check_reaction {
 
         print_message("Changing the distance between $con->[$i]->[0]->[0], $con->[$i]->[0]->[1] by $distance A\n");
 
-        $self->{status} = '2submit';
+        $self->change_status('2submit');
         $self->{msg} = "reverted to step 1, now waiting in the queue ";
     }
 
     if ($failed) {
         $self->{cycle}++;
         if ($self->{cycle} > $MAXCYCLE) {
-            $self->{status} = 'killed';
+            $self->change_status('killed');
             $self->{msg} = "killed because of too many cycles. ";
             return;
         }
@@ -1872,7 +1894,7 @@ sub run_stepX {
 
     if ($self->{status} eq '2submit') {
         $self->submit();
-        $self->{status} = 'pending';
+        $self->change_status('pending');
     }elsif ($self->{status} eq 'done') {
         $self->{catalysis}->conformer_geometry($self->{gout}->{geometry});
 
@@ -1889,7 +1911,7 @@ sub run_stepX {
     }elsif ($self->{status} eq 'failed') {
         $self->{attempt} ++;
         if ($self->{attempt} > 5) {
-            $self->{status} = 'killed';
+            $self->change_status('killed');
             $self->{msg} = 'killed because of too many attempts';
             return;
         }
@@ -1904,7 +1926,7 @@ sub run_stepX {
     }elsif ($self->{status} eq 'start') {
         $self->build_com(directory => '.');
         $self->submit();
-        $self->{status} = 'pending';
+        $self->change_status('pending');
     }
 }
 
@@ -1915,6 +1937,13 @@ sub _check_step {
     my $maxstep = $self->maxstep();
 
     if ($self->{status} eq 'finished' && $self->{gout}) {return};
+
+    #should check for other errors when Aaron starts
+    if ( $self->{cycle} > $MAXCYCLE ) {
+        $self->change_status('killed');
+    } elsif ( $self->{attempt} > 5 ) {
+        $self->change_status('killed');
+    }
 
     my $geometry = $self->{name};
 
@@ -1936,13 +1965,13 @@ sub _check_step {
 
             if ($output->finished_normal()) {
                 if ($self->{status} !~ /restart/) {
-                    $self->{status} = 'done';
+                    $self->change_status('done');
                 }
                 #update the catalysis geometry
                 $self->{catalysis}->conformer_geometry($geometry);
                 $check_reaction = 1;
             }elsif ($output->error()) {
-                $self->{status} = 'failed';
+                $self->change_status('failed');
                 $self->{error} = $output->error();
                 $self->{err_msg} = $output->{error_msg};
                 if ($geometry->geometry_read()) {
@@ -1958,7 +1987,7 @@ sub _check_step {
             last;
         }elsif (-e "$file_name.$step.com") {
             $self->{step} = $step;
-            $self->{status} = '2submit';
+            $self->change_status('2submit');
             last;
         }
         $step--;
