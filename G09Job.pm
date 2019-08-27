@@ -814,13 +814,19 @@ sub build_com {
 
         if ($error eq 'EIGEN') { 
                                  my $message = "Wrong number of negative eigenvalues for $filename. ";
-                                 $message .= "...Going back to step 2.\n";
-                                 $self->{msg} = $message;
-                                 $self->remove_later_than2();
-                                 $self->{step}    = 2;
-                                 $step            = 2;
-                                 $self->{attempt} = 1;
-                       	         $self->{cycle}++;
+                                 if ( $self->{step} == 4 ) {
+                                     $message .= "...Going back to step 2.\n";
+                                     $self->{msg} = $message;
+                                     $self->remove_later_than2();
+                                     $self->{step}    = 2;
+                                     $step            = 2;
+                                     $self->{attempt} = 1;
+                           	         $self->{cycle}++;
+                                 } else {
+                                     $message .= "...requesting no eigenvalue check for step $self->{step} optimizaiton.\n";
+                                     $self->{msg} = $message;
+                                     $route =~ s/opt=\(/opt=\(noeigen,/;
+                                 }
                                  $self->change_status('restart');
                                  last ERROR;
                                }
