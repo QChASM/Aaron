@@ -338,7 +338,7 @@ sub print_status {
         @killed && do {$msg .= "\nStopped jobs:\n";};
         for my $geometry(@killed) {
             my $job = &$_get_job($geometry);
-            $msg .= "$geometry\n step $job->{step} attemp $job->{attempt}: ";
+            $msg .= "$geometry\n step $job->{step} attempt $job->{attempt}: ";
             $msg .= ($job->{msg} or "No msg recorded") . "\n";
         }
 

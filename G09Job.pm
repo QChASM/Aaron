@@ -455,6 +455,7 @@ sub _repeated_cf {
 
     $self->change_status('repeated');
     $self->{msg} = "repeat with $repeating_cf";
+    $self->{thermo} = [];
 
     $self->kill_running();
 
@@ -815,6 +816,8 @@ sub build_com {
         if ($error eq 'EIGEN') { 
                                  my $message = "Wrong number of negative eigenvalues for $filename. ";
                                  if ( $self->{step} == 4 ) {
+                                    #Gaussian doesn't run the eigentest for frequencies...
+                                    #this probably won't catch anything
                                      $message .= "...Going back to step 2.\n";
                                      $self->{msg} = $message;
                                      $self->remove_later_than2();
@@ -822,6 +825,12 @@ sub build_com {
                                      $step            = 2;
                                      $self->{attempt} = 1;
                            	         $self->{cycle}++;
+                                     ($route, $footer, $print_flag) = $self->com_route_footer(
+                                        filename => $filename,
+                                        low_method => $low_method,
+                                        method => $method,
+                                        high_method => $high_method,
+                                        );
                                  } else {
                                      $message .= "...requesting no eigenvalue check for step $self->{step} optimizaiton.\n";
                                      $self->{msg} = $message;
@@ -911,6 +920,10 @@ sub build_com {
                                    }
                                  }
 
+        if (not $error) { 
+            my $msg = "previous step finished without error.\n";
+            $self->{msg} = $msg;
+        }
     }
 
     if ($self->{cycle} > 1) {
