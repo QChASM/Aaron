@@ -288,7 +288,7 @@ sub new {
    $self->{no_quota} //= 0;
    $self->{skip_step1} //= 0;
    $self->{rmsd_cutoff} //= CUTOFF->{RMSD_CUTOFF}; 
-   $self->{d_cutoff} //= CUTOFF->{CUTOFF_D}; 
+   $self->{d_cutoff} //= CUTOFF->{D_CUTOFF}; 
 
    return $self;
 }
