@@ -358,7 +358,7 @@ sub examine_connectivity {
 
         $self->{step} = 2;
 
-        print_message("$file_name: bond changing incorrectly, repeating step1 constraining problematic bond\n");
+        print_message("$filename: bond changing incorrectly, repeating step1 constraining problematic bond\n");
 
         $self->build_com();
 
@@ -913,7 +913,7 @@ sub build_com {
 
                                    $self->{msg} = $msg;
                                    $self->change_status('restart');
-                                   ef ($self->{Wkey}->{record}) {
+                                   if ($self->{Wkey}->{record}) {
                                        system("mv $file_name.$step.log $file_name.log.$step");
                                    }else{
 									   system("mv $file_name.$step.log $file_name.$step.log.bkp");
@@ -1777,7 +1777,7 @@ sub examine_connectivity {
 
         $self->{step} = 1;
 
-        print_message("$file_name: bond changing incorrectly, repeating step1 constraining problematic bond\n");
+        print_message("$filename: bond changing incorrectly, repeating step1 constraining problematic bond\n");
 
         $self->build_com( directory => '.');
 
