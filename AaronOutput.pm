@@ -299,8 +299,9 @@ sub print_status {
         for my $geometry(@running) {
             my $job = &$_get_job($geometry);
             my $gradient = $job->{gout}->gradient();
+            $gradient =~ s/NO/NO /g;
             $msg .= " $geometry step $job->{step} attempt $job->{attempt} " .
-                    "cycle $job->{cycle}. $gradient\n";
+                    "cycle $job->{cycle}. Progress: $gradient\n";
         }
 
         @pending && do {$msg .= "\nPending jobs:\n";};

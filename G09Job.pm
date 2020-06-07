@@ -359,7 +359,7 @@ sub examine_connectivity {
 
         $self->{step} = 2;
 
-        print_message("bond changing incorrectly, repeating step1 constraining problematic bond");
+        print_message("$filename: bond changing incorrectly, repeating step1 constraining problematic bond\n");
 
         $self->build_com();
 
@@ -825,7 +825,7 @@ sub build_com {
                                      $self->{step}    = 2;
                                      $step            = 2;
                                      $self->{attempt} = 1;
-                           	         $self->{cycle}++;
+                                     $self->{cycle}++;
                                      ($route, $footer, $print_flag) = $self->com_route_footer(
                                         filename => $filename,
                                         low_method => $low_method,
@@ -834,7 +834,7 @@ sub build_com {
                                         );
                                      $self->change_status('start');
                                  } else {
-                                     $message .= "...requesting no eigenvalue check for step $self->{step} optimizaiton.\n";
+                                     $message .= "...requesting no eigenvalue check for step $self->{step} optimization.\n";
                                      $self->{msg} = $message;
                                      $route =~ s/opt=\(/opt=\(noeigen,/;
                                      $self->change_status('restart');
@@ -1141,29 +1141,32 @@ sub move_forward {
 
     my $finished = 0;
 
-    if ( $self->{step} == 3 ) {
-        $self->update_lib();
-    }
+#Moving this so it only runs if the number of imaginary frequencies is correct.  Otherwise you end up with XYZ files for bad TS structures!
+#    if ( $self->{step} == 3 ) {
+#        $self->update_lib();
+#    }
 
     my $filename = $self->{name};
 
     if ( $self->{step} >= 4 ) {
         $self->get_thermo();
         if ( $self->n_imaginary() != 1 ) {
-            #if there's multiple (or no) imaginary modes, go back through optimization steps
+            #if there's multiple (or no) imaginary modes, go back to step2 using this geometry
             my $message = "Wrong number of negative eigenvalues for $filename. ";
             $message .= "...Going back to step 2.\n";
             $self->{msg} = $message;
             $self->remove_later_than2();
             $self->{step}    = 2;
             $self->{attempt} = 1;
-			$self->{cycle}++;
+            $self->{cycle}++;
+#NOT WORKING! For some reason just builds a step4-style com file but calls it step2
             $self->build_com();
             $self->change_status('start');
         } elsif ( $self->{step} == $self->maxstep() ) {
             $self->higher_level_thermo()
               if $self->{Gkey}->{high_level}->{method};
             $self->change_status('finished');
+            $self->update_lib();
             $finished = 1;
         }
     }
@@ -1179,7 +1182,7 @@ sub n_imaginary {
     my $freq      = $out->frequency();
     my @img       = $freq->imaginary_frequencies();
 
-	return scalar @img;
+    return scalar @img;
 }
 
 sub get_thermo {
@@ -1209,7 +1212,7 @@ sub remove_later_than2 {
 
     my $filename = "$geometry/" . $self->file_name();
 
-    #remove evering thing more than step 2
+    #remove everything more than step 2
     foreach my $later_step (2..$self->maxstep()) {
         if (-e "$filename.$later_step.com") {
             print_message("Removing $filename.$later_step.com...\n");
@@ -1267,17 +1270,6 @@ sub com_route_footer {
     }
 
     my $print_flag;
-	#NOTE this is only for summit cluster!
-    #if ($step != 1) {
-	#	my $mem = $self->{Gkey}->{n_procs} * 4;
-	#	$route .= "%mem=$mem"."GB\n";
-	#	$route .= "%nprocshared=$self->{Gkey}->{n_procs}\n";
-	#}else {
-	#	my $mem = $self->{Gkey}->{short_procs} * 4;
-	#	$route .= "%mem=$mem"."GB\n";
-	#	$route .= "%nprocshared=$self->{Gkey}->{short_procs}\n";
-	#}
-	####################################
 
     SWITCH: {
         if ($step == 1) { $route .= "#$low_method opt nosym";
@@ -1413,15 +1405,12 @@ sub move_forward {
 
     my $finished = 0;
 
-    if ($self->{step} == 2) {
-        $self->update_lib();
-    }
-
     if ($self->{step} >= 3) {
         $self->get_thermo();
         if ($self->{step} == $self->maxstep()) {
             $self->higher_level_thermo() if $self->{Gkey}->{high_level}->{method};
             $self->change_status('finished');
+            $self->update_lib();
             $finished = 1;
         }
     }
@@ -1786,7 +1775,7 @@ sub examine_connectivity {
 
         $self->{step} = 1;
 
-        print_message("bond changing incorrectly, repeating step1 with constrains on the problematic bond");
+        print_message("$filename: bond changing incorrectly, repeating step1 constraining problematic bond\n");
 
         $self->build_com( directory => '.');
 
@@ -1858,7 +1847,7 @@ sub remove_later_than1 {
     my $filename = $self->file_name();
     my $step = $self->{step};
 
-    #remove evering thing more than step 2
+    #remove everything more than step 2
     foreach my $later_step (1..$self->maxstep()) {
         if (-e "$filename.$later_step.com") {
             print_message("Removing $filename.$later_step.com...\n");
