@@ -222,6 +222,7 @@ sub _check_step {
                 if ($self->{status} !~ /restart/) {
                     $self->change_status('done');
                 }
+                $self->{error} = "";
                 #update the catalysis geometry
                 $self->{catalysis}->conformer_geometry($geometry);
                 $check_reaction = 1;
@@ -831,12 +832,13 @@ sub build_com {
                                         method => $method,
                                         high_method => $high_method,
                                         );
+                                     $self->change_status('start');
                                  } else {
                                      $message .= "...requesting no eigenvalue check for step $self->{step} optimizaiton.\n";
                                      $self->{msg} = $message;
                                      $route =~ s/opt=\(/opt=\(noeigen,/;
+                                     $self->change_status('restart');
                                  }
-                                 $self->change_status('restart');
                                  last ERROR;
                                }
 
@@ -920,10 +922,6 @@ sub build_com {
                                    }
                                  }
 
-        if (not $error) { 
-            my $msg = "previous step finished without error.\n";
-            $self->{msg} = $msg;
-        }
     }
 
     if ($self->{cycle} > 1) {
@@ -1161,7 +1159,7 @@ sub move_forward {
             $self->{attempt} = 1;
 			$self->{cycle}++;
             $self->build_com();
-            $self->change_status('restart');
+            $self->change_status('start');
         } elsif ( $self->{step} == $self->maxstep() ) {
             $self->higher_level_thermo()
               if $self->{Gkey}->{high_level}->{method};
