@@ -10,6 +10,7 @@ $QCHASM =~ s|/\z||;	#Strip trailing / from $QCHASM if it exists
 use Aaron::Constants qw(INFO OTHERS);
 use AaronTools::Constants qw(NAMES);
 use AaronTools::JobControl qw(get_job_template);
+#use Aaron::AaronOutput qw(print_message print_message_to_log);
 use Pod::Usage;
 
 my @authors = @{ INFO->{AUTHORS} };
@@ -58,6 +59,7 @@ our $ligs_subs = {};
 #read command line arguments
 sub check_modules {
     print "Checking for required Perl modules...\n";
+    #print_message_to_log("Checking for required Perl modules...\n");
 
     eval {
         require Data::Dumper;
@@ -77,10 +79,12 @@ sub check_modules {
         }
     }
     print $msg;
+    #print_message_to_log($msg);
 
     exit (1) if $quit;
 
     print "Necessary Perl modules found. Starting AARON...\n";
+    #print_message_to_log("Necessary Perl modules found. Starting AARON...\n");
 }
 
 
@@ -196,6 +200,7 @@ sub read_params {
     if( $W_Key->{submission_template} ){
         #if a specific submission file template is requested, go get it
         print "loading $W_Key->{submission_template}\n";
+        #print_message_to_log("loading $W_Key->{submission_template}\n");
         $W_Key->{submission_template_o} = get_job_template($W_Key->{submission_template});
     }
 
@@ -320,6 +325,7 @@ sub init_main {
     &read_args();
     &check_modules();
     print "Preparing to run transition state searches...\n";
+    #print_message_to_log("Preparing to run transition state searches...\n");
     &read_params();
     &read_status();
     sleep(10);

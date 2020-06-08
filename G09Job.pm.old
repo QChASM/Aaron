@@ -22,7 +22,7 @@ use strict; use warnings;
 
 use Cwd qw(cwd realpath);
 use File::Path qw(make_path);
-use Aaron::AaronOutput qw(print_message print_message_to_log close_log_thermo);
+use Aaron::AaronOutput qw(print_message close_log_thermo);
 use AaronTools::G09Out;
 use AaronTools::JobControl;
 use Data::Dumper;
@@ -222,6 +222,7 @@ sub _check_step {
                 if ($self->{status} !~ /restart/) {
                     $self->change_status('done');
                 }
+                $self->{error} = "";
                 #update the catalysis geometry
                 $self->{catalysis}->conformer_geometry($geometry);
                 $check_reaction = 1;
@@ -359,7 +360,6 @@ sub examine_connectivity {
         $self->{step} = 2;
 
         print_message("$filename: bond changing incorrectly, repeating step1 constraining problematic bond\n");
-        print_message_to_log(" $filename: bond changing incorrectly, repeating step1 constraining problematic bond\n");
 
         $self->build_com();
 
@@ -557,13 +557,10 @@ sub run_stepX {
         $self->change_status('pending');
     }elsif ($self->{status} eq 'done') {
         $self->{catalysis}->conformer_geometry($self->{gout}->{geometry});
-        print_message_to_log(" $file_name: Finished step $self->{step}\n");
 
         my $finished = $self->move_forward();
 
-        if($finished) {
-            print_message_to_log(" $file_name is finished, correct stationary point found!\n");
-        } else {
+        unless ($finished) {
             $self->{step} ++;
             $self->{attempt} = 1;
 
@@ -575,7 +572,6 @@ sub run_stepX {
         if ($self->{attempt} >= 5) {
             $self->change_status('killed');
             $self->{msg} = 'killed because of too many attempts';
-            print_message_to_log(" $file_name: Killed because of too many attempts at step$self->{step}\n");
             return;
         }
         $self->{attempt} ++;
@@ -701,8 +697,6 @@ sub submit {
 
     my $step = $self->{step};
 
-    print_message_to_log(" $filename: Submitting step $step (attempt $self->{attempt}, cycle $self->{cycle})\n");
-
     my ($wall, $nprocs);
 
     if ($step == 1) {
@@ -741,7 +735,6 @@ sub submit {
                   "sleeping...";
 
         print_message($msg);
-        print_message_to_log($msg);
         $launch_failed = 0;
 
         sleep(3600);
@@ -811,19 +804,18 @@ sub build_com {
         if ($error eq 'CONV') {my $scf_change = $route =~ /scf=xqc/ ?
                                                 0 : ($route .= " scf=xqc");
 
-                                my $message = " SCF convergence problems";
+                                my $message = " SCF convergence problems with $filename ";
                                 if ($scf_change) {
                                     $message .= "...scf=xqc is in use\n";
                                 }
 
-                                print_message_to_log(" $file_name: $message");
                                 $self->{msg} = $message;
                                 $self->change_status('restart');
                                 last ERROR;
                               }
 
         if ($error eq 'EIGEN') { 
-                                 my $message = "Wrong number of negative eigenvalues";
+                                 my $message = "Wrong number of negative eigenvalues for $filename. ";
                                  if ( $self->{step} == 4 ) {
                                     #Gaussian doesn't run the eigentest for frequencies...
                                     #this probably won't catch anything
@@ -840,22 +832,21 @@ sub build_com {
                                         method => $method,
                                         high_method => $high_method,
                                         );
+                                     $self->change_status('start');
                                  } else {
                                      $message .= "...requesting no eigenvalue check for step $self->{step} optimization.\n";
                                      $self->{msg} = $message;
                                      $route =~ s/opt=\(/opt=\(noeigen,/;
+                                     $self->change_status('restart');
                                  }
-                                 $self->change_status('restart');
-                                 print_message_to_log(" $file_name: $message");
                                  last ERROR;
                                }
 
         if ($error eq 'QUOTA') { if ( ! $self->{Wkey}->{no_quota}) {
-                                    my $message = "\nAARON thinks you hit the disk quota. "  .
+                                    my $msg = "\nAARON thinks you hit the disk quota. "  .
                                            "Make more space or have your quota increased. Then add " .
                                            "\"-noquota\" in the command line to restart\n";
-                                    print_message($message);
-                                    print_message_to_log($message);
+                                    print_message($msg);
                                     return 1;
                                  }else{
                                      last ERROR;
@@ -864,82 +855,73 @@ sub build_com {
 
         if ($error eq "CHK" ||
             $error eq 'OPTSTEP') { open COM, "<$file_name.$step.com" or do {
-                                       my $message = "$filename CHK problem, " .
+                                       my $msg = "$filename CHK problem, " .
                                                  "while Aaron cannot open $filename.$step.com. " .
                                                  "Aaron has skipped this, check that.\n";
-                                       $self->{msg} = $message;
+                                       $self->{msg} = $msg;
                                        $self->change_status('skipped');
                                        close COM;
                                        last ERROR;
                                    };
                                    my $com_content = do {local $/; <COM>};
                                    close COM;
-                                   my $message = '';
+                                   my $msg = '';
                                    if (-e "$file_name.chk") {
                                        unlink "$file_name.chk";
-                                       $message = "Problem with check point file, using calcfc\n";
+                                       $msg = "Problem with check point file, using calcfc\n";
                                    }else {
-                                       $message = "No checkpoint file was found in the directory, using calcfc\n";
+                                       $msg = "No checkpoint file was found in the directory, using calcfc\n";
                                    }
                                    $route =~ s/readfc/calcfc/;
-                                   print_message_to_log(" $file_name: $message");
-                                   $self->{msg} = $message;
+                                   $self->{msg} = $msg;
                                    $self->change_status('restart');
                                    last ERROR;
                                  }
-        if ($error eq "CLASH") { my $message = "Atoms too crowded in $filename.$step.com. ";
+        if ($error eq "CLASH") { my $msg = "Atoms too crowded in $filename.$step.com. ";
                                  unless ($catalysis->remove_clash()) {
-                                    $message .= "Aaron failed to remove clash, please try manually\n";
-                                    $self->{msg} = $message;
+                                    $msg .= "Aaron failed to remove clash, please try manually\n";
+                                    $self->{msg} = $msg;
                                     $self->change_status('skipped');
 
                                     return 0;
                                  }else {
-                                     $message .= "Aaron has removed the clash, the job is restarted. ";
-                                     $self->{msg} = $message;
+                                     $msg .= "Aaron has removed the clash, the job is restarted. ";
+                                     $self->{msg} = $msg;
                                      $self->change_status('restart');
                                  }
-                                 print_message_to_log(" $file_name: $message");
                                }
-        if ($error eq "CHARGEMULT") { my $message = "The combination of multipicity is not correct " .
+        if ($error eq "CHARGEMULT") { my $msg = "The combination of multipicity is not correct " .
                                                 "AARON believes this is a fatal error so has quit " .
                                                 "Fix the problem and restart AARON\n";
-                                      print_message($message);
-                                      print_message_to_log($message);
+                                      print_message($msg);
                                       return 1;
                                     }
 
-        if ($error eq "REDUND") { my $message = "Bend failed for some angles for $filename, " .
+        if ($error eq "REDUND") { my $msg = "Bend failed for some angles for $filename, " .
                                             "Aaron will restart this job.\n";
 
-                                  $self->{msg} = $message;
+                                  $self->{msg} = $msg;
                                   $self->change_status('restart');
                                   if ($self->{Wkey}->{record}) {
                                       system("mv $file_name.$step.log $file_name.log.$step");
                                   }else{
-                                      system("mv $file_name.$step.log $file_name.$step.log.bkp");;
+									  system("mv $file_name.$step.log $file_name.$step.log.bkp");;
                                   }
-                                  print_message_to_log(" $file_name: $message");
                                 }
 
-        if ($error eq "UNKNOWN") { my $message = "unknown reason, " .
+        if ($error eq "UNKNOWN") { my $msg = "unknown reason, " .
                                              "AARON will retry the failed step. ";
-                                   $message .= "Please also check $filename.$step.log manually\n";
+                                   $msg .= "Please also check $filename.$step.log manually\n";
 
-                                   $self->{msg} = $message;
+                                   $self->{msg} = $msg;
                                    $self->change_status('restart');
                                    if ($self->{Wkey}->{record}) {
                                        system("mv $file_name.$step.log $file_name.log.$step");
                                    }else{
-                                       system("mv $file_name.$step.log $file_name.$step.log.bkp");
+									   system("mv $file_name.$step.log $file_name.$step.log.bkp");
                                    }
-                                   print_message_to_log(" $file_name: $message");
                                  }
 
-        if (not $error) { 
-            my $message = "No problems detected.\n";
-            $self->{msg} = $message;
-        }
     }
 
     if ($self->{cycle} > 1) {
@@ -952,7 +934,6 @@ sub build_com {
         if ($step_change) {
             $self->{msg} .= "using smaller step size.\n";
         }
-        print_message_to_log(" $file_name: $self->{msg}");
     }
     
     if ($self->{attempt} > 2) {
@@ -975,8 +956,7 @@ sub build_com {
                     system("rm -fr $file_name.chk");
                 }
             }
-        } 
-        print_message_to_log(" $file_name: $self->{msg}");
+        }
     }
 
     my $com_file = "$file_name.$step.com";
@@ -993,7 +973,6 @@ sub build_com {
     if ($self->{cycle} > $MAXCYCLE) {
         $self->change_status('killed');
         $self->{msg} = "killed because of too many cycles. ";
-        print_message_to_log(" $file_name: $self->{msg}\n");
         return 'killed';
     }
 
@@ -1025,7 +1004,7 @@ package Aaron::G09Job_TS;
 use strict; use warnings;
 
 use Cwd qw(cwd);
-use Aaron::AaronOutput qw(print_message print_message_to_log);
+use Aaron::AaronOutput qw(print_message);
 use AaronTools::G09Out;
 use AaronTools::JobControl;
 use Data::Dumper;
@@ -1135,8 +1114,7 @@ sub check_reaction {
                                        by_distance => $distance );
         $self->{catalysis}->_update_geometry();
 
-        print_message("$filename: Changing the distance between $con->[$i]->[0]->[0], $con->[$i]->[0]->[1] by $distance A\n");
-        print_message_to_log(" $filename: Changing the distance between $con->[$i]->[0]->[0], $con->[$i]->[0]->[1] by $distance A\n");
+        print_message("Changing the distance between $con->[$i]->[0]->[0], $con->[$i]->[0]->[1] by $distance A\n");
 
         $self->change_status('2submit');
         $self->{msg} = "reverted to step 2, now waiting in the queue ";
@@ -1174,7 +1152,7 @@ sub move_forward {
         $self->get_thermo();
         if ( $self->n_imaginary() != 1 ) {
             #if there's multiple (or no) imaginary modes, go back to step2 using this geometry
-            my $message = "Wrong number of imaginary frequencies. ";
+            my $message = "Wrong number of negative eigenvalues for $filename. ";
             $message .= "...Going back to step 2.\n";
             $self->{msg} = $message;
             $self->remove_later_than2();
@@ -1182,9 +1160,8 @@ sub move_forward {
             $self->{attempt} = 1;
             $self->{cycle}++;
 #NOT WORKING! For some reason just builds a step4-style com file but calls it step2
-            print_message_to_log("$filename: Wrong number of imaginary frequnecies...reverting to step 2\n");
             $self->build_com();
-            $self->change_status('restart');
+            $self->change_status('start');
         } elsif ( $self->{step} == $self->maxstep() ) {
             $self->higher_level_thermo()
               if $self->{Gkey}->{high_level}->{method};
@@ -1234,7 +1211,6 @@ sub remove_later_than2 {
     my $geometry = $self->{name};
 
     my $filename = "$geometry/" . $self->file_name();
-    print_message_to_log("  ...removing files to revert to step2\n");
 
     #remove everything more than step 2
     foreach my $later_step (2..$self->maxstep()) {
@@ -1349,7 +1325,7 @@ package Aaron::G09Job_MIN;
 use strict; use warnings;
 
 use Cwd qw(cwd);
-use Aaron::AaronOutput qw(print_message print_message_to_log);
+use Aaron::AaronOutput qw(print_message);
 use AaronTools::G09Out;
 use AaronTools::JobControl;
 
@@ -1536,7 +1512,7 @@ package Aaron::G09Job_TS_Single;
 use strict; use warnings;
 
 use Cwd qw(cwd);
-use Aaron::AaronOutput qw(print_message print_message_to_log close_log_thermo);
+use Aaron::AaronOutput qw(print_message close_log_thermo);
 use Data::Dumper;
 
 our @ISA = qw(Aaron::G09Job);
@@ -1800,7 +1776,6 @@ sub examine_connectivity {
         $self->{step} = 1;
 
         print_message("$filename: bond changing incorrectly, repeating step1 constraining problematic bond\n");
-        print_message_to_log(" $filename: bond changing incorrectly, repeating step1 constraining problematic bond\n");
 
         $self->build_com( directory => '.');
 
@@ -1844,8 +1819,7 @@ sub check_reaction {
                                        by_distance => $distance );
         $self->{catalysis}->_update_geometry();
 
-        print_message("$filename: Changing the distance between $con->[$i]->[0]->[0], $con->[$i]->[0]->[1] by $distance A\n");
-        print_message_to_log(" $filename: Changing the distance between $con->[$i]->[0]->[0], $con->[$i]->[0]->[1] by $distance A\n");
+        print_message("Changing the distance between $con->[$i]->[0]->[0], $con->[$i]->[0]->[1] by $distance A\n");
 
         $self->change_status('2submit');
         $self->{msg} = "reverted to step 1, now waiting in the queue ";
@@ -1873,7 +1847,6 @@ sub remove_later_than1 {
     my $filename = $self->file_name();
     my $step = $self->{step};
 
-    print_message_to_log(" ...Removing files to revert to step2\n");
     #remove everything more than step 2
     foreach my $later_step (1..$self->maxstep()) {
         if (-e "$filename.$later_step.com") {
@@ -1933,9 +1906,7 @@ sub run_stepX {
 
         my $finished = $self->move_forward();
 
-        if($finished) {
-            print_message_to_log(" $file_name is finished, correct stationary point found!\n");
-        } else {
+        unless ($finished) {
             $self->{step} ++;
             $self->{attempt} = 1;
 

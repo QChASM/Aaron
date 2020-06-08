@@ -8,7 +8,7 @@ use AaronTools::Constants qw(PHYSICAL NAMES UNIT);
 use Aaron::AaronInit qw($G_Key %arg_parser $parent
                  $ligs_subs $template_job $W_Key);
 
-use Aaron::AaronOutput qw(print_message print_ee print_to_thermo);
+use Aaron::AaronOutput qw(print_message print_message_to_log print_ee print_to_thermo);
 use AaronTools::Catalysis;
 use Aaron::G09Job;
 
@@ -107,10 +107,12 @@ sub _make_directories {
             if ($W_Key->{input_conformers_only}) {
                 my $msg = "Aaron will reoptimize template structures using the specified level of theory\n";
                 print_message($msg);
+                print_message_to_log($msg);
                 $skip_step1 = 1;
             }else{
                 my $msg = "Initiating conformer searching for $lig_ali (original catalyst).\n";
                 print_message($msg);
+                print_message_to_log($msg);
             }
             if (!(-d $lig_ali)) {
                 mkdir "$lig_ali";

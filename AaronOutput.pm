@@ -10,7 +10,7 @@ use Aaron::AaronInit qw($G_Key %arg_parser $W_Key $parent $jobname $ligs_subs);
 use Cwd;
 use Exporter qw(import);
 
-our @EXPORT = qw(&init_log print_message print_params terminate_AARON
+our @EXPORT = qw(&init_log print_message print_message_to_log print_params terminate_AARON
                  clean_up print_ee print_status close_log sleep_AARON open_log_thermo
 				 close_log_thermo print_to_thermo);
 
@@ -60,7 +60,7 @@ sub header {
     my @contributors = @{ INFO->{CONTRIBUTORS} };
     my $year = INFO->{YEAR};
 
-    &print_message("Aaron job started on $date\n\n");
+    &print_message_to_log("Aaron job started on $date\n\n");
 
     print $ol "                            Welcome to AARON!\n";
     print $ol "                                (v. $version)\n\n";
@@ -121,6 +121,10 @@ sub restart_header {
 
 sub print_message {
     print "$_[0]";
+#    print $ol "$_[0]";
+}
+
+sub print_message_to_log {
     print $ol "$_[0]";
 }
 
@@ -164,6 +168,8 @@ sub print_params {
         print $ol "\n command-line flags  = @ARGV\n";
     }
     print $ol "----------------------------------------------------------------------------------\n\n";
+
+    print $ol "\nStarting Aaron...\n\n";
 }
 
 
@@ -308,7 +314,7 @@ sub print_status {
         for my $geometry(@pending) {
             my $job = &$_get_job($geometry);
             $msg .= " $geometry step $job->{step} attempt $job->{attempt}: ";
-            $msg .= ($job->{msg} or "No msg recorded") . "\n";
+            $msg .= ($job->{msg} or "No message recorded\n");
         }
 
         @restart && do {$msg .= "\nRestarted jobs due to errors:\n";};
@@ -321,7 +327,7 @@ sub print_status {
             }else {
                 $msg .= "No message recorded. ";
             }
-            $msg .= "Now at attempt $job->{attempt}, cycle $job->{cycle}.\n";
+            $msg .= "  Now at attempt $job->{attempt}, cycle $job->{cycle}.\n";
         }
 
         @skipped && do {$msg .= "\nJobs skipped due to some error during the calculation: \n";};
@@ -340,7 +346,7 @@ sub print_status {
         for my $geometry(@killed) {
             my $job = &$_get_job($geometry);
             $msg .= "$geometry\n step $job->{step} attempt $job->{attempt}: ";
-            $msg .= ($job->{msg} or "No msg recorded") . "\n";
+            $msg .= ($job->{msg} or "No message recorded") . "\n";
         }
 
         @repeated && do {$msg .= "\nRepeated conformers:\n";};
@@ -546,6 +552,7 @@ sub close_log_thermo {
 
 sub terminate_AARON {
     print_message("Aaron finished, terminated normally\n");
+    print_message_to_log("Aaron finished, terminated normally\n");
     clean_up($parent);
     my $date = localtime;
     print $ol "AARON stopped $date\n";
