@@ -808,6 +808,10 @@ sub build_com {
     );
 
     ERROR: {
+        if (not $error) { 
+            my $message = "No problems detected.\n";
+            $self->{msg} = $message;
+        }
         if ($error eq 'CONV') {my $scf_change = $route =~ /scf=xqc/ ?
                                                 0 : ($route .= " scf=xqc");
 
@@ -819,6 +823,7 @@ sub build_com {
                                 print_message_to_log(" $file_name: $message");
                                 $self->{msg} = $message;
                                 $self->change_status('restart');
+                                $self->{error} = "";
                                 last ERROR;
                               }
 
@@ -847,6 +852,7 @@ sub build_com {
                                  }
                                  $self->change_status('restart');
                                  print_message_to_log(" $file_name: $message");
+                                 $self->{error} = "";
                                  last ERROR;
                                }
 
@@ -858,6 +864,7 @@ sub build_com {
                                     print_message_to_log($message);
                                     return 1;
                                  }else{
+                                     $self->{error} = "";
                                      last ERROR;
                                  }
                                }
@@ -885,6 +892,7 @@ sub build_com {
                                    print_message_to_log(" $file_name: $message");
                                    $self->{msg} = $message;
                                    $self->change_status('restart');
+                                   $self->{error} = "";
                                    last ERROR;
                                  }
         if ($error eq "CLASH") { my $message = "Atoms too crowded in $filename.$step.com. ";
@@ -898,6 +906,7 @@ sub build_com {
                                      $message .= "Aaron has removed the clash, the job is restarted. ";
                                      $self->{msg} = $message;
                                      $self->change_status('restart');
+                                     $self->{error} = "";
                                  }
                                  print_message_to_log(" $file_name: $message");
                                }
@@ -906,6 +915,7 @@ sub build_com {
                                                 "Fix the problem and restart AARON\n";
                                       print_message($message);
                                       print_message_to_log($message);
+                                      $self->{error} = "";
                                       return 1;
                                     }
 
@@ -920,6 +930,7 @@ sub build_com {
                                       system("mv $file_name.$step.log $file_name.$step.log.bkp");;
                                   }
                                   print_message_to_log(" $file_name: $message");
+                                  $self->{error} = "";
                                 }
 
         if ($error eq "UNKNOWN") { my $message = "unknown reason, " .
@@ -934,12 +945,9 @@ sub build_com {
                                        system("mv $file_name.$step.log $file_name.$step.log.bkp");
                                    }
                                    print_message_to_log(" $file_name: $message");
+                                   $self->{error} = "";
                                  }
 
-        if (not $error) { 
-            my $message = "No problems detected.\n";
-            $self->{msg} = $message;
-        }
     }
 
     if ($self->{cycle} > 1) {
