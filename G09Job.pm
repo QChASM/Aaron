@@ -222,6 +222,7 @@ sub _check_step {
                 if ($self->{status} !~ /restart/) {
                     $self->change_status('done');
                 }
+                $self->{error} = "";
                 #update the catalysis geometry
                 $self->{catalysis}->conformer_geometry($geometry);
                 $check_reaction = 1;
@@ -845,12 +846,13 @@ sub build_com {
                                         method => $method,
                                         high_method => $high_method,
                                         );
+                                        $self->change_status('start');
                                  } else {
                                      $message .= "...requesting no eigenvalue check for step $self->{step} optimization.\n";
                                      $self->{msg} = $message;
                                      $route =~ s/opt=\(/opt=\(noeigen,/;
+                                     $self->change_status('restart');
                                  }
-                                 $self->change_status('restart');
                                  print_message_to_log(" $file_name: $message");
                                  $self->{error} = "";
                                  last ERROR;
@@ -1192,7 +1194,7 @@ sub move_forward {
 #NOT WORKING! For some reason just builds a step4-style com file but calls it step2
             print_message_to_log("$filename: Wrong number of imaginary frequnecies...reverting to step 2\n");
             $self->build_com();
-            $self->change_status('restart');
+            $self->change_status('start');
         } elsif ( $self->{step} == $self->maxstep() ) {
             $self->higher_level_thermo()
               if $self->{Gkey}->{high_level}->{method};
