@@ -564,9 +564,7 @@ sub run_stepX {
 
         my $finished = $self->move_forward();
 
-        if($finished) {
-            print_message_to_log("    Correct stationary point found!\n");
-        } else {
+        if(!$finished) {
             $self->{step} ++;
             $self->{attempt} = 1;
 
@@ -653,6 +651,7 @@ sub update_lib {
 
     if (! -e $lib_file && (! $repeated)) {
         $self->{catalysis}->printXYZ($lib_file);
+        print_message_to_log("    Saving new XYZ $lib_file (formerly " . $self->file_name() . ")\n");
     }
 }
 
@@ -1205,6 +1204,7 @@ sub move_forward {
             $self->higher_level_thermo()
               if $self->{Gkey}->{high_level}->{method};
             $self->change_status('finished');
+            print_message_to_log("    Correct stationary point found!\n");
             $self->update_lib();
             $finished = 1;
         }
