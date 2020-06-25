@@ -359,8 +359,9 @@ sub examine_connectivity {
 
         $self->{step} = 2;
 
-        print_message("$filename: bond changing incorrectly, repeating step1 constraining problematic bond\n");
-        print_message_to_log(" $filename: bond changing incorrectly, repeating step1 constraining problematic bond\n");
+        my $message = $self->file_name() . ":bond changing incorrectly, repeating step1 constraining problematic bond\n";
+        print_message($message);
+        print_message_to_log($message);
 
         $self->build_com();
 
@@ -462,6 +463,7 @@ sub _repeated_cf {
     $self->kill_running();
 
     delete $self->{gout};
+    print_message_to_log("  " . $self->file_name() . "is a duplicate of $repeating_cf and will be removed.\n");
 
     #system("rm -fr $self->{name}");
 }
@@ -558,16 +560,15 @@ sub run_stepX {
         $self->change_status('pending');
     }elsif ($self->{status} eq 'done') {
         $self->{catalysis}->conformer_geometry($self->{gout}->{geometry});
-        print_message_to_log(" $file_name: Finished step $self->{step}\n");
+        print_message_to_log(" " . $self->file_name() . ": Finished step $self->{step}\n");
 
         my $finished = $self->move_forward();
 
-        if($finished) {
-            print_message_to_log(" $file_name is finished, correct stationary point found!\n");
-        } else {
+        if(!$finished) {
             $self->{step} ++;
             $self->{attempt} = 1;
 
+            print_message_to_log("    Moving to next step\n");
             $self->build_com();
 
             $self->submit();
@@ -576,7 +577,7 @@ sub run_stepX {
         if ($self->{attempt} >= 5) {
             $self->change_status('killed');
             $self->{msg} = 'killed because of too many attempts';
-            print_message_to_log(" $file_name: Killed because of too many attempts at step$self->{step}\n");
+            print_message_to_log(" " . $self->file_name() . ": Killed because of too many attempts at step$self->{step}\n");
             return;
         }
         $self->{attempt} ++;
@@ -650,6 +651,7 @@ sub update_lib {
 
     if (! -e $lib_file && (! $repeated)) {
         $self->{catalysis}->printXYZ($lib_file);
+        print_message_to_log("    Saving new XYZ $lib_file (formerly " . $self->file_name() . ")\n");
     }
 }
 
@@ -702,7 +704,7 @@ sub submit {
 
     my $step = $self->{step};
 
-    print_message_to_log(" $filename: Submitting step $step (attempt $self->{attempt}, cycle $self->{cycle})\n");
+    print_message_to_log(" " . $self->file_name() . ": Submitting step $step (attempt $self->{attempt}, cycle $self->{cycle})\n");
 
     my ($wall, $nprocs);
 
@@ -823,7 +825,7 @@ sub build_com {
                                     $message .= "...scf=xqc is in use\n";
                                 }
 
-                                print_message_to_log(" $file_name: $message");
+                                print_message_to_log(" " . $self->file_name() . ": $message");
                                 $self->{msg} = $message;
                                 $self->change_status('restart');
                                 $self->{error} = "";
@@ -855,7 +857,7 @@ sub build_com {
                                      $route =~ s/opt=\(/opt=\(noeigen,/;
                                      $self->change_status('restart');
                                  }
-                                 print_message_to_log(" $file_name: $message");
+                                 print_message_to_log(" " . $self->file_name() . ": $message");
                                  $self->{error} = "";
                                  last ERROR;
                                }
@@ -893,7 +895,7 @@ sub build_com {
                                        $message = "No checkpoint file was found in the directory, using calcfc\n";
                                    }
                                    $route =~ s/readfc/calcfc/;
-                                   print_message_to_log(" $file_name: $message");
+                                   print_message_to_log(" " . $self->file_name() . ": $message");
                                    $self->{msg} = $message;
                                    $self->change_status('restart');
                                    $self->{error} = "";
@@ -912,7 +914,7 @@ sub build_com {
                                      $self->change_status('restart');
                                      $self->{error} = "";
                                  }
-                                 print_message_to_log(" $file_name: $message");
+                                 print_message_to_log(" " . $self->file_name() . ": $message");
                                }
         if ($error eq "CHARGEMULT") { my $message = "The combination of multipicity is not correct " .
                                                 "AARON believes this is a fatal error so has quit " .
@@ -933,11 +935,11 @@ sub build_com {
                                   }else{
                                       system("mv $file_name.$step.log $file_name.$step.log.bkp");;
                                   }
-                                  print_message_to_log(" $file_name: $message");
+                                  print_message_to_log(" " . $self->file_name() . ": $message");
                                   $self->{error} = "";
                                 }
 
-        if ($error eq "UNKNOWN") { my $message = "unknown reason, " .
+        if ($error eq "UNKNOWN") { my $message = "Job failed for unknown reason, " .
                                              "AARON will retry the failed step. ";
                                    $message .= "Please also check $filename.$step.log manually\n";
 
@@ -948,7 +950,7 @@ sub build_com {
                                    }else{
                                        system("mv $file_name.$step.log $file_name.$step.log.bkp");
                                    }
-                                   print_message_to_log(" $file_name: $message");
+                                   print_message_to_log(" " . $self->file_name() . ": $message");
                                    $self->{error} = "";
                                  }
 
@@ -959,12 +961,13 @@ sub build_com {
         ($route, my $step_change) = &reduce_maxstep($route);
         if ($fc_change) {
             $self->{msg} .= "calculating force constants instead of reading from .chk file.\n";
+            print_message_to_log(" " . $self->file_name() . ": $self->{msg}");
             system("rm -fr $file_name.chk");
         }
         if ($step_change) {
             $self->{msg} .= "using smaller step size.\n";
+            print_message_to_log(" " . $self->file_name() . ": $self->{msg}");
         }
-        print_message_to_log(" $file_name: $self->{msg}");
     }
     
     if ($self->{attempt} > 2) {
@@ -972,11 +975,13 @@ sub build_com {
         ($route, my $step_change) = &reduce_maxstep($route);
         if ($step_change) {
             $self->{msg} .= "using smaller step size.\n";
+            print_message_to_log(" " . $self->file_name() . ": $self->{msg}");
         }
         if ($self->{attempt} > 3) {
             unless ($route =~ /nonlinear/) {$route =~ s/opt=\(/opt=\(nolinear,/;}
             if ($fc_change) {
                 $self->{msg} .= "calculating force-constants instead of reading from .chk file.\n";
+                print_message_to_log(" " . $self->file_name() . ": $self->{msg}");
                 system("rm -fr $file_name.chk");
             }
             if ($self->{attempt} > 4) {
@@ -984,11 +989,11 @@ sub build_com {
                 if ($fc_change) {
                     $self->{msg} .= "calculating force constants before each optimization step, ".
                                     "this could take long time.\n";
+                    print_message_to_log(" " . $self->file_name() . ": $self->{msg}");
                     system("rm -fr $file_name.chk");
                 }
             }
         } 
-        print_message_to_log(" $file_name: $self->{msg}");
     }
 
     my $com_file = "$file_name.$step.com";
@@ -1005,7 +1010,7 @@ sub build_com {
     if ($self->{cycle} > $MAXCYCLE) {
         $self->change_status('killed');
         $self->{msg} = "killed because of too many cycles. ";
-        print_message_to_log(" $file_name: $self->{msg}\n");
+        print_message_to_log(" " . $self->file_name() . ": $self->{msg}");
         return 'killed';
     }
 
@@ -1148,7 +1153,7 @@ sub check_reaction {
         $self->{catalysis}->_update_geometry();
 
         print_message("$filename: Changing the distance between $con->[$i]->[0]->[0], $con->[$i]->[0]->[1] by $distance A\n");
-        print_message_to_log(" $filename: Changing the distance between $con->[$i]->[0]->[0], $con->[$i]->[0]->[1] by $distance A\n");
+        print_message_to_log(" " . $self->file_name() . ": Changing the distance between $con->[$i]->[0]->[0], $con->[$i]->[0]->[1] by $distance A\n");
 
         $self->change_status('2submit');
         $self->{msg} = "reverted to step 2, now waiting in the queue ";
@@ -1194,13 +1199,14 @@ sub move_forward {
             $self->{attempt} = 1;
             $self->{cycle}++;
 #NOT WORKING! For some reason just builds a step4-style com file but calls it step2
-            print_message_to_log("$filename: Wrong number of imaginary frequnecies...reverting to step 2\n");
+            print_message_to_log(" " . $self->file_name() . ": Wrong number of imaginary frequnecies...reverting to step 2\n");
             $self->build_com();
             $self->change_status('start');
         } elsif ( $self->{step} == $self->maxstep() ) {
             $self->higher_level_thermo()
               if $self->{Gkey}->{high_level}->{method};
             $self->change_status('finished');
+            print_message_to_log("    Correct stationary point found!\n");
             $self->update_lib();
             $finished = 1;
         }
@@ -1246,7 +1252,7 @@ sub remove_later_than2 {
     my $geometry = $self->{name};
 
     my $filename = "$geometry/" . $self->file_name();
-    print_message_to_log("  ...removing files to revert to step2\n");
+    print_message_to_log("   ...removing files to revert to step2\n");
 
     #remove everything more than step 2
     foreach my $later_step (2..$self->maxstep()) {
@@ -1825,7 +1831,7 @@ sub examine_connectivity {
         $self->{step} = 1;
 
         print_message("$filename: bond changing incorrectly, repeating step1 constraining problematic bond\n");
-        print_message_to_log(" $filename: bond changing incorrectly, repeating step1 constraining problematic bond\n");
+        print_message_to_log(" " . $self->file_name() . ": bond changing incorrectly, repeating step1 constraining problematic bond\n");
 
         $self->build_com( directory => '.');
 
@@ -1870,7 +1876,7 @@ sub check_reaction {
         $self->{catalysis}->_update_geometry();
 
         print_message("$filename: Changing the distance between $con->[$i]->[0]->[0], $con->[$i]->[0]->[1] by $distance A\n");
-        print_message_to_log(" $filename: Changing the distance between $con->[$i]->[0]->[0], $con->[$i]->[0]->[1] by $distance A\n");
+        print_message_to_log(" " . $self->file_name() . ": Changing the distance between $con->[$i]->[0]->[0], $con->[$i]->[0]->[1] by $distance A\n");
 
         $self->change_status('2submit');
         $self->{msg} = "reverted to step 1, now waiting in the queue ";
@@ -1898,7 +1904,7 @@ sub remove_later_than1 {
     my $filename = $self->file_name();
     my $step = $self->{step};
 
-    print_message_to_log(" ...Removing files to revert to step2\n");
+    print_message_to_log("   ...Removing files to revert to step2\n");
     #remove everything more than step 2
     foreach my $later_step (1..$self->maxstep()) {
         if (-e "$filename.$later_step.com") {
@@ -1959,7 +1965,7 @@ sub run_stepX {
         my $finished = $self->move_forward();
 
         if($finished) {
-            print_message_to_log(" $file_name is finished, correct stationary point found!\n");
+            print_message_to_log(" " . $self->file_name() . " is finished, correct stationary point found!\n");
         } else {
             $self->{step} ++;
             $self->{attempt} = 1;

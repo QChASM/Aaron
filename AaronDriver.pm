@@ -388,6 +388,7 @@ sub analyze_result {
         $data .= "\n";
     }
     print_to_thermo($data);
+#    print_message_to_log("Updating thermo file\n");
 }
 
 
