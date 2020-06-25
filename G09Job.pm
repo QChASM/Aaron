@@ -789,7 +789,9 @@ sub build_com {
 
     if ($self->{Gkey}->{emp_dispersion}) {
         $method .= " EmpiricalDispersion=$self->{Gkey}->{emp_dispersion}";
-        $high_method .= " EmpiricalDispersion=$self->{Gkey}->{emp_dispersion}";
+        if (not $self->{Gkey}->{high_emp_dispersion}) {
+            $high_method .= " EmpiricalDispersion=$self->{Gkey}->{emp_dispersion}";
+        }
     }
 	#Enable different integration grids
     if ($self->{Gkey}->{grid}) {
@@ -1351,6 +1353,11 @@ sub com_route_footer {
         #for steps 2-4, add the solvent stuff to the route
     }
 
+    #emp_dispersion is added via $method, this is just for emp_dispersion != high_emp_dispersion
+    if ($step == 5 && $self->{Gkey}->{high_emp_dispersion}) {
+        $route .= " EmpiricalDispersion=$self->{Gkey}->{high_emp_dispersion}";
+    }
+
     return ($route, $footer, $print_flag);
 }
 
@@ -1538,6 +1545,10 @@ sub com_route_footer {
         #for steps 2-4, add the solvent stuff to the route
     }
 
+    if ($step == 5 && $self->{Gkey}->{high_emp_dispersion}) {
+        $route .= " EmpiricalDispersion=$self->{Gkey}->{high_emp_dispersion}";
+    }
+
     return ($route, $footer, $print_flag);
 }
 
@@ -1698,6 +1709,10 @@ sub com_route_footer {
     } elsif ($self->{Gkey}->{solvent} ne "gas" && $step > 1) {
         $route .= " scrf=($self->{Gkey}->{solvent_model},solvent=$self->{Gkey}->{solvent})";
         #for steps 2-4, add the solvent stuff to the route
+    }
+
+    if ($step == 5 && $self->{Gkey}->{high_emp_dispersion}) {
+        $route .= " EmpiricalDispersion=$self->{Gkey}->{high_emp_dispersion}";
     }
 
     return ($route, $footer, $print_flag);

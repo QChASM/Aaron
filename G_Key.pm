@@ -30,6 +30,7 @@ sub new {
         gen => $params{gen},                    #gen basis
         custom => $params{custom},              #Custom default from .aaronrc
         emp_dispersion => $params{emp_dispersion},          #Empirical dispersion
+        high_emp_dispersion => $params{high_emp_dispersion}, #Empirical dispersion for step 5
         con_thres => $params{con_thres},        #connectivity threshold
     };
 
@@ -176,6 +177,11 @@ sub _read_key_from_input {
 
             /^\s*[eE]mp_dispersion=(\S+)/ && do {
                 $self->{emp_dispersion} = $1 unless $self->{emp_dispersion}; next;
+            };
+
+            #input file option for using empirical dispersion on step 5 is high_emp_dispersion=X
+            /^\s*[hH]igh_emp_dispersion=(\S+)/ && do {
+                $self->{high_emp_dispersion} = $1 unless $self->{high_emp_dispersion}; next;
             };
 
             if ($read_low_level) {
