@@ -184,6 +184,12 @@ sub _read_key_from_input {
                 $self->{high_emp_dispersion} = $1 unless $self->{high_emp_dispersion}; next;
             };
 
+            #input file option for ignoring/paying attention to connectivity changes involving H bonds
+            #is ignore_hbonds=1|0
+            /^\s*[iI]gnore_hbonds=(\S+)/ && do {
+                $self->{ignore_hbonds} = $1 unless defined $self->{ignore_hbonds}; next;
+            };
+            
             if ($read_low_level) {
                 /^\s*[lL]ow_method=(\S+)/ && do {$self->{low_level}->read_method($1); next;};
                 /^\s*[lL]ow_basis=(.+)/ && do {$self->{low_level}->read_basis($1); next;};
@@ -249,6 +255,9 @@ sub read_key_from_input {
     $self->{solvent_model} //= $self->{solvent} =~ /^[Gg]as$/ ? '' : 'pcm';
     #solvent model defaults to PCM if a solvent is given
     $self->{high_solvent_model} //= $self->{high_solvent} =~ /^[Gg]as$/ ? '' : 'pcm';
+    
+    #ignore hydrogen bonds defaults to true
+    $self->{ignore_hbonds} //= 1;
 }
 
 
@@ -275,7 +284,8 @@ sub new {
         no_quota => $params{no_quota},
         skip_step1 => $params{skip_step1},
         rmsd_cutoff => $params{rmsd_cutoff},
-        d_cutoff => $params{d_cutoff}
+        d_cutoff => $params{d_cutoff}, 
+        ignore_hbonds => $params{ignore_hbonds}
    };
 
    bless $self, $class;
@@ -295,6 +305,7 @@ sub new {
    $self->{skip_step1} //= 0;
    $self->{rmsd_cutoff} //= CUTOFF->{RMSD_CUTOFF}; 
    $self->{d_cutoff} //= CUTOFF->{D_CUTOFF}; 
+   $self->{ignore_hbonds} //= 1;
 
    return $self;
 }

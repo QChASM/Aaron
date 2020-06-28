@@ -265,7 +265,8 @@ sub examine_connectivity {
     my $catalysis = $self->{catalysis};
 
     my ($broken, $formed) = $catalysis->examine_connectivity(file=>"$filename.2.com",
-                                                thres=>$self->{Gkey}->{con_thres});
+                                                             thres=>$self->{Gkey}->{con_thres}, 
+                                                             ignore_hbonds=>$self->{Gkey}->{ignore_hbonds});
     if (@{$broken} || @{$formed}) {
 
         my $Gout = new AaronTools::G09Out(file => "$filename.$self->{step}.log",
@@ -1736,7 +1737,8 @@ sub examine_connectivity {
     my $catalysis = $self->{catalysis};
 
     my ($broken, $formed) = $catalysis->examine_connectivity(file=>"$filename.1.com",
-                                                thres=>$self->{Gkey}->{con_thres});
+                                                             thres=>$self->{Gkey}->{con_thres}, 
+                                                             ignore_hbonds=>$self->{Gkey}->{ignore_hbonds});
     if (@{$broken} || @{$formed}) {
 
         my $Gout = new AaronTools::G09Out(file => "$filename.$self->{step}.log",
