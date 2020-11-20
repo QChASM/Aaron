@@ -12,4 +12,4 @@ AARON does not implement new electronic structure methods or geometry optimizati
 # TS Library
 Information about the TS library packaged with AARON is available <a href="http://catalysttrends.org/Aaron/ts_library.php">here</a>.
 
-For more information on Aaron or AaronTools, please contact us at catalysttrends@uga.edu
+For more information on Aaron or AaronTools, please contact us at qchasm@uga.edu
