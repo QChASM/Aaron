@@ -9,7 +9,7 @@ AARON is a computational toolkit to automate the QM-based geometry optimization 
 
 AARON does not implement new electronic structure methods or geometry optimization algorithms.  Instead, it is essentially an interface to Gaussian (G09 or G16) that automates computations.  Briefly, given a set of TS and intermediate geometries for a given catalytic reaction, AARON can automatically compute analogous structures for similar catalysts/ligands and substrates.  In this way, users can screen potential catalysts and substrates for a given reaction by predicting the activity and selectivity of a given catalyst/substrate combination.
 
-# TS Library
+## TS Library
 Information about the TS library packaged with AARON is available <a href="http://qchasm.wheelergroupresearch.com/Aaron/ts_library.php">here</a>.
 
 ## Citation
