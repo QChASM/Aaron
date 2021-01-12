@@ -12,4 +12,11 @@ AARON does not implement new electronic structure methods or geometry optimizati
 # TS Library
 Information about the TS library packaged with AARON is available <a href="http://qchasm.wheelergroupresearch.com/Aaron/ts_library.php">here</a>.
 
-For more information on Aaron or AaronTools, please contact us at qchasm@uga.edu
+## Citation
+If you use AARON, please cite the following:
+"AARON: An Automated Reaction Optimizer for New Catalysts", <a href="http://dx.doi.org/10.1021/acs.jctc.8b00578" target="_blank">J. Chem. Theory Comput. <b>14</b>, 5249 (2018)</a>
+
+"QChASM: Quantum Chemistry Automation and Structure Manipulation" <a href="http://dx.doi.org/10.1002/wcms.1510" target="_blank"><i>WIREs Comp. Mol. Sci.</i> (in press, 2021)</a>
+
+## Contact
+If you have any questions, feel free to contact us at qchasm@uga.edu
